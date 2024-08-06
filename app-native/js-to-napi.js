@@ -13,6 +13,7 @@ function benchmark(numStrs, lengthPerStr, numTrials) {
 }
 
 function main() {
+    benchmark(1, 1, 1);
     for (let i = 0; i < 5000; i += 200) {
         const dur = Math.round(benchmark(1500, i, 3));
         console.log(`${i},${dur}`);

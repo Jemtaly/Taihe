@@ -33,6 +33,7 @@ unsigned benchmark(unsigned num_strs, unsigned length_per_str,
 }
 
 int main() {
+  benchmark(1, 1, 1);
   for (unsigned i = 0; i < 5000; i += 200) {
     printf("%8u,%8u\n", i, benchmark(1500, i, 3));
   }

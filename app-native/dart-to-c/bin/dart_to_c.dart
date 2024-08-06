@@ -16,6 +16,7 @@ int benchmark(int numStrs, int lengthPerStr, int numTrials) {
 }
 
 void main() {
+  benchmark(1, 1, 1);
   for (var i = 0; i < 5000; i += 200) {
     final duration = benchmark(1500, i, 3);
     print('${i.toString().padLeft(8)},${duration.toString().padLeft(8)}');
