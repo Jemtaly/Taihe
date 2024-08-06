@@ -1,5 +1,23 @@
-import 'package:dart_to_c/dart_to_c.dart' as dart_to_c;
+import 'package:dart_to_c/wrapper.dart';
 
-void main(List<String> arguments) {
-  print('Hello world: ${dart_to_c.calculate()}!');
+int benchmark(int numStrs, int lengthPerStr, int numTrials) {
+  final args = <String>[];
+  for (var i = 0; i < numStrs; i++) {
+    args.add('x' * lengthPerStr);
+  }
+
+  final stopwatch = Stopwatch()..start();
+  for (var i = 0; i < numTrials; i++) {
+    concat(args);
+  }
+  stopwatch.stop();
+
+  return 1000 * stopwatch.elapsedMicroseconds ~/ numTrials;
+}
+
+void main() {
+  for (var i = 0; i < 5000; i += 200) {
+    final duration = benchmark(1500, i, 3);
+    print('${i.toString().padLeft(8)},${duration.toString().padLeft(8)}');
+  }
 }
