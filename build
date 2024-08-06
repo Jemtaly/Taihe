@@ -1,0 +1,23 @@
+#!/bin/bash -eux
+
+CXX=clang++
+CXXFLAGS=-O2
+LDFLAGS='-Wl,-rpath,$ORIGIN'
+LDFLAGS_DSO="$LDFLAGS -shared"
+LDFLAGS_BIN="$LDFLAGS -fPIC -fPIE"
+
+build-dso() {
+    $CXX $CXXFLAGS -c ../lib/*.cc
+    $CXX $LDFLAGS_DSO -o impl.so c_api.o impl.o
+    $CXX $LDFLAGS_DSO -o node_api.node impl.so node_api.o
+    rm *.o
+}
+
+build-native-benchmark() {
+    $CXX $CXXFLAGS $LDFLAGS_BIN -o app-native ../app-native/*.cc impl.so
+}
+
+cd $(realpath $(dirname $0))
+mkdir -p bin && cd bin
+build-dso
+build-native-benchmark
