@@ -17,7 +17,16 @@ build-native-benchmark() {
     $CXX $CXXFLAGS $LDFLAGS_BIN -o app-native ../app-native/*.cc impl.so
 }
 
+build-dart-benchmark() {
+    src_dir=../app-native/dart-to-c
+    src_file=bin/dart_to_c.dart
+    bin_file=bin/dart_to_c.exe
+    (cd $src_dir && dart compile exe $src_file)
+    mv $src_dir/$bin_file dart-to-c
+}
+
 cd $(realpath $(dirname $0))
 mkdir -p bin && cd bin
 build-dso
 build-native-benchmark
+build-dart-benchmark
