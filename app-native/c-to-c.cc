@@ -28,7 +28,7 @@ unsigned benchmark(unsigned num_strs, unsigned length_per_str,
   auto end = std::chrono::high_resolution_clock::now();
 
   auto duration =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   return duration.count() / num_trials;
 }
 

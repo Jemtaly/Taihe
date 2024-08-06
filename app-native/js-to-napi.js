@@ -9,12 +9,12 @@ function benchmark(numStrs, lengthPerStr, numTrials) {
     const start = process.hrtime();
     for (let i = 0; i < numTrials; i++) api.concat(args);
     const end = process.hrtime();
-    return (end[0] - start[0]) * 1e9 + (end[1] - start[1]);
+    return (end[0] - start[0]) * 1e6 + (end[1] - start[1]) / 1e3;
 }
 
 function main() {
     for (let i = 0; i < 5000; i += 200) {
-        const dur = benchmark(1500, i, 3);
+        const dur = Math.round(benchmark(1500, i, 3));
         console.log(`${i},${dur}`);
     }
 }

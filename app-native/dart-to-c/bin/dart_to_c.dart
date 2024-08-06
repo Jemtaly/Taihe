@@ -12,7 +12,7 @@ int benchmark(int numStrs, int lengthPerStr, int numTrials) {
   }
   stopwatch.stop();
 
-  return 1000 * stopwatch.elapsedMicroseconds ~/ numTrials;
+  return stopwatch.elapsedMicroseconds ~/ numTrials;
 }
 
 void main() {
