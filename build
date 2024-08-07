@@ -7,6 +7,7 @@ LDFLAGS_DSO="$LDFLAGS -shared"
 LDFLAGS_BIN="$LDFLAGS -fPIE"
 
 DART_SDK="/opt/dart-sdk"
+OHOS_SDK="$HOME/tmp/command-line-tools/sdk/HarmonyOS-NEXT-DB2/openharmony"
 
 build-main-dso() {
     $CXX $CXXFLAGS -c ../lib/{impl,taihe_rt,c_api}.cc
@@ -38,12 +39,15 @@ build-dart-benchmark() {
     src_dir=../app-native/dart-to-c
     src_file=bin/dart_to_c.dart
     bin_file=bin/dart_to_c.exe
-    (cd $src_dir && dart compile exe $src_file)
+    (cd $src_dir && "$DART_SDK/bin/dart" compile exe $src_file)
     mv $src_dir/$bin_file dart-to-c
 }
 
 cd $(realpath $(dirname $0))
 mkdir -p bin && cd bin
+
+CXX="$OHOS_SDK/native/llvm/bin/aarch64-unknown-linux-ohos-clang++"
+
 build-dso
 build-native-benchmark
 build-dart-benchmark

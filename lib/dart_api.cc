@@ -6,7 +6,10 @@
 #include "impl.h"
 #include "taihe_rt.h"
 
-uint8_t *utf8(std::string &s) { return reinterpret_cast<uint8_t *>(s.data()); }
+uint8_t *utf8(std::string &s) {
+  // HACK for const-ness.
+  return reinterpret_cast<uint8_t *>(const_cast<char *>(s.data()));
+}
 
 extern "C" Dart_Handle dart_concat(Dart_Handle args) {
   Dart_EnterScope();
