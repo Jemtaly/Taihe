@@ -1,15 +1,32 @@
 #!/bin/bash -eux
 
 CXX=clang++
-CXXFLAGS=-O2
+CXXFLAGS='-g -O2 -fPIC'
 LDFLAGS='-Wl,-rpath,$ORIGIN'
 LDFLAGS_DSO="$LDFLAGS -shared"
-LDFLAGS_BIN="$LDFLAGS -fPIC -fPIE"
+LDFLAGS_BIN="$LDFLAGS -fPIE"
+
+DART_SDK="/opt/dart-sdk"
+
+build-main-dso() {
+    $CXX $CXXFLAGS -c ../lib/{impl,taihe_rt,c_api}.cc
+    $CXX $LDFLAGS_DSO -o impl.so {impl,taihe_rt,c_api}.o
+}
+
+build-node-dso() {
+    $CXX $CXXFLAGS -c ../lib/node_api.cc
+    $CXX $LDFLAGS_DSO -o node_api.node impl.so node_api.o
+}
+
+build-dart-dso() {
+    $CXX $CXXFLAGS -c ../lib/dart_api.cc -I "$DART_SDK/include/"
+    $CXX $LDFLAGS_DSO -o dart_api.so impl.so dart_api.o
+}
 
 build-dso() {
-    $CXX $CXXFLAGS -c ../lib/*.cc
-    $CXX $LDFLAGS_DSO -o impl.so c_api.o impl.o
-    $CXX $LDFLAGS_DSO -o node_api.node impl.so node_api.o
+    build-main-dso
+    build-node-dso
+    build-dart-dso
     rm *.o
 }
 
