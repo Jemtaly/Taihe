@@ -1,38 +1,33 @@
-/*
-* Copyright (c) 2023 Hunan OpenValley Digital Industry Development Co., Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+import testNapi from 'libentry.so';
+import router from '@ohos.router';
 
-import common from '@ohos.app.ability.common';
-import { FlutterPage } from '@ohos/flutter_ohos'
-
-let storage = LocalStorage.getShared()
-const EVENT_BACK_PRESS = 'EVENT_BACK_PRESS'
-
-@Entry(storage)
+@Entry
 @Component
 struct Index {
-  private context = getContext(this) as common.UIAbilityContext
-  @LocalStorageLink('viewId') viewId: string = "";
+  @State message: string = 'Hello World';
+  @State concat: string = 'benchmark arkts';
 
   build() {
-    Column() {
-      FlutterPage({ viewId: this.viewId })
+    Row() {
+      Column() {
+        Text(this.message)
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/IndexFlutter' }, (err) => {
+              if (err) {
+                this.message += `replaceUrl failed, code is ${err.code}, message is ${err.message}`;
+                return;
+              }
+            })
+          })
+        Button(this.concat)
+          .onClick(() => {
+            this.concat = testNapi.concat(['xy', 'z']);
+          })
+      }
+      .width('100%')
     }
-  }
-
-  onBackPress(): boolean {
-    this.context.eventHub.emit(EVENT_BACK_PRESS)
-    return true
+    .height('100%')
   }
 }

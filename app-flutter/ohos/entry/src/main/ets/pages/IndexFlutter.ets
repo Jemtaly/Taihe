@@ -13,32 +13,26 @@
 * limitations under the License.
 */
 
-{
-  "apiType": "stageMode",
-  "buildOption": {
-    "externalNativeOptions": {
-      "path": "./src/main/cpp/CMakeLists.txt",
-      "arguments": "",
-      "cppFlags": "",
+import common from '@ohos.app.ability.common';
+import { FlutterPage } from '@ohos/flutter_ohos'
+
+let storage = LocalStorage.getShared()
+const EVENT_BACK_PRESS = 'EVENT_BACK_PRESS'
+
+@Entry(storage)
+@Component
+struct IndexFlutter {
+  private context = getContext(this) as common.UIAbilityContext
+  @LocalStorageLink('viewId') viewId: string = "";
+
+  build() {
+    Column() {
+      FlutterPage({ viewId: this.viewId })
     }
-  },
-  "buildOptionSet": [
-    {
-      "name": "release",
-      "nativeLib": {
-        "debugSymbol": {
-          "strip": false,
-          "exclude": []
-        }
-      }
-    },
-  ],
-  "targets": [
-    {
-      "name": "default"
-    },
-    {
-      "name": "ohosTest",
-    }
-  ]
+  }
+
+  onBackPress(): boolean {
+    this.context.eventHub.emit(EVENT_BACK_PRESS)
+    return true
+  }
 }
