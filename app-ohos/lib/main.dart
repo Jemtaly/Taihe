@@ -62,9 +62,9 @@ class _MyAppState extends State<MyApp> {
       result = '$name: $concatRet:\n';
     });
 
-    runOnce(1, 1, 1);
+    await runOnce(1, 1, 1);
     for (var i = 0; i < 5000; i += 200) {
-      runOnce(1500, i, 3);
+      await runOnce(1500, i, 1);
     }
   }
 

@@ -22,12 +22,17 @@ struct Index {
     return (end - start) / 1000 / numTrials;
   }
 
+  runOnce(numStrs: number, lengthPerStr: number, numTrials: number) {
+    const dur = Math.round(this.benchmark(numStrs, lengthPerStr, numTrials));
+    const s = `tbench:arkts-napi,${numStrs},${lengthPerStr},${dur}`;
+    this.message += `${s}\n`;
+    console.log(`${s}`);
+  }
+
   dobench() {
-    this.benchmark(1, 1, 1);
+    this.runOnce(1, 1, 1);
     for (let i = 0; i < 5000; i += 200) {
-      const dur = Math.round(this.benchmark(1500, i, 3));
-      this.message += `${i},${dur}\n`;
-      console.log(`${i},${dur}`);
+      this.runOnce(1500, i, 3);
     }
   }
 
