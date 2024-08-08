@@ -1,0 +1,214 @@
+08-08 16:42:30.699  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1,1,28
+08-08 16:42:30.705  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,0,1500
+08-08 16:42:30.714  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,200,1748
+08-08 16:42:30.728  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,400,2643
+08-08 16:42:30.747  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,600,3432
+08-08 16:42:30.771  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,800,4490
+08-08 16:42:30.802  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,1000,5633
+08-08 16:42:30.837  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,1200,5891
+08-08 16:42:30.878  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,1400,7288
+08-08 16:42:30.924  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,1600,8299
+08-08 16:42:30.978  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,1800,9825
+08-08 16:42:31.034  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,2000,9619
+08-08 16:42:31.099  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,2200,11648
+08-08 16:42:31.170  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,2400,13131
+08-08 16:42:31.276  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,2600,14074
+08-08 16:42:31.351  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,2800,12997
+08-08 16:42:31.432  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,3000,14050
+08-08 16:42:31.525  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,3200,17158
+08-08 16:42:31.621  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,3400,17357
+08-08 16:42:31.724  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,3600,18641
+08-08 16:42:31.829  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,3800,18229
+08-08 16:42:31.940  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,4000,19303
+08-08 16:42:32.067  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,4200,23406
+08-08 16:42:32.197  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,4400,23865
+08-08 16:42:32.385  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,4600,26173
+08-08 16:42:32.522  9507  9507 I A03D00/JSAPP: tbench:arkts-napi,1500,4800,25372
+
+08-08 17:10:52.745 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1,1,936
+08-08 17:10:52.751 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,0,5695
+08-08 17:10:52.851 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,200,98743
+08-08 17:10:53.027 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,400,173989
+08-08 17:10:53.290 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,600,259610
+08-08 17:10:53.634 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,800,339627
+08-08 17:10:54.061 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,1000,420605
+08-08 17:10:54.571 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,1200,502753
+08-08 17:10:55.149 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,1400,569490
+08-08 17:10:55.797 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,1600,638946
+08-08 17:10:56.525 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,1800,718501
+08-08 17:10:57.333 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,2000,797222
+08-08 17:10:58.268 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,2200,925085
+08-08 17:10:59.247 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,2400,958308
+08-08 17:11:00.272 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,2600,1011491
+08-08 17:11:01.375 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,2800,1090267
+08-08 17:11:02.551 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,3000,1160582
+08-08 17:11:03.812 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,3200,1244368
+08-08 17:11:05.136 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,3400,1308375
+08-08 17:11:06.595 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,3600,1439891
+08-08 17:11:08.125 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,3800,1507464
+08-08 17:11:09.734 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,4000,1591551
+08-08 17:11:11.404 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,4200,1645785
+08-08 17:11:13.128 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,4400,1706264
+08-08 17:11:14.955 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,4600,1804609
+08-08 17:11:16.891 19052 19075 I A00000/XComFlutterOHOS_Native: flutter tbench:dart-napi,1500,4800,1911003
+
+tbench:x86-c-capi,1,1,1
+tbench:x86-c-capi,1500,0,157
+tbench:x86-c-capi,1500,200,393
+tbench:x86-c-capi,1500,400,734
+tbench:x86-c-capi,1500,600,1027
+tbench:x86-c-capi,1500,800,1074
+tbench:x86-c-capi,1500,1000,1777
+tbench:x86-c-capi,1500,1200,2313
+tbench:x86-c-capi,1500,1400,2280
+tbench:x86-c-capi,1500,1600,2968
+tbench:x86-c-capi,1500,1800,3786
+tbench:x86-c-capi,1500,2000,3702
+tbench:x86-c-capi,1500,2200,3879
+tbench:x86-c-capi,1500,2400,4272
+tbench:x86-c-capi,1500,2600,4471
+tbench:x86-c-capi,1500,2800,4924
+tbench:x86-c-capi,1500,3000,5038
+tbench:x86-c-capi,1500,3200,5816
+tbench:x86-c-capi,1500,3400,5718
+tbench:x86-c-capi,1500,3600,5986
+tbench:x86-c-capi,1500,3800,6114
+tbench:x86-c-capi,1500,4000,6555
+tbench:x86-c-capi,1500,4200,7529
+tbench:x86-c-capi,1500,4400,7747
+tbench:x86-c-capi,1500,4600,7287
+tbench:x86-c-capi,1500,4800,7895
+
+tbench:x86-cpp-cpp,1,1,1
+tbench:x86-cpp-cpp,1500,0,3
+tbench:x86-cpp-cpp,1500,200,101
+tbench:x86-cpp-cpp,1500,400,146
+tbench:x86-cpp-cpp,1500,600,221
+tbench:x86-cpp-cpp,1500,800,259
+tbench:x86-cpp-cpp,1500,1000,454
+tbench:x86-cpp-cpp,1500,1200,398
+tbench:x86-cpp-cpp,1500,1400,491
+tbench:x86-cpp-cpp,1500,1600,614
+tbench:x86-cpp-cpp,1500,1800,884
+tbench:x86-cpp-cpp,1500,2000,820
+tbench:x86-cpp-cpp,1500,2200,795
+tbench:x86-cpp-cpp,1500,2400,869
+tbench:x86-cpp-cpp,1500,2600,949
+tbench:x86-cpp-cpp,1500,2800,1188
+tbench:x86-cpp-cpp,1500,3000,1188
+tbench:x86-cpp-cpp,1500,3200,1206
+tbench:x86-cpp-cpp,1500,3400,1308
+tbench:x86-cpp-cpp,1500,3600,5182
+tbench:x86-cpp-cpp,1500,3800,5596
+tbench:x86-cpp-cpp,1500,4000,5537
+tbench:x86-cpp-cpp,1500,4200,5745
+tbench:x86-cpp-cpp,1500,4400,6260
+tbench:x86-cpp-cpp,1500,4600,6263
+tbench:x86-cpp-cpp,1500,4800,5189
+
+tbench:x86-nodejs-napi,1,1,12
+tbench:x86-nodejs-napi,1500,0,123
+tbench:x86-nodejs-napi,1500,200,1014
+tbench:x86-nodejs-napi,1500,400,1555
+tbench:x86-nodejs-napi,1500,600,2219
+tbench:x86-nodejs-napi,1500,800,2694
+tbench:x86-nodejs-napi,1500,1000,3370
+tbench:x86-nodejs-napi,1500,1200,3777
+tbench:x86-nodejs-napi,1500,1400,4749
+tbench:x86-nodejs-napi,1500,1600,4698
+tbench:x86-nodejs-napi,1500,1800,5512
+tbench:x86-nodejs-napi,1500,2000,6612
+tbench:x86-nodejs-napi,1500,2200,6888
+tbench:x86-nodejs-napi,1500,2400,7254
+tbench:x86-nodejs-napi,1500,2600,8813
+tbench:x86-nodejs-napi,1500,2800,8110
+tbench:x86-nodejs-napi,1500,3000,9409
+tbench:x86-nodejs-napi,1500,3200,10287
+tbench:x86-nodejs-napi,1500,3400,10921
+tbench:x86-nodejs-napi,1500,3600,11787
+tbench:x86-nodejs-napi,1500,3800,12518
+tbench:x86-nodejs-napi,1500,4000,12990
+tbench:x86-nodejs-napi,1500,4200,12832
+tbench:x86-nodejs-napi,1500,4400,12748
+tbench:x86-nodejs-napi,1500,4600,13858
+tbench:x86-nodejs-napi,1500,4800,15829
+
+tbench:x86-dart-taihe,1,1,2
+tbench:x86-dart-taihe,1500,0,227
+tbench:x86-dart-taihe,1500,200,1601
+tbench:x86-dart-taihe,1500,400,2587
+tbench:x86-dart-taihe,1500,600,3728
+tbench:x86-dart-taihe,1500,800,4803
+tbench:x86-dart-taihe,1500,1000,5912
+tbench:x86-dart-taihe,1500,1200,7226
+tbench:x86-dart-taihe,1500,1400,8355
+tbench:x86-dart-taihe,1500,1600,9690
+tbench:x86-dart-taihe,1500,1800,10884
+tbench:x86-dart-taihe,1500,2000,12705
+tbench:x86-dart-taihe,1500,2200,13453
+tbench:x86-dart-taihe,1500,2400,14519
+tbench:x86-dart-taihe,1500,2600,15666
+tbench:x86-dart-taihe,1500,2800,16945
+tbench:x86-dart-taihe,1500,3000,17873
+tbench:x86-dart-taihe,1500,3200,19349
+tbench:x86-dart-taihe,1500,3400,20477
+tbench:x86-dart-taihe,1500,3600,21643
+tbench:x86-dart-taihe,1500,3800,22727
+tbench:x86-dart-taihe,1500,4000,23634
+tbench:x86-dart-taihe,1500,4200,25089
+tbench:x86-dart-taihe,1500,4400,25592
+tbench:x86-dart-taihe,1500,4600,27002
+tbench:x86-dart-taihe,1500,4800,28851
+tbench:x86-dart-capi,1,1,15
+tbench:x86-dart-capi,1500,0,309
+tbench:x86-dart-capi,1500,200,1664
+tbench:x86-dart-capi,1500,400,3221
+tbench:x86-dart-capi,1500,600,4448
+tbench:x86-dart-capi,1500,800,5792
+tbench:x86-dart-capi,1500,1000,7159
+tbench:x86-dart-capi,1500,1200,8857
+tbench:x86-dart-capi,1500,1400,9834
+tbench:x86-dart-capi,1500,1600,11256
+tbench:x86-dart-capi,1500,1800,12491
+tbench:x86-dart-capi,1500,2000,13612
+tbench:x86-dart-capi,1500,2200,14529
+tbench:x86-dart-capi,1500,2400,16145
+tbench:x86-dart-capi,1500,2600,17100
+tbench:x86-dart-capi,1500,2800,18144
+tbench:x86-dart-capi,1500,3000,22131
+tbench:x86-dart-capi,1500,3200,25249
+tbench:x86-dart-capi,1500,3400,27236
+tbench:x86-dart-capi,1500,3600,27943
+tbench:x86-dart-capi,1500,3800,30213
+tbench:x86-dart-capi,1500,4000,31623
+tbench:x86-dart-capi,1500,4200,33396
+tbench:x86-dart-capi,1500,4400,34670
+tbench:x86-dart-capi,1500,4600,36987
+tbench:x86-dart-capi,1500,4800,36628
+
+tbench:c-capi,1,1,2
+tbench:c-capi,1500,0,307
+tbench:c-capi,1500,200,3205
+tbench:c-capi,1500,400,4599
+tbench:c-capi,1500,600,5021
+tbench:c-capi,1500,800,5506
+tbench:c-capi,1500,1000,7678
+tbench:c-capi,1500,1200,6314
+tbench:c-capi,1500,1400,7132
+tbench:c-capi,1500,1600,7447
+tbench:c-capi,1500,1800,10783
+tbench:c-capi,1500,2000,10812
+tbench:c-capi,1500,2200,9331
+tbench:c-capi,1500,2400,8885
+tbench:c-capi,1500,2600,9964
+tbench:c-capi,1500,2800,10102
+tbench:c-capi,1500,3000,9907
+tbench:c-capi,1500,3200,11211
+tbench:c-capi,1500,3400,11444
+tbench:c-capi,1500,3600,16826
+tbench:c-capi,1500,3800,18278
+tbench:c-capi,1500,4000,17299
+tbench:c-capi,1500,4200,14997
+tbench:c-capi,1500,4400,15193
+tbench:c-capi,1500,4600,15338
+tbench:c-capi,1500,4800,15565
