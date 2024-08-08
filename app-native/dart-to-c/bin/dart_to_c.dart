@@ -31,16 +31,23 @@ int cApiBenchmark(int numStrs, int lengthPerStr, int numTrials) {
   return stopwatch.elapsedMicroseconds ~/ numTrials;
 }
 
+void runOnce(int numStrs, int lengthPerStr, int numTrials, String name,
+    int Function(int, int, int) fn) {
+  final duration = fn(numStrs, lengthPerStr, numTrials);
+  print('tbench:$name,$numStrs,$lengthPerStr,$duration');
+}
+
 void main() {
-  taiheBenchmark(1, 1, 1);
+  capi.concat([]);
+  taihe.concat([]);
+
+  runOnce(1, 1, 3, 'x86-dart-taihe', taiheBenchmark);
   for (var i = 0; i < 5000; i += 200) {
-    final duration = taiheBenchmark(1500, i, 3);
-    print('taihe,${i.toString().padLeft(8)},${duration.toString().padLeft(8)}');
+    runOnce(1500, i, 3, 'x86-dart-taihe', taiheBenchmark);
   }
 
-  cApiBenchmark(1, 1, 1);
+  runOnce(1, 1, 3, 'x86-dart-capi', cApiBenchmark);
   for (var i = 0; i < 5000; i += 200) {
-    final duration = cApiBenchmark(1500, i, 3);
-    print('capi,${i.toString().padLeft(8)},${duration.toString().padLeft(8)}');
+    runOnce(1500, i, 3, 'x86-dart-capi', cApiBenchmark);
   }
 }

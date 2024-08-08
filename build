@@ -20,7 +20,7 @@ build-node-dso() {
 }
 
 build-dart-dso() {
-    $CXX $CXXFLAGS -c ../lib/dart_api.cc -I "$DART_SDK/include/"
+    $CXX $CXXFLAGS -c ../lib/dart_api.cc -I "$DART_SDK/include"
     $CXX $LDFLAGS_DSO -o dart_api.so impl.so dart_api.o
 }
 
@@ -46,7 +46,7 @@ build-dart-benchmark() {
 cd $(realpath $(dirname $0))
 mkdir -p bin && cd bin
 
-CXX="$OHOS_SDK/native/llvm/bin/aarch64-unknown-linux-ohos-clang++"
+# CXX="$OHOS_SDK/native/llvm/bin/aarch64-unknown-linux-ohos-clang++"
 
 build-dso
 build-native-benchmark

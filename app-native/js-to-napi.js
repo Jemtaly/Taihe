@@ -9,14 +9,19 @@ function benchmark(numStrs, lengthPerStr, numTrials) {
     const start = process.hrtime();
     for (let i = 0; i < numTrials; i++) api.concat(args);
     const end = process.hrtime();
-    return (end[0] - start[0]) * 1e6 + (end[1] - start[1]) / 1e3;
+    return (end[0] - start[0]) * 1e6 + (end[1] - start[1]) / 1e3 / numTrials;
+}
+
+function doOnce(numStrs, lengthPerStr, numTrials) {
+    const dur = Math.round(benchmark(numStrs, lengthPerStr, numTrials));
+    const s = `tbench:x86-nodejs-napi,${numStrs},${lengthPerStr},${dur}`;
+    console.log(`${s}`);
 }
 
 function main() {
-    benchmark(1, 1, 1);
+    doOnce(1, 1, 3);
     for (let i = 0; i < 5000; i += 200) {
-        const dur = Math.round(benchmark(1500, i, 3));
-        console.log(`${i},${dur}`);
+        doOnce(1500, i, 3);
     }
 }
 

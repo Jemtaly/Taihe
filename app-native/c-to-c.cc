@@ -28,10 +28,15 @@ unsigned benchmark(unsigned num_strs, unsigned length_per_str,
   return duration.count() / num_trials;
 }
 
+void run_once(unsigned num_strs, unsigned length_per_str, unsigned num_trials) {
+  printf("tbench:c-capi,%u,%u,%u\n", num_strs, length_per_str,
+         benchmark(num_strs, length_per_str, num_trials));
+}
+
 int main() {
-  benchmark(1, 1, 1);
+  run_once(1, 1, 3);
   for (unsigned i = 0; i < 5000; i += 200) {
-    printf("%8u,%8u\n", i, benchmark(1500, i, 3));
+    run_once(1500, i, 3);
   }
   return 0;
 }
