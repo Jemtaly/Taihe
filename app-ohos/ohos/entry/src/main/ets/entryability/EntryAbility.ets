@@ -75,7 +75,7 @@ export default class EntryAbility extends FlutterAbility {
     @Sendable
     class PlatformStringCallback implements SendableMethodCallHandler {
         onMethodCall(call: MethodCall, result: MethodResult): void {
-            console.log(`xlog, #onMethodCall: ${call.method}, ${call.args}`);
+            // console.log(`xlog, #onMethodCall: ${call.method}, ${call.args}`);
             if (call.method == "getPlatformString") {
                 result.success("Hi, there! I'm from ArkUI ^_^ ")
             } else if (call.method == "concat") {
