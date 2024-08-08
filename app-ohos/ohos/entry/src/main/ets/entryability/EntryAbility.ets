@@ -14,11 +14,11 @@
 */
 
 import { common } from '@kit.AbilityKit';
-import { taskpool } from '@kit.ArkTS';
+import testNapi from 'libentry.so';
 import {
   Any,
   ApplicationInfoLoader,
-  BackgroundMethodChannel,
+  MethodChannel,
   BackgroundBasicMessageChannel,
   BasicMessageChannel,
   BinaryCodec,
@@ -30,9 +30,9 @@ import {
   SendableMessageHandler,
   StandardMessageCodec,
   SendableStandardMessageCodec,
+  StandardMethodCodec,
   TaskPriority,
   TaskQueueOptions,
-  SendableStandardMethodCodec
 } from '@ohos/flutter_ohos';
 import { Reply } from '@ohos/flutter_ohos/src/main/ets/plugin/common/BasicMessageChannel';
 import { GeneratedPluginRegistrant } from '../plugins/GeneratedPluginRegistrant';
@@ -59,7 +59,7 @@ export class CustomStandardMessageCodec extends SendableStandardMessageCodec {
 }
 
 export default class EntryAbility extends FlutterAbility {
-  private methodChannel: BackgroundMethodChannel | null = null;
+  private methodChannel: MethodChannel | null = null;
   private reset: BasicMessageChannel<Object> | null = null;
   private basicStandard: BasicMessageChannel<Object> | null = null;
   private basicBinary: BasicMessageChannel<Object> | null = null;
@@ -74,36 +74,30 @@ export default class EntryAbility extends FlutterAbility {
 
     @Sendable
     class PlatformStringCallback implements SendableMethodCallHandler {
-      onMethodCall(call: MethodCall, result: MethodResult, ...args: Object[]): void {
-        console.log(`xlog, #onMethodCall ~~, ${args}, length=${args.length}`);
-        let context = args[0] as common.Context;
-        let txt = args[1] as string;
-        console.log(`xlog, #onMethodCall, txt=${txt}, context=${context}`);
-        let applicationInfo = ApplicationInfoLoader.load(context);
-        let appContext = context.getApplicationContext();
-        let path: string = appContext.databaseDir;
-        console.log('xlog, in background: isDebugMode = ' + applicationInfo.isDebugMode + ", text: " + txt + ", " + path);
-
-        if (call.method == "getPlatformString") {
-          result.success("Hi, there! I'm from ArkUI ^_^ ")
-        } else {
-          result.notImplemented()
+        onMethodCall(call: MethodCall, result: MethodResult): void {
+            console.log(`xlog, #onMethodCall: ${call.method}, ${call.args}`);
+            if (call.method == "getPlatformString") {
+                result.success("Hi, there! I'm from ArkUI ^_^ ")
+            } else if (call.method == "concat") {
+                // console.log(`xlog: #concat, type=${typeof call.args}`)
+                let args = call.args as Array<String>;
+                let ret = testNapi.concat(args) as String;
+                // console.log(`xlog: #concat, ret=${ret}`)
+                result.success(ret)
+            } else {
+                result.notImplemented()
+            }
         }
-      }
     }
 
     let option: TaskQueueOptions = new TaskQueueOptions()
                                       .setIsSerial(true)
                                       .setSingleThreadMode(true)
                                       .setPriority(TaskPriority.HIGH);
-    const taskQueue1 = flutterEngine.getDartExecutor().makeBackgroundTaskQueue(option);
-    this.methodChannel = new BackgroundMethodChannel(
+    this.methodChannel = new MethodChannel(
       flutterEngine.getDartExecutor(),
       "test/get_platform_name",
-      SendableStandardMethodCodec.INSTANCE,
-      taskQueue1,
-      this.context,
-      'another params'
+      StandardMethodCodec.INSTANCE,
     );
     this.methodChannel.setMethodCallHandler(new PlatformStringCallback());
 

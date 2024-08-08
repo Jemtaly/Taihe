@@ -198,7 +198,8 @@ Future<String> _runTests(
   final ByteData largeBufferBytes =
       const StandardMessageCodec().encodeMessage(largeBuffer)!;
   final ByteData oneMB = ByteData(1024 * 1024);
-  print('xlog, itemCount=$itemCount, stringLength=$stringLength, numMessages=$numMessages, largeBuffer.size=${largeBuffer.length}');
+  print(
+      'xlog, itemCount=$itemCount, stringLength=$stringLength, numMessages=$numMessages, largeBuffer.size=${largeBuffer.length}');
   // const int numMessages = 2500;
 
   final BenchmarkResultPrinter printer = BenchmarkResultPrinter();
@@ -214,7 +215,8 @@ Future<String> _runTests(
     test: (int x) => _runBasicStandardLarge(basicStandard, largeBuffer, x),
     resetChannel: resetChannel,
     printer: printer,
-    description: 'StandardMessageCodec/Large(${largeBufferBytes.lengthInBytes/1024}KB)',
+    description:
+        'StandardMessageCodec/Large(${largeBufferBytes.lengthInBytes / 1024}KB)',
     name: 'platform_channel_basic_standard_2host_large',
     numMessages: numMessages,
   );
@@ -310,12 +312,37 @@ class _MyAppState extends State<MyApp> {
     return str;
   }
 
+  Future<String> concat(List<String> args) async {
+    final str = await methodChannel.invokeMethod<String>('concat', args);
+    return str ?? "???";
+  }
+
   int _stringLength = 512; // list中字符串的长度
   int _itemCounts = 100; // list对象的长度
   int _runCounts = 10; // 测试用例运行次数
 
-  final List<int> _dropdownForStringLength = [0, 50, 100, 512, 1024, 2048, 4096, 8192, 9216, 10240];
-  final List<int> _dropdownForItemCount = [1, 5, 10, 100, 500, 1500, 2000, 2500];
+  final List<int> _dropdownForStringLength = [
+    0,
+    50,
+    100,
+    512,
+    1024,
+    2048,
+    4096,
+    8192,
+    9216,
+    10240
+  ];
+  final List<int> _dropdownForItemCount = [
+    1,
+    5,
+    10,
+    100,
+    500,
+    1500,
+    2000,
+    2500
+  ];
   final List<int> _dropdownForRunCount = [1, 10, 100, 1000, 2000];
 
   void _handleButtonClick() async {
@@ -323,10 +350,11 @@ class _MyAppState extends State<MyApp> {
       result = "Benchmark运行中，请稍候～";
     });
     String? name = await getPlatformString();
-    String newResult =
-        await _runTests(_itemCounts, _stringLength, _runCounts);
+    String concatRet = await concat(["x", "y", "z"]);
+
+    // String newResult = await _runTests(_itemCounts, _stringLength, _runCounts);
     setState(() {
-      result = '${name??''}\n\n $newResult';
+      result = '$concatRet: ${name ?? ''}\n\n';
     });
   }
 
