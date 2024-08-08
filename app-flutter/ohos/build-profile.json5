@@ -1,0 +1,56 @@
+/*
+* Copyright (c) 2023 Hunan OpenValley Digital Industry Development Co., Ltd.
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
+
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "sig/default_ohos_Q9rcmgwD9CpP5EMNrp4GtnUsSMMz_fGTDKHN56yLryw=.cer",
+          "storePassword": "0000001A067EDC26D1A63A7C2CCDD9DFEDEB4E93C996DC0E3732817B74BF1ABB65CF2F86B4D2BF308570",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001AFC5BB9E3DDC2FDF1869128CDB4B3E0309CC6DCFDAFAA8340D7F34FB6158F1FA707BD9506900E",
+          "profile": "sig/default_ohos_Q9rcmgwD9CpP5EMNrp4GtnUsSMMz_fGTDKHN56yLryw=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "sig/default_ohos_Q9rcmgwD9CpP5EMNrp4GtnUsSMMz_fGTDKHN56yLryw=.p12"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "compatibleSdkVersion": "5.0.0(12)",
+        "runtimeOS": "HarmonyOS",
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
