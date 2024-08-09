@@ -9,7 +9,7 @@ function benchmark(numStrs, lengthPerStr, numTrials) {
     const start = process.hrtime();
     for (let i = 0; i < numTrials; i++) api.concat(args);
     const end = process.hrtime();
-    return (end[0] - start[0]) * 1e6 + (end[1] - start[1]) / 1e3 / numTrials;
+    return (end[0] - start[0]) * 1e9 + (end[1] - start[1]) / numTrials;
 }
 
 function doOnce(numStrs, lengthPerStr, numTrials) {
@@ -19,7 +19,7 @@ function doOnce(numStrs, lengthPerStr, numTrials) {
 }
 
 function main() {
-    doOnce(1, 1, 3);
+    doOnce(0, 1, 10000);
     for (let i = 0; i < 5000; i += 200) {
         doOnce(1500, i, 3);
     }

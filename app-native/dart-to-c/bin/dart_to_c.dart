@@ -13,7 +13,7 @@ int taiheBenchmark(int numStrs, int lengthPerStr, int numTrials) {
   }
   stopwatch.stop();
 
-  return stopwatch.elapsedMicroseconds ~/ numTrials;
+  return stopwatch.elapsedMicroseconds * 1000 ~/ numTrials;
 }
 
 int cApiBenchmark(int numStrs, int lengthPerStr, int numTrials) {
@@ -28,7 +28,7 @@ int cApiBenchmark(int numStrs, int lengthPerStr, int numTrials) {
   }
   stopwatch.stop();
 
-  return stopwatch.elapsedMicroseconds ~/ numTrials;
+  return stopwatch.elapsedMicroseconds * 1000 ~/ numTrials;
 }
 
 void runOnce(int numStrs, int lengthPerStr, int numTrials, String name,
@@ -41,13 +41,13 @@ void main() {
   capi.concat([]);
   taihe.concat([]);
 
-  runOnce(1, 1, 3, 'x86-dart-taihe', taiheBenchmark);
+  runOnce(0, 1, 30000, 'x86-dart-taihe', taiheBenchmark);
   for (var i = 0; i < 5000; i += 200) {
-    runOnce(1500, i, 3, 'x86-dart-taihe', taiheBenchmark);
+    runOnce(1500, i, 7, 'x86-dart-taihe', taiheBenchmark);
   }
 
-  runOnce(1, 1, 3, 'x86-dart-capi', cApiBenchmark);
+  runOnce(0, 1, 30000, 'x86-dart-capi', cApiBenchmark);
   for (var i = 0; i < 5000; i += 200) {
-    runOnce(1500, i, 3, 'x86-dart-capi', cApiBenchmark);
+    runOnce(1500, i, 7, 'x86-dart-capi', cApiBenchmark);
   }
 }

@@ -19,7 +19,7 @@ struct Index {
       testNapi.concat(args);
     }
     const end = systemDateTime.getTime(true);
-    return (end - start) / 1000 / numTrials;
+    return (end - start) / numTrials;
   }
 
   runOnce(numStrs: number, lengthPerStr: number, numTrials: number) {
@@ -30,7 +30,7 @@ struct Index {
   }
 
   dobench() {
-    this.runOnce(1, 1, 1);
+    this.runOnce(0, 1, 100000);
     for (let i = 0; i < 5000; i += 200) {
       this.runOnce(1500, i, 3);
     }

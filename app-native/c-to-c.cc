@@ -65,34 +65,34 @@ unsigned benchmark_taihe(unsigned num_strs, unsigned length_per_str,
 
 void run_c_once(unsigned num_strs, unsigned length_per_str,
                 unsigned num_trials) {
-  printf("tbench:c-capi,%u,%u,%.3lf\n", num_strs, length_per_str,
-         benchmark_c(num_strs, length_per_str, num_trials) / 1000.0);
+  printf("tbench:c-capi,%u,%u,%u\n", num_strs, length_per_str,
+         benchmark_c(num_strs, length_per_str, num_trials));
 }
 
 void run_cpp_once(unsigned num_strs, unsigned length_per_str,
                   unsigned num_trials) {
-  printf("tbench:cpp-cpp,%u,%u,%.3lf\n", num_strs, length_per_str,
-         benchmark_cpp(num_strs, length_per_str, num_trials) / 1000.0);
+  printf("tbench:cpp-cpp,%u,%u,%u\n", num_strs, length_per_str,
+         benchmark_cpp(num_strs, length_per_str, num_trials));
 }
 
 void run_taihe_once(unsigned num_strs, unsigned length_per_str,
                     unsigned num_trials) {
-  printf("tbench:cpp-taihe,%u,%u,%.3lf\n", num_strs, length_per_str,
-         benchmark_taihe(num_strs, length_per_str, num_trials) / 1000.0);
+  printf("tbench:cpp-taihe,%u,%u,%u\n", num_strs, length_per_str,
+         benchmark_taihe(num_strs, length_per_str, num_trials));
 }
 
 int main() {
-  run_c_once(1, 1, 1000);
+  run_c_once(0, 1, 100000);
   for (unsigned i = 0; i < 5000; i += 200) {
     run_c_once(1500, i, 3);
   }
 
-  run_cpp_once(1, 1, 1000);
+  run_cpp_once(0, 1, 100000);
   for (unsigned i = 0; i < 5000; i += 200) {
     run_cpp_once(1500, i, 3);
   }
 
-  run_taihe_once(1, 1, 1000);
+  run_taihe_once(0, 1, 100000);
   for (unsigned i = 0; i < 5000; i += 200) {
     run_taihe_once(1500, i, 3);
   }

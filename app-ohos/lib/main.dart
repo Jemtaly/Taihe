@@ -43,7 +43,7 @@ class _MyAppState extends State<MyApp> {
     }
     stopwatch.stop();
 
-    return stopwatch.elapsedMicroseconds ~/ numTrials;
+    return stopwatch.elapsedMicroseconds * 1000 ~/ numTrials;
   }
 
   Future<void> runOnce(int numStrs, int lengthPerStr, int numTrials) async {
@@ -62,7 +62,7 @@ class _MyAppState extends State<MyApp> {
       result = '$name: $concatRet:\n';
     });
 
-    await runOnce(1, 1, 1);
+    await runOnce(0, 1, 1000);
     for (var i = 0; i < 5000; i += 200) {
       await runOnce(1500, i, 1);
     }
