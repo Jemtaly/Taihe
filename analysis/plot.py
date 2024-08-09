@@ -24,27 +24,33 @@ def read_data():
     return df
 
 
-def normalize(df: pd.DataFrame):
-    # Use x86-cpp as "100%", or the standard to normalize.
-    # Also ensure that x86-capi and aarch64-capi are equal.
-    x86_cpp = df["x86-cpp-cpp"]
-    aarch64_cpp = df["x86-cpp-cpp"] * (df["c-capi"] / df["x86-c-capi"])
+C_INNER = "C++ → Inner API"
+C_C = "C++ → C API"
+C_ARKVM = "C++ → NAPI (ArkVM)"
+C_NODEJS = "C++ → NAPI (NodeJS)"
+F_NAPI = "Flutter → N API"
+F_CAPI = "Flutter → C API"
+F_TAIHE = "Flutter → Taihe"
 
+
+def normalize(df: pd.DataFrame):
+    # Cast all x86 to aarch64 based on C-API.
+    x86_to_aarch64_factor = df["c-capi"] / df["x86-c-capi"]
     for row_name in df.columns.values:
         assert isinstance(row_name, str)
-        std = x86_cpp if row_name.startswith("x86-") else aarch64_cpp
-        df[row_name] /= std
+        if row_name.startswith("x86-"):
+            df[row_name] *= x86_to_aarch64_factor
 
     # Rename and reorder columns.
     del df["c-capi"]
-    del df["x86-cpp-cpp"]
     new_columns = {
-        "x86-c-capi": "C API",
-        "arkts-napi": "NAPI",
-        "x86-nodejs-napi": "NAPI (NodeJS)",
-        "dart-napi": "Flutter (NAPI)",
-        "x86-dart-capi": "Flutter (C API)",
-        "x86-dart-taihe": "Flutter (Taihe)",
+        "x86-cpp-cpp": C_INNER,
+        "x86-c-capi": C_C,
+        "arkts-napi": C_ARKVM,
+        "x86-nodejs-napi": C_NODEJS,
+        "dart-napi": F_NAPI,
+        "x86-dart-capi": F_CAPI,
+        "x86-dart-taihe": F_TAIHE,
     }
     df = df[new_columns.keys()].rename(new_columns, axis=1)  # type:ignore
 
@@ -63,18 +69,22 @@ def plot(df: pd.DataFrame):
     import seaborn as sns
     import matplotlib.pyplot as plt
 
+    # Boxplot
+    x = df[[F_CAPI, F_TAIHE]].apply(lambda x: x / df[C_INNER])
+
     fig, ax = plt.subplots(1, 1)
-    del fig
-    sns.lineplot(df, ax=ax)
-    plt.yscale('log')
+    sns.boxplot(x, ax=ax)
+    print(x.describe())
+
+    # plt.yscale('log')
+    fig.tight_layout()
     plt.show()
-    print(df)
 
 
 def main():
     df = read_data()
     df_startup, df_main = normalize(df)
-    print(df_startup)
+    # print(df_startup)
 
     plot(df_main)
 
