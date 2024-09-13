@@ -66,10 +66,13 @@ def iter_nodes(root_node: NodeT) -> Iterable[NodeT]:
             yield c
 
 
-def main():
-    root_node = ast.Prog
-    nodes = list(iter_nodes(root_node))
+def gen(root_node: NodeT):
+    grammar_name = getattr(root_node, "GRAMMAR_NAME")
+    grammar_lexer = getattr(root_node, "GRAMMAR_LEXER")
+    assert isinstance(grammar_name, str)
+    assert isinstance(grammar_lexer, str)
 
+    nodes = list(iter_nodes(root_node))
     node_names = [n.node_name() for n in nodes]
     # Compile a regex pattern to match whole identifiers
     pattern = re.compile(r"\b(" + "|".join(re.escape(s) for s in node_names) + r")\b")
@@ -87,13 +90,34 @@ def main():
 
     p = Path("./antlr_gen")
     p.mkdir(exist_ok=True)
-    b = AntlrCompiler(p, root_node.GRAMMAR_NAME)
+    b = AntlrCompiler(p, grammar_name)
 
     for n in nodes:
         b.rule(to_antlr_style[n.node_name()], convert_all(n.RULE))
 
-    b.raw(root_node.GRAMMAR_LEXER)
+    b.raw(grammar_lexer)
     b.compile()
+
+
+def parse():
+    from antlr_gen.DemoParser import DemoParser as AntlrParser
+    from antlr_gen.DemoLexer import DemoLexer as AntlrLexer
+    from antlr4 import InputStream, CommonTokenStream
+
+    input_stream = InputStream("[2, 3]")
+    lexer = AntlrLexer(input_stream)
+    token_stream = CommonTokenStream(lexer)
+    parser = AntlrParser(token_stream)
+
+    global e
+    e = parser.prog()
+    print(e.toStringTree())
+
+
+def main():
+    root_node = ast.Prog
+    gen(root_node)
+    parse()
 
 
 if __name__ == "__main__":

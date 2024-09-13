@@ -3,7 +3,8 @@ from typing import List
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
-INT     : [0-9]+ ;
+INT     : [0-9]+;
+WS      : ' '+ -> channel(HIDDEN);
 """
 
 
@@ -17,9 +18,12 @@ class Node:
 
 @dataclass
 class Prog(Node):
-    GRAMMAR_NAME = "Taihe"
+    GRAMMAR_NAME = "Demo"
     GRAMMAR_LEXER = _LEXER
-    RULE = "Expr EOF"
+    RULE = [
+        "Array EOF",
+        "Expr EOF",
+    ]
 
 
 @dataclass
@@ -30,3 +34,13 @@ class Expr(Node):
         "INT",
         "'(' Expr ')'",
     ]
+
+
+def csf(field: str, token: str):
+    """Comma-separated fields."""
+    return f"{field}+={token} (',' {field}+={token})*"
+
+
+@dataclass
+class Array(Node):
+    RULE = f"'[' {csf("xs", "INT")} ']'"
