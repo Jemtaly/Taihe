@@ -12,18 +12,17 @@ class AntlrBuilder:
         print(file=self.buf)
 
     def rule(self, name: str, rule: str | Iterable[str]):
-        print(name, file=self.buf)
         if isinstance(rule, str):
-            rs = (rule,)
+            print(f"{name}: {rule};", file=self.buf)
         else:
-            rs = rule
+            print(name, file=self.buf)
+            is_first = False
+            for r in rule:
+                prefix = "\t|" if is_first else "\t:"
+                print(prefix, r, file=self.buf)
+                is_first = True
+            print("\t;", file=self.buf)
 
-        is_first = False
-        for r in rs:
-            prefix = "\t|" if is_first else "\t:"
-            print(prefix, r, file=self.buf)
-            is_first = True
-        print("\t;", file=self.buf)
         print(file=self.buf)
 
     def raw(self, s: str):
@@ -68,7 +67,7 @@ def iter_nodes(root_node: NodeT) -> Iterable[NodeT]:
 
 
 def main():
-    root_node = ast.Expr
+    root_node = ast.Prog
     nodes = list(iter_nodes(root_node))
 
     node_names = [n.node_name() for n in nodes]
@@ -77,15 +76,21 @@ def main():
     # Python class style 'FooBarBaz' to ANTLR rule style 'fooBarBaz'.
     to_antlr_style = {s: s[0].lower() + s[1:] for s in node_names}
 
-    def convert_snippet(snippet):
-        return pattern.sub(lambda m: to_antlr_style[m.group(0)], snippet)
+    def convert_snippet(s: str):
+        return pattern.sub(lambda m: to_antlr_style[m.group(0)], s)
+
+    def convert_all(snippet: str | Iterable[str]):
+        if isinstance(snippet, str):
+            return convert_snippet(snippet)
+        else:
+            return [convert_snippet(s) for s in snippet]
 
     p = Path("./antlr_gen")
     p.mkdir(exist_ok=True)
     b = AntlrCompiler(p, root_node.GRAMMAR_NAME)
 
     for n in nodes:
-        b.rule(to_antlr_style[n.node_name()], convert_snippet(n.RULE))
+        b.rule(to_antlr_style[n.node_name()], convert_all(n.RULE))
 
     b.raw(root_node.GRAMMAR_LEXER)
     b.compile()

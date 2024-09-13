@@ -2,34 +2,8 @@ from dataclasses import dataclass
 from typing import List
 
 _LEXER = r"""
-PLUS
-   : '+'
-   ;
-
-
-MINUS
-   : '-'
-   ;
-
-
-TIMES
-   : '*'
-   ;
-
-
-DIV
-   : '/'
-   ;
-
-
-DIGIT
-   : ('0' .. '9')
-   ;
-
-
-WS
-   : [ \r\n\t] + -> channel (HIDDEN)
-   ;
+NEWLINE : [\r\n]+ -> skip;
+INT     : [0-9]+ ;
 """
 
 
@@ -42,17 +16,17 @@ class Node:
 
 
 @dataclass
-class Expr(Node):
+class Prog(Node):
     GRAMMAR_NAME = "Taihe"
     GRAMMAR_LEXER = _LEXER
-    RULE = "MulExpr ((PLUS | MINUS) MulExpr)*"
+    RULE = "Expr EOF"
 
 
 @dataclass
-class MulExpr(Node):
-    RULE = "Number ((TIMES | DIV) Number)*"
-
-
-@dataclass
-class Number(Node):
-    RULE = "MINUS? DIGIT +"
+class Expr(Node):
+    RULE = [
+        "Expr ('*' | '/') Expr",
+        "Expr ('+' | '-') Expr",
+        "INT",
+        "'(' Expr ')'",
+    ]
