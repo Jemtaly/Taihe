@@ -1,19 +1,11 @@
 from dataclasses import dataclass
-from typing import List
+from visitor import Node
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
 INT     : [0-9]+;
 WS      : ' '+ -> channel(HIDDEN);
 """
-
-
-class Node:
-    RULE: str | List[str] = "<todo>"
-
-    @classmethod
-    def node_name(cls) -> str:
-        return cls.__name__
 
 
 @dataclass
@@ -24,6 +16,10 @@ class Prog(Node):
         "Array EOF",
         "Expr EOF",
     ]
+
+    @staticmethod
+    def from_ast():
+        pass
 
 
 @dataclass

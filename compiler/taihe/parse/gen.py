@@ -1,6 +1,10 @@
-from typing import Iterable, TextIO, Type
+"""Generates the parser with ANTLR before running."""
+
+from typing import Iterable, TextIO
 from pathlib import Path
 from subprocess import check_call
+from visitor import NodeT, class_name_to_antlr_name, iter_nodes
+import re
 
 
 class AntlrBuilder:
@@ -49,24 +53,7 @@ class AntlrCompiler(AntlrBuilder):
         check_call(args)
 
 
-import myast as ast
-from myast import Node
-
-NodeT = Type[Node]
-
-import inspect
-import re
-
-
-def iter_nodes(root_node: NodeT) -> Iterable[NodeT]:
-    mod = inspect.getmodule(root_node)
-    assert mod
-    for c in mod.__dict__.values():
-        if inspect.isclass(c) and issubclass(c, Node) and c != Node:
-            yield c
-
-
-def gen(root_node: NodeT):
+def gen(root_node: NodeT, out_dir: str):
     grammar_name = getattr(root_node, "GRAMMAR_NAME")
     grammar_lexer = getattr(root_node, "GRAMMAR_LEXER")
     assert isinstance(grammar_name, str)
@@ -74,10 +61,10 @@ def gen(root_node: NodeT):
 
     nodes = list(iter_nodes(root_node))
     node_names = [n.node_name() for n in nodes]
-    # Compile a regex pattern to match whole identifiers
+    # Compile a regex pattern to match whole identifiers.
     pattern = re.compile(r"\b(" + "|".join(re.escape(s) for s in node_names) + r")\b")
     # Python class style 'FooBarBaz' to ANTLR rule style 'fooBarBaz'.
-    to_antlr_style = {s: s[0].lower() + s[1:] for s in node_names}
+    to_antlr_style = {s: class_name_to_antlr_name(s) for s in node_names}
 
     def convert_snippet(s: str):
         return pattern.sub(lambda m: to_antlr_style[m.group(0)], s)
@@ -88,7 +75,7 @@ def gen(root_node: NodeT):
         else:
             return [convert_snippet(s) for s in snippet]
 
-    p = Path("./antlr_gen")
+    p = Path(out_dir)
     p.mkdir(exist_ok=True)
     b = AntlrCompiler(p, grammar_name)
 
@@ -99,25 +86,10 @@ def gen(root_node: NodeT):
     b.compile()
 
 
-def parse():
-    from antlr_gen.DemoParser import DemoParser as AntlrParser
-    from antlr_gen.DemoLexer import DemoLexer as AntlrLexer
-    from antlr4 import InputStream, CommonTokenStream
-
-    input_stream = InputStream("[2, 3]")
-    lexer = AntlrLexer(input_stream)
-    token_stream = CommonTokenStream(lexer)
-    parser = AntlrParser(token_stream)
-
-    global e
-    e = parser.prog()
-    print(e.toStringTree())
-
-
 def main():
-    root_node = ast.Prog
-    gen(root_node)
-    parse()
+    from myast import Prog as RootNode
+
+    gen(RootNode, "antlr_gen")
 
 
 if __name__ == "__main__":
