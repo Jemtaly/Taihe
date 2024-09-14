@@ -1,9 +1,7 @@
 """Generates the parser with ANTLR before running."""
 
-from typing import Iterable, TextIO
-from pathlib import Path
-from subprocess import check_call
-from ast_base import NodeInspector, RootNodeT
+from typing import Dict, Iterable, TextIO
+from ast_base import is_lex_name, to_antlr_name
 import re
 
 
@@ -13,81 +11,75 @@ RuleT = str | Iterable[str]
 class AntlrBuilder:
     """Writes ANTLR grammar file to a buffer."""
 
-    def __init__(self, buf: TextIO, name: str):
-        self._buf = buf
-        self._rules = []
-        self.writeln(f"grammar {name};")
-        self.writeln()
+    _rules: Dict[str, RuleT]
 
-    def rule(self, name: str, rule: str | Iterable[str]):
+    def __init__(self):
+        self._rules = {}
+        self._header = []
+
+    def add_rule(self, name: str, rule: RuleT):
+        """Adds a parser or lexer rule.
+
+        Names of parser rules must be PascalCase.
+        Names of lexer rules must be SCREAM_CASE.
+
+        Example:
+        - add_rule("ParserRule", "ParserRuleX '+' ParserRuleY")
+        - add_rule("LEX_RULE", "0..9")
+        """
+        self._rules[name] = rule
+
+    def _write_rule(self, name: str, rule: RuleT):
         if isinstance(rule, str):
-            self.writeln(f"{name}: {rule};")
+            self._writeln(f"{name}: {rule};")
         else:
-            self.writeln(name)
+            self._writeln(name)
             is_first = True
             for r in rule:
                 prefix = "\t:" if is_first else "\t|"
-                self.writeln(prefix, r)
+                self._writeln(prefix, r)
                 is_first = False
-            self.writeln("\t;")
+            self._writeln("\t;")
 
-        self.writeln()
+        self._writeln()
 
-    def writeln(self, *args, end=None):
+    def flush(self, buf: TextIO):
+        name_to_antlr = {s: to_antlr_name(s) for s in self._rules if not is_lex_name(s)}
+        # Compile a regex pattern to match whole identifiers.
+        names_escaped = (re.escape(name) for name in name_to_antlr.keys())
+        pattern = re.compile(r"\b(" + "|".join(names_escaped) + r")\b")
+
+        def convert_once(s: str):
+            return pattern.sub(lambda m: name_to_antlr[m.group(0)], s)
+
+        def convert_rule(snippet: str | Iterable[str]):
+            if isinstance(snippet, str):
+                return convert_once(snippet)
+            else:
+                return [convert_once(s) for s in snippet]
+
+        # Write to the buffer.
+        self._buf = buf
+        for l in self._header:
+            self._writeln(l)
+        for name, rule in self._rules.items():
+            if is_lex_name(name):
+                self._write_rule(name, rule)
+            else:
+                self._write_rule(name_to_antlr[name], convert_rule(rule))
+        self._buf = None
+
+    def _writeln(self, *args, end=None):
         print(*args, file=self._buf, end=end)
 
-
-class AntlrCompiler(AntlrBuilder):
-    """Writes ANTLR grammar file to a directory and complies it."""
-
-    def __init__(self, out_dir: Path, name: str):
-        self._out_dir = out_dir
-        self._g4_path = out_dir / f"{name}.g4"
-        f = open(self._g4_path, "w")
-        super().__init__(f, name)
-
-    def compile(self):
-        self._buf.close()
-        args = [
-            "antlr4",
-            "-Dlanguage=Python3",
-            "-no-listener",
-            self._g4_path,
-        ]
-        check_call(args)
-
-
-def gen(root: RootNodeT, out_dir: str):
-    ni = NodeInspector(root)
-    name_to_antlr = {n.__name__: antlr_name for antlr_name, n in ni.nodes.items()}
-    # Compile a regex pattern to match whole identifiers.
-    names_escaped = (re.escape(name) for name in name_to_antlr.keys())
-    pattern = re.compile(r"\b(" + "|".join(names_escaped) + r")\b")
-
-    def convert_snippet(s: str):
-        return pattern.sub(lambda m: name_to_antlr[m.group(0)], s)
-
-    def convert_all(snippet: str | Iterable[str]):
-        if isinstance(snippet, str):
-            return convert_snippet(snippet)
-        else:
-            return [convert_snippet(s) for s in snippet]
-
-    p = Path(out_dir)
-    p.mkdir(exist_ok=True)
-    b = AntlrCompiler(p, root.GRAMMAR_NAME)
-
-    for name, n in ni.nodes.items():
-        b.rule(name, convert_all(n.RULE))
-
-    b.writeln(root.GRAMMAR_LEXER)
-    b.compile()
+    def add_to_header(self, x: str):
+        self._header.append(x)
 
 
 def main():
-    from myast import Prog as RootNode
+    from myast import Prog
 
-    gen(RootNode, "antlr_gen")
+    Prog._compile_to("antlr_gen")
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ class Num(Node):
 @dataclass
 class Prog(RootNode):
     GRAMMAR_NAME = "Demo"
-    GRAMMAR_LEXER = _LEXER
+    GRAMMAR_LEX_RULES = _LEXER
     RULE = [
         "v=Array EOF",
         "u=Expr EOF",
