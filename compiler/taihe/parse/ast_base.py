@@ -3,12 +3,18 @@
 from typing import ClassVar, Dict, Iterable, Tuple, Type, List
 import inspect
 
+
 NodeT = Type["Node"]
 RootNodeT = Type["RootNode"]
 
 
 class Node:
     RULE: ClassVar[str | List[str]] = "<todo-rule>"
+
+    @classmethod
+    def from_antlr(cls, ctx) -> "Node":
+        del ctx
+        raise NotImplementedError(f"remember to override in {cls}")
 
 
 class RootNode(Node):
