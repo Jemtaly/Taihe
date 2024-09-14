@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Self
+from typing import List
 
-from antlr4 import Token
 from ast_base import Node, RootNode
 
 _LEXER = r"""
@@ -9,6 +8,17 @@ NEWLINE : [\r\n]+ -> skip;
 INT     : [0-9]+;
 WS      : ' '+ -> channel(HIDDEN);
 """
+
+
+@dataclass
+class Num(Node):
+    RULE = "v=INT"
+
+    value: int
+
+    @classmethod
+    def from_antlr(cls, ctx):
+        return Num(int(ctx.v.text))
 
 
 @dataclass
@@ -44,8 +54,8 @@ def csf(field: str, token: str):
 
 @dataclass
 class Array(Node):
-    RULE = f"'[' {csf("xs", "INT")} ']'"
-    values: List[Token]
+    RULE = f"'[' {csf("xs", "Num")} ']'"
+    values: List[Num]
 
     @classmethod
     def from_antlr(cls, ctx):

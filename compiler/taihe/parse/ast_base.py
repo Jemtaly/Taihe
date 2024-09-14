@@ -1,6 +1,6 @@
 """Common runtime for inspecting and iterating from the root node of a grammar."""
 
-from typing import ClassVar, Dict, Iterable, Optional, Tuple, Type, List
+from typing import ClassVar, Dict, Iterable, Optional, Self, Tuple, Type, List
 import inspect
 from antlr4 import ParserRuleContext
 
@@ -14,7 +14,7 @@ class Node:
     _ctx: Optional[ParserRuleContext]
 
     @classmethod
-    def from_antlr(cls, ctx) -> "Node":
+    def from_antlr(cls, ctx) -> Self:
         del ctx
         raise NotImplementedError(f"remember to override in {cls}")
 
