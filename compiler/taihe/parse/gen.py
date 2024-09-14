@@ -7,30 +7,34 @@ from ast_base import NodeInspector, RootNodeT
 import re
 
 
+RuleT = str | Iterable[str]
+
+
 class AntlrBuilder:
     """Writes ANTLR grammar file to a buffer."""
 
     def __init__(self, buf: TextIO, name: str):
-        self.buf = buf
-        print(f"grammar {name};", file=self.buf)
-        print(file=self.buf)
+        self._buf = buf
+        self._rules = []
+        self.writeln(f"grammar {name};")
+        self.writeln()
 
     def rule(self, name: str, rule: str | Iterable[str]):
         if isinstance(rule, str):
-            print(f"{name}: {rule};", file=self.buf)
+            self.writeln(f"{name}: {rule};")
         else:
-            print(name, file=self.buf)
+            self.writeln(name)
             is_first = True
             for r in rule:
                 prefix = "\t:" if is_first else "\t|"
-                print(prefix, r, file=self.buf)
+                self.writeln(prefix, r)
                 is_first = False
-            print("\t;", file=self.buf)
+            self.writeln("\t;")
 
-        print(file=self.buf)
+        self.writeln()
 
-    def raw(self, s: str):
-        print(s, file=self.buf)
+    def writeln(self, *args, end=None):
+        print(*args, file=self._buf, end=end)
 
 
 class AntlrCompiler(AntlrBuilder):
@@ -43,7 +47,7 @@ class AntlrCompiler(AntlrBuilder):
         super().__init__(f, name)
 
     def compile(self):
-        self.buf.close()
+        self._buf.close()
         args = [
             "antlr4",
             "-Dlanguage=Python3",
@@ -76,7 +80,7 @@ def gen(root: RootNodeT, out_dir: str):
     for name, n in ni.nodes.items():
         b.rule(name, convert_all(n.RULE))
 
-    b.raw(root.GRAMMAR_LEXER)
+    b.writeln(root.GRAMMAR_LEXER)
     b.compile()
 
 
