@@ -21,6 +21,7 @@ def make_wrapper(base_fn: Callable, node: NodeT):
     def wrapper(*args, **kwargs):
         ctx: ParserRuleContext = base_fn(*args, **kwargs)
         ret = node.from_antlr(ctx)
+        ret._ctx = ctx
         return ret
 
     return wrapper

@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from typing import List, Self
+
+from antlr4 import Token
 from ast_base import Node, RootNode
 
 _LEXER = r"""
@@ -13,13 +16,15 @@ class Prog(RootNode):
     GRAMMAR_NAME = "Demo"
     GRAMMAR_LEXER = _LEXER
     RULE = [
-        "Array EOF",
-        "Expr EOF",
+        "v=Array EOF",
+        "u=Expr EOF",
     ]
 
-    @staticmethod
-    def from_ast():
-        pass
+    data: Node
+
+    @classmethod
+    def from_antlr(cls, ctx):
+        return Prog(ctx.v)
 
 
 @dataclass
@@ -40,3 +45,8 @@ def csf(field: str, token: str):
 @dataclass
 class Array(Node):
     RULE = f"'[' {csf("xs", "INT")} ']'"
+    values: List[Token]
+
+    @classmethod
+    def from_antlr(cls, ctx):
+        return Array(ctx.xs)

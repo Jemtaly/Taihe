@@ -1,7 +1,8 @@
 """Common runtime for inspecting and iterating from the root node of a grammar."""
 
-from typing import ClassVar, Dict, Iterable, Tuple, Type, List
+from typing import ClassVar, Dict, Iterable, Optional, Tuple, Type, List
 import inspect
+from antlr4 import ParserRuleContext
 
 
 NodeT = Type["Node"]
@@ -10,6 +11,7 @@ RootNodeT = Type["RootNode"]
 
 class Node:
     RULE: ClassVar[str | List[str]] = "<todo-rule>"
+    _ctx: Optional[ParserRuleContext]
 
     @classmethod
     def from_antlr(cls, ctx) -> "Node":
@@ -18,7 +20,7 @@ class Node:
 
 
 class RootNode(Node):
-    GRAMMAR_NAME: ClassVar[str] = "<todo-name>"
+    GRAMMAR_NAME: ClassVar[str] = "<forgot-to-override-root-node-name?>"
     GRAMMAR_LEXER: ClassVar[str] = ""
 
     @classmethod
