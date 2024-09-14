@@ -4,6 +4,11 @@ from antlr4 import InputStream, CommonTokenStream, Parser, Lexer
 from typing import Iterable, Type, List
 import inspect
 
+NodeT = Type["Node"]
+RootNodeT = Type["RootNode"]
+ParserT = Type[Parser]
+LexerT = Type[Lexer]
+
 
 class Node:
     RULE: str | List[str] = "<todo>"
@@ -13,15 +18,17 @@ class Node:
         return cls.__name__
 
 
-NodeT = Type[Node]
+class RootNode(Node):
+    GRAMMAR_NAME: str = "<todo>"
+    GRAMMAR_LEXER: str = ""
 
-
-def iter_nodes(root_node: NodeT) -> Iterable[NodeT]:
-    mod = inspect.getmodule(root_node)
-    assert mod
-    for c in mod.__dict__.values():
-        if inspect.isclass(c) and issubclass(c, Node) and c != Node:
-            yield c
+    @classmethod
+    def _iter_nodes(cls) -> Iterable[NodeT]:
+        mod = inspect.getmodule(cls)
+        assert mod
+        for c in mod.__dict__.values():
+            if inspect.isclass(c) and issubclass(c, Node) and c != Node:
+                yield c
 
 
 def class_name_to_antlr_name(s: str):
@@ -30,9 +37,9 @@ def class_name_to_antlr_name(s: str):
 
 def parse(
     input_stream: InputStream,
-    root_node: NodeT,
-    lexer_ty: Type[Lexer],
-    parser_ty: Type[Parser],
+    root_node: RootNodeT,
+    lexer_ty: LexerT,
+    parser_ty: ParserT,
 ):
     lexer = lexer_ty(input_stream)
     token_stream = CommonTokenStream(lexer)

@@ -3,7 +3,7 @@
 from typing import Iterable, TextIO
 from pathlib import Path
 from subprocess import check_call
-from visitor import NodeT, class_name_to_antlr_name, iter_nodes
+from visitor import NodeT, RootNodeT, class_name_to_antlr_name
 import re
 
 
@@ -53,13 +53,8 @@ class AntlrCompiler(AntlrBuilder):
         check_call(args)
 
 
-def gen(root_node: NodeT, out_dir: str):
-    grammar_name = getattr(root_node, "GRAMMAR_NAME")
-    grammar_lexer = getattr(root_node, "GRAMMAR_LEXER")
-    assert isinstance(grammar_name, str)
-    assert isinstance(grammar_lexer, str)
-
-    nodes = list(iter_nodes(root_node))
+def gen(root_node: RootNodeT, out_dir: str):
+    nodes = list(root_node._iter_nodes())
     node_names = [n.node_name() for n in nodes]
     # Compile a regex pattern to match whole identifiers.
     pattern = re.compile(r"\b(" + "|".join(re.escape(s) for s in node_names) + r")\b")
@@ -77,12 +72,12 @@ def gen(root_node: NodeT, out_dir: str):
 
     p = Path(out_dir)
     p.mkdir(exist_ok=True)
-    b = AntlrCompiler(p, grammar_name)
+    b = AntlrCompiler(p, root_node.GRAMMAR_NAME)
 
     for n in nodes:
         b.rule(to_antlr_style[n.node_name()], convert_all(n.RULE))
 
-    b.raw(grammar_lexer)
+    b.raw(root_node.GRAMMAR_LEXER)
     b.compile()
 
 

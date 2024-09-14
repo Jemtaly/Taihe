@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from visitor import Node
+from visitor import Node, RootNode
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
@@ -9,7 +9,7 @@ WS      : ' '+ -> channel(HIDDEN);
 
 
 @dataclass
-class Prog(Node):
+class Prog(RootNode):
     GRAMMAR_NAME = "Demo"
     GRAMMAR_LEXER = _LEXER
     RULE = [
