@@ -3,7 +3,7 @@
 from typing import Iterable, TextIO
 from pathlib import Path
 from subprocess import check_call
-from visitor import NodeT, RootNodeT, class_name_to_antlr_name
+from ast_base import NodeInspector, RootNodeT
 import re
 
 
@@ -53,16 +53,15 @@ class AntlrCompiler(AntlrBuilder):
         check_call(args)
 
 
-def gen(root_node: RootNodeT, out_dir: str):
-    nodes = list(root_node._iter_nodes())
-    node_names = [n.node_name() for n in nodes]
+def gen(root: RootNodeT, out_dir: str):
+    ni = NodeInspector(root)
+    name_to_antlr = {n.__name__: antlr_name for antlr_name, n in ni.nodes.items()}
     # Compile a regex pattern to match whole identifiers.
-    pattern = re.compile(r"\b(" + "|".join(re.escape(s) for s in node_names) + r")\b")
-    # Python class style 'FooBarBaz' to ANTLR rule style 'fooBarBaz'.
-    to_antlr_style = {s: class_name_to_antlr_name(s) for s in node_names}
+    names_escaped = (re.escape(name) for name in name_to_antlr.keys())
+    pattern = re.compile(r"\b(" + "|".join(names_escaped) + r")\b")
 
     def convert_snippet(s: str):
-        return pattern.sub(lambda m: to_antlr_style[m.group(0)], s)
+        return pattern.sub(lambda m: name_to_antlr[m.group(0)], s)
 
     def convert_all(snippet: str | Iterable[str]):
         if isinstance(snippet, str):
@@ -72,12 +71,12 @@ def gen(root_node: RootNodeT, out_dir: str):
 
     p = Path(out_dir)
     p.mkdir(exist_ok=True)
-    b = AntlrCompiler(p, root_node.GRAMMAR_NAME)
+    b = AntlrCompiler(p, root.GRAMMAR_NAME)
 
-    for n in nodes:
-        b.rule(to_antlr_style[n.node_name()], convert_all(n.RULE))
+    for name, n in ni.nodes.items():
+        b.rule(name, convert_all(n.RULE))
 
-    b.raw(root_node.GRAMMAR_LEXER)
+    b.raw(root.GRAMMAR_LEXER)
     b.compile()
 
 

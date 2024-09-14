@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from visitor import Node, RootNode
+from ast_base import Node, RootNode
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
