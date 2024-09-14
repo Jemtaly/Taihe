@@ -20,9 +20,9 @@ class AntlrBuilder:
             print(f"{name}: {rule};", file=self.buf)
         else:
             print(name, file=self.buf)
-            is_first = False
+            is_first = True
             for r in rule:
-                prefix = "\t|" if is_first else "\t:"
+                prefix = "\t:" if is_first else "\t|"
                 print(prefix, r, file=self.buf)
                 is_first = True
             print("\t;", file=self.buf)
