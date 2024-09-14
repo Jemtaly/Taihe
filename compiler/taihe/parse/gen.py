@@ -24,7 +24,7 @@ class AntlrBuilder:
             for r in rule:
                 prefix = "\t:" if is_first else "\t|"
                 print(prefix, r, file=self.buf)
-                is_first = True
+                is_first = False
             print("\t;", file=self.buf)
 
         print(file=self.buf)

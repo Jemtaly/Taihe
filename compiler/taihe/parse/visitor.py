@@ -1,7 +1,7 @@
 """Common runtime for inspecting and iterating from the root node of a grammar."""
 
 from antlr4 import InputStream, CommonTokenStream, Parser, Lexer
-from typing import Iterable, Type, List
+from typing import ClassVar, Iterable, Type, List
 import inspect
 
 NodeT = Type["Node"]
@@ -11,7 +11,7 @@ LexerT = Type[Lexer]
 
 
 class Node:
-    RULE: str | List[str] = "<todo>"
+    RULE: ClassVar[str | List[str]] = "<todo>"
 
     @classmethod
     def node_name(cls) -> str:
@@ -19,8 +19,8 @@ class Node:
 
 
 class RootNode(Node):
-    GRAMMAR_NAME: str = "<todo>"
-    GRAMMAR_LEXER: str = ""
+    GRAMMAR_NAME: ClassVar[str] = "<todo>"
+    GRAMMAR_LEXER: ClassVar[str] = ""
 
     @classmethod
     def _iter_nodes(cls) -> Iterable[NodeT]:
