@@ -1,38 +1,52 @@
 """Common runtime for inspecting and iterating from the root node of a grammar."""
 
 from typing import (
+    Any,
+    Callable,
     ClassVar,
-    Dict,
     Iterable,
     Optional,
     Self,
-    Tuple,
     Type,
     List,
     TYPE_CHECKING,
 )
 import inspect
+from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
-    from antlr4 import ParserRuleContext
+    from antlr4 import ParserRuleContext, Parser, TokenStream
     from .gen import AntlrBuilder
 
 
 NodeT = Type["Node"]
 RootNodeT = Type["RootNode"]
+ParseFnT = Callable[["TokenStream"], "RootNode"]
 
 
-class Node:
+class Node(ABC):
     RULE: ClassVar[str | List[str]] = "<todo-rule>"
-    _ctx: Optional["ParserRuleContext"]
+
+    _ctx: Optional[Any]
 
     @classmethod
+    @abstractmethod
     def from_antlr(cls, ctx) -> Self:
-        del ctx
-        raise NotImplementedError(f"remember to override in {cls}")
+        pass
 
     @classmethod
-    def _build_grammar(cls, b: "AntlrBuilder"):
+    def _on_wrap(cls, base_fn: Callable):
+        def wrapper(*args, **kwargs):
+            ctx: ParserRuleContext = base_fn(*args, **kwargs)
+            ret = cls.from_antlr(ctx)
+            ret._ctx = ctx
+            print(f"{cls=} {base_fn=} {ret=}")
+            return ret
+
+        return wrapper
+
+    @classmethod
+    def _on_compile(cls, b: "AntlrBuilder"):
         b.add_rule(cls.__name__, cls.RULE)
 
 
@@ -60,7 +74,7 @@ class RootNode(Node):
         builder.add_to_header(f"grammar {name};\n")
         builder.add_to_header(cls.GRAMMAR_LEX_RULES)
         for node in cls._iter_nodes():
-            node._build_grammar(builder)
+            node._on_compile(builder)
 
         out_dir = Path(out_base_dir)
         out_dir.mkdir(exist_ok=True)
@@ -69,34 +83,27 @@ class RootNode(Node):
             builder.flush(f)
         check_call(["antlr4", "-Dlanguage=Python3", "-no-listener", out_file])
 
+    @classmethod
+    def _build_parser(cls, base_parser: Type["Parser"]) -> ParseFnT:
+        class_members = {}
+        root_fn = None
+        for node_cls in cls._iter_nodes():
+            fn_name = to_antlr_name(node_cls.__name__)
+            fn = getattr(base_parser, fn_name)
+            fn_wrapped = node_cls._on_wrap(fn)
+            class_members[fn_name] = fn_wrapped
+            if node_cls == cls:
+                root_fn = fn_wrapped
+        assert root_fn is not None
 
-class NodeInspector:
-    root: RootNodeT
-    nodes: Dict[str, NodeT]
-    node_to_name: Dict[NodeT, str]
+        proxy_name = f"Wrapped{base_parser.__name__}"
+        proxy_cls = type(proxy_name, (base_parser,), class_members)
 
-    def __init__(self, root: RootNodeT):
-        name_to_node = {}
-        node_to_name = {}
+        def parse(tokens: "TokenStream") -> Self:
+            instance = proxy_cls(tokens)
+            return root_fn(instance)
 
-        for name, node in NodeInspector._iter_nodes(root):
-            # Python class style 'FooBarBaz' to ANTLR rule style 'fooBarBaz'.
-            antlr_name = name[0].lower() + name[1:]
-            name_to_node[antlr_name] = node
-            node_to_name[node] = antlr_name
-
-        self.root = root
-        self.nodes = name_to_node
-        self.node_to_name = node_to_name
-
-    @staticmethod
-    def _iter_nodes(root: RootNodeT) -> Iterable[Tuple[str, NodeT]]:
-        mod = inspect.getmodule(root)
-        assert mod
-        for name, c in mod.__dict__.items():
-            if c is not Node and c is not RootNode:
-                if inspect.isclass(c) and issubclass(c, Node):
-                    yield name, c
+        return parse
 
 
 def is_lex_name(s: str):
