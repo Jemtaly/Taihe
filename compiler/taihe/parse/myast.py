@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from ast_base import Node, RootNode, TokenNode
+from ast_base import ParserNode, RootNode, LexerNode
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
@@ -10,14 +10,14 @@ WS      : ' '+ -> channel(HIDDEN);
 
 
 @dataclass
-class Num(TokenNode):
+class Num(LexerNode):
     RULE = "[0-9]+"
 
     value: int
 
     @classmethod
-    def from_antlr(cls, ctx):
-        return Num(int(ctx.text))
+    def from_lexer(cls, token):
+        return Num(int(token.text))
 
 
 @dataclass
@@ -29,15 +29,15 @@ class Prog(RootNode):
         "u=Expr EOF",
     ]
 
-    data: Node
+    data: ParserNode
 
     @classmethod
-    def from_antlr(cls, ctx):
+    def from_parser(cls, ctx):
         return Prog(ctx.v)
 
 
 @dataclass
-class Expr(Node):
+class Expr(ParserNode):
     RULE = [
         "Expr ('*' | '/') Expr",
         "Expr ('+' | '-') Expr",
@@ -46,7 +46,7 @@ class Expr(Node):
     ]
 
     @classmethod
-    def from_antlr(cls, ctx):
+    def from_parser(cls, ctx):
         return ctx
 
 
@@ -56,12 +56,12 @@ def csf(field: str, token: str):
 
 
 @dataclass
-class Array(Node):
+class Array(ParserNode):
     RULE = f"'[' {csf("xs", "Num")} ']'"
     values: List[Num]
 
     @classmethod
-    def from_antlr(cls, ctx):
+    def from_parser(cls, ctx):
         return Array(ctx.xs)
 
 
@@ -83,4 +83,5 @@ def parse():
 
 
 if __name__ == "__main__":
+    gen()
     parse()

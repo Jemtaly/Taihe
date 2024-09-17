@@ -1,7 +1,6 @@
 """Common runtime for inspecting and iterating from the root node of a grammar."""
 
 from typing import (
-    Any,
     Callable,
     ClassVar,
     Dict,
@@ -16,31 +15,43 @@ from typing import (
 import inspect
 from abc import ABC, abstractmethod
 
+
 if TYPE_CHECKING:
-    from antlr4 import ParserRuleContext, Parser, TokenStream
+    from antlr4 import ParserRuleContext, Parser, TokenStream, Token
 
 
-NodeT = Type["Node"]
+NodeT = Type["NodeBase"]
 RootNodeT = Type["RootNode"]
 ParseFnT = Callable[["TokenStream"], "RootNode"]
 RuleT = str | Iterable[str]
 
 
-class Node(ABC):
-    RULE: ClassVar[str | List[str]] = "<todo-rule>"
-
-    _ctx: Optional[Any]
+class NodeBase(ABC):
+    @classmethod
+    @abstractmethod
+    def _on_wrap(cls, base_fn: Callable) -> Callable:
+        pass
 
     @classmethod
     @abstractmethod
-    def from_antlr(cls, ctx) -> Self:
+    def _on_compile(cls, b: "AntlrBuilder"):
+        pass
+
+
+class ParserNode(NodeBase):
+    RULE: ClassVar[str | List[str]] = "<todo-parser-rule>"
+    _ctx: Optional["ParserRuleContext"]
+
+    @classmethod
+    @abstractmethod
+    def from_parser(cls, ctx) -> Self:
         pass
 
     @classmethod
     def _on_wrap(cls, base_fn: Callable):
         def wrapper(*args, **kwargs):
             ctx: ParserRuleContext = base_fn(*args, **kwargs)
-            ret = cls.from_antlr(ctx)
+            ret = cls.from_parser(ctx)
             ret._ctx = ctx
             return ret
 
@@ -51,14 +62,22 @@ class Node(ABC):
         b.add_rule(cls.__name__, cls.RULE)
 
 
-class TokenNode(Node):
+class LexerNode(NodeBase):
+    RULE: ClassVar[str | List[str]] = "<todo-lexer-rule>"
+    _symbol: Optional["Token"]
+
+    @classmethod
+    @abstractmethod
+    def from_lexer(cls, token) -> Self:
+        pass
+
     @classmethod
     def _on_wrap(cls, base_fn: Callable):
         def wrapper(*args, **kwargs):
             ctx: ParserRuleContext = base_fn(*args, **kwargs)
-            symbol = ctx.children[0].symbol
-            ret = cls.from_antlr(symbol)
-            ret._ctx = symbol
+            symbol: Token = ctx.children[0].symbol
+            ret = cls.from_lexer(symbol)
+            ret._symbol = symbol
             return ret
 
         return wrapper
@@ -78,7 +97,7 @@ class TokenNode(Node):
         b.add_rule(rule_name, lex_name)  # Num: NUM
 
 
-class RootNode(Node):
+class RootNode(ParserNode):
     GRAMMAR_NAME: ClassVar[str] = "<forgot-to-override-root-node-name?>"
     GRAMMAR_LEX_RULES: ClassVar[str] = ""
 
@@ -89,7 +108,7 @@ class RootNode(Node):
         for c in mod.__dict__.values():
             if not inspect.isclass(c):
                 continue
-            if not issubclass(c, Node):
+            if not issubclass(c, NodeBase):
                 continue
             if inspect.isabstract(c):
                 continue
