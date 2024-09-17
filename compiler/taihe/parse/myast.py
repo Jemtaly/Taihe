@@ -60,3 +60,24 @@ class Array(Node):
     @classmethod
     def from_antlr(cls, ctx):
         return Array(ctx.xs)
+
+
+def gen():
+    Prog._compile_to("antlr_gen")
+
+
+def parse():
+    from antlr4 import InputStream, CommonTokenStream
+    from antlr_gen.DemoParser import DemoParser
+    from antlr_gen.DemoLexer import DemoLexer
+
+    lexer = DemoLexer(InputStream("[1, 2, 3]"))
+    token_stream = CommonTokenStream(lexer)
+    parse = Prog._build_parser(DemoParser)
+    global e
+    e = parse(token_stream)
+    print(f"{e=}")
+
+
+if __name__ == "__main__":
+    parse()
