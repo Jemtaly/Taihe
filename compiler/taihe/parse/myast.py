@@ -1,24 +1,23 @@
 from dataclasses import dataclass
 from typing import List
 
-from ast_base import Node, RootNode
+from ast_base import Node, RootNode, TokenNode
 
 _LEXER = r"""
 NEWLINE : [\r\n]+ -> skip;
-INT     : [0-9]+;
 WS      : ' '+ -> channel(HIDDEN);
 """
 
 
 @dataclass
-class Num(Node):
-    RULE = "v=INT"
+class Num(TokenNode):
+    RULE = "[0-9]+"
 
     value: int
 
     @classmethod
     def from_antlr(cls, ctx):
-        return Num(int(ctx.v.text))
+        return Num(int(ctx.text))
 
 
 @dataclass
@@ -42,9 +41,13 @@ class Expr(Node):
     RULE = [
         "Expr ('*' | '/') Expr",
         "Expr ('+' | '-') Expr",
-        "INT",
+        "Num",
         "'(' Expr ')'",
     ]
+
+    @classmethod
+    def from_antlr(cls, ctx):
+        return ctx
 
 
 def csf(field: str, token: str):

@@ -42,7 +42,6 @@ class Node(ABC):
             ctx: ParserRuleContext = base_fn(*args, **kwargs)
             ret = cls.from_antlr(ctx)
             ret._ctx = ctx
-            print(f"{cls=} {base_fn=} {ret=}")
             return ret
 
         return wrapper
@@ -50,6 +49,33 @@ class Node(ABC):
     @classmethod
     def _on_compile(cls, b: "AntlrBuilder"):
         b.add_rule(cls.__name__, cls.RULE)
+
+
+class TokenNode(Node):
+    @classmethod
+    def _on_wrap(cls, base_fn: Callable):
+        def wrapper(*args, **kwargs):
+            ctx: ParserRuleContext = base_fn(*args, **kwargs)
+            symbol = ctx.children[0].symbol
+            ret = cls.from_antlr(symbol)
+            ret._ctx = symbol
+            return ret
+
+        return wrapper
+
+    @classmethod
+    def _on_compile(cls, b: "AntlrBuilder"):
+        # Generate two rules.
+        #
+        # For instance, for class Num:
+        #   class Num:
+        #     RULE = '[0-9]+'"
+        #
+        # We generate:
+        rule_name = cls.__name__
+        lex_name = rule_name.upper()
+        b.add_rule(lex_name, cls.RULE)  # NUM: [0-9]+
+        b.add_rule(rule_name, lex_name)  # Num: NUM
 
 
 class RootNode(Node):
@@ -61,9 +87,13 @@ class RootNode(Node):
         mod = inspect.getmodule(cls)
         assert mod
         for c in mod.__dict__.values():
-            if c is not Node and c is not RootNode:
-                if inspect.isclass(c) and issubclass(c, Node):
-                    yield c
+            if not inspect.isclass(c):
+                continue
+            if not issubclass(c, Node):
+                continue
+            if inspect.isabstract(c):
+                continue
+            yield c
 
     @classmethod
     def _compile_to(cls, out_base_dir: str):
