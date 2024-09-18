@@ -39,14 +39,15 @@ class Prog(RootNode):
 @dataclass
 class Expr(ParserNode):
     RULE = [
-        "Expr ('*' | '/') Expr",
-        "Expr ('+' | '-') Expr",
-        "Num",
-        "'(' Expr ')'",
+        "Expr ('*' | '/') Expr # Mul",
+        "Expr ('+' | '-') Expr # Add",
+        "Num # Direct",
+        "'(' Expr ')' # Quote",
     ]
 
     @classmethod
     def from_parser(cls, ctx):
+        print(ctx, type(ctx))
         return ctx
 
 
@@ -74,7 +75,9 @@ def parse():
     from antlr_gen.DemoParser import DemoParser
     from antlr_gen.DemoLexer import DemoLexer
 
-    lexer = DemoLexer(InputStream("[1, 2, 3]"))
+    s = "[1, 2, 3]"
+    s = "1 + 2 * 3 - 4"
+    lexer = DemoLexer(InputStream(s))
     token_stream = CommonTokenStream(lexer)
     parse = Prog._build_parser(DemoParser)
     global e
