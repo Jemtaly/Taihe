@@ -1,0 +1,37 @@
+name: check
+
+on: 
+    push:
+      branches:
+        - main
+      paths:
+        - "taihe/**"
+    pull_request:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/actions/install_independencies/
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses:  ./.github/workflows/actions/install_independencies/
+      - name: Install Dependencies
+        working-directory: compiler
+        run: poetry install --no-root
+      - name: Make the script files executable
+        run: chmod +x scripts/check
+      - name: Check Format
+        working-directory: compiler
+        run: ../scripts/check
+
+  all_checks_passed:
+    needs:
+      - check
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks passed"
