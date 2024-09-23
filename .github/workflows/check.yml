@@ -19,7 +19,7 @@ jobs:
         working-directory: compiler
         run: poetry install --no-root
       - name: Check Format
-        run: ../scripts/check
+        run: scripts/check
 
   all_checks_passed:
     needs:
