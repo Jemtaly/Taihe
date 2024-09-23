@@ -1,12 +1,7 @@
 name: check
 
 on: 
-    push:
-      branches:
-        - main
-      paths:
-        - "taihe/**"
-    pull_request:
+    [push, pull_request]
 
 jobs:
   setup:
@@ -23,10 +18,7 @@ jobs:
       - name: Install Dependencies
         working-directory: compiler
         run: poetry install --no-root
-      - name: Make the script files executable
-        run: chmod +x scripts/check
       - name: Check Format
-        working-directory: compiler
         run: ../scripts/check
 
   all_checks_passed:
