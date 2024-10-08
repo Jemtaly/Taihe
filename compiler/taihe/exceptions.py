@@ -38,7 +38,7 @@ class EnumValueCollisionError(SemanticError):
 class PackageAliasConflictError(SemanticError):
     src_path: str
     symbol: tuple[str, ...]
-    pkmetas: list[list[ast.token]]
+    pkmetas: dict[tuple[str, ...], list[list[ast.token]]]
 
 
 @dataclass
@@ -57,7 +57,7 @@ class PackageNotImportedError(SemanticError):
 class TypeAliasConflictError(SemanticError):
     src_path: str
     name: str
-    metas: list[ast.token]
+    metas: dict[tuple[tuple[str, ...], str], list[ast.token]]
 
 
 @dataclass

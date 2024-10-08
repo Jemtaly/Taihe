@@ -35,10 +35,8 @@ class SymbolReplacer(Visitor):
         self.errors = errors
         self.type_tables = type_tables
         self.src_path = src_path
-        self.using_package_metas: dict[tuple[str, ...], list[list[ast.token]]] = {}
-        self.using_package_table: dict[tuple[str, ...], set[tuple[str, ...]]] = {}
-        self.using_type_metas: dict[str, list[ast.token]] = {}
-        self.using_type_table: dict[str, set[tuple[tuple[str, ...], str]]] = {}
+        self.using_package_table: dict[tuple[str, ...], dict[tuple[str, ...], list[list[ast.token]]]] = {}
+        self.using_type_table: dict[str, dict[tuple[tuple[str, ...], str], list[ast.token]]] = {}
         self.pktupl = pktupl
 
     def visit_Spec(self, node: ast.Spec) -> None:
@@ -48,8 +46,7 @@ class SymbolReplacer(Visitor):
             if isinstance(decl, ast.Struct | ast.Enum | ast.Runtimeclass | ast.Interface):
                 meta = decl.name
                 name = meta.text
-                self.using_type_table.setdefault(name, set()).add((self.pktupl, name))
-                self.using_type_metas.setdefault(name, []).append(meta)
+                self.using_type_table.setdefault(name, {}).setdefault((self.pktupl, name), []).append(meta)
         for decl in node.fields:
             self.visit(decl)
 
@@ -58,8 +55,7 @@ class SymbolReplacer(Visitor):
         new_pkmeta = node.new_pkname or node.old_pkname
         old_pktupl = tuple(id.text for id in old_pkmeta)
         new_pktupl = tuple(id.text for id in new_pkmeta)
-        self.using_package_metas.setdefault(new_pktupl, []).append(new_pkmeta)
-        self.using_package_table.setdefault(new_pktupl, set()).add(old_pktupl)
+        self.using_package_table.setdefault(new_pktupl, {}).setdefault(old_pktupl, []).append(new_pkmeta)
         if old_pktupl not in self.type_tables:
             self.errors.append(PackageNotExistError(self.src_path, old_pkmeta))
 
@@ -74,8 +70,7 @@ class SymbolReplacer(Visitor):
             new_meta = alias_pair.new_name or alias_pair.old_name
             old_name = old_meta.text
             new_name = new_meta.text
-            self.using_type_metas.setdefault(new_name, []).append(new_meta)
-            self.using_type_table.setdefault(new_name, set()).add((pktupl, old_name))
+            self.using_type_table.setdefault(new_name, {}).setdefault((pktupl, old_name), []).append(new_meta)
             if type_table is not None and old_name not in type_table:
                 self.errors.append(TypeNotExistError(self.src_path, old_meta))
 
@@ -160,10 +155,10 @@ def symbol_substitute(
         replacer.visit(package.spec)
         for key, vals in replacer.using_type_table.items():
             if len(vals) > 1:
-                errors.append(TypeAliasConflictError(package.path, key, replacer.using_type_metas[key]))
+                errors.append(TypeAliasConflictError(package.path, key, vals))
         for key, vals in replacer.using_package_table.items():
             if len(vals) > 1:
-                errors.append(PackageAliasConflictError(package.path, key, replacer.using_package_metas[key]))
+                errors.append(PackageAliasConflictError(package.path, key, vals))
 
     # return the symbol tables
     return type_tables
