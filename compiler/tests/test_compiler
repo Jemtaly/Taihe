@@ -20,7 +20,6 @@ from taihe.exceptions import (
     SymbolNotExistError,
     SymbolNotImportedError,
 )
-from exceptiongroup import ExceptionGroup
 
 
 def semantic_analysis(idl_dir):
@@ -73,8 +72,81 @@ test_cases = [
     
     [PackageNotExistError, 
     [['package.taihe', ['from package.example2 use A; \n']],
-    ['package.example1.taihe', ['struct A { \n', '    a: i32; \n', '} \n']]]]
+    ['package.example1.taihe', ['struct A { \n', '    a: i32; \n', '} \n']]]],
 
+    [SymbolConflictWithNamespaceError, 
+    [['package.taihe', ['use package.example1.a; \n',
+                        'from package.example1 use a;']],
+    ['package.example1.taihe', ['struct a { \n', '    A: i32; \n', '} \n']],
+    ['package.example1.a.taihe', []]]],
+
+    [QualifierError, [['package.taihe', ['function bad_func(a: mut i32): (); \n']]]],
+
+    [QualifierError, [['package.taihe', ['enum Enum { \n',
+                                              '    A; \n',
+                                              '} \n',
+                                        'struct Struct { \n',
+                                              '    a: Enum; \n',
+                                              '} \n',
+                                        'function bad_func(a: mut Struct, b: mut Enum): (); \n']]]],
+
+    [SymbolConflictError, [['package.taihe', ['function bad_func(a: i32, a: i32): (); \n']]]],
+
+    [SymbolConflictError, [['package.taihe', ['enum BadEnum { \n',
+                                              '    A; \n',
+                                              '    A; \n',
+                                              '} \n']]]],
+
+    [EnumValueCollisionError, [['package.taihe', ['enum BadEnum { \n',
+                                              '    A; \n',
+                                              '    B=1-2; \n',
+                                              '    C; \n',
+                                              '} \n']]]],
+
+    [EnumValueCollisionError, [['package.taihe', ['enum BadEnum { \n',
+                                              '    A=43; \n',
+                                              '    B=if (7 << 1 + 1) + (3 * 3 - 2 & 11) == 31 && 1 + 1 == 2 then 42 else 10; \n',
+                                              '    C=43; \n',
+                                              '} \n']]]],
+
+    [SymbolNotExistError, 
+    [['package.taihe', ['from package.example1 use A; \n']],
+    ['package.example1.taihe', []]]],
+
+    [SymbolConflictError, 
+    [['package.taihe', ['from package.example1 use A as a; \n', 
+                        'from package.example2 use A as a; \n']],
+    ['package.example1.taihe', ['struct A { \n', '    a: i32; \n', '} \n']],
+    ['package.example2.taihe', ['struct A { \n', '    a: i32; \n', '} \n']]]],
+
+    [SymbolNotImportedError, [['package.taihe', ['struct BadStruct { \n',
+                                              '    a: UnimportedType; \n',
+                                              '} \n']]]],
+
+    [PackageNotImportedError, [['package.taihe', ['struct BadStruct { \n',
+                                              '    a: unimported.package.Type; \n',
+                                              '} \n']]]],
+
+    [SymbolNotExistError, [['package.taihe', ['use package.example1; \n',
+                                              'struct BadStruct { \n',
+                                              '    a: package.example1.B; \n',
+                                              '} \n']],
+                            ['package.example1.taihe', ['struct A { \n', '    a: i32; \n', '} \n']]]],
+
+    [SymbolConflictError, [['package.taihe', ['struct BadStruct { \n',
+                                              '    a: i32; \n',
+                                              '    a: i32; \n',
+                                              '} \n']]]],
+
+    [RecursiveInclusionError, [['package.taihe', ['struct BadStructA { \n',
+                                              '    a: BadStructB; \n',
+                                              '} \n', 
+                                              'struct BadStructB { \n',
+                                              '    a: BadStructC; \n',
+                                              '} \n', 
+                                              'struct BadStructC { \n',
+                                              '    a: BadStructA; \n',
+                                              '} \n', ]]]],
 ]
 
 if __name__ == "__main__":
