@@ -62,16 +62,22 @@ class SymbolReplacer(Visitor):
     def visit_UseSymbol(self, node: ast.UseSymbol) -> None:
         pkmeta = node.pkname
         pktupl = tuple(id.text for id in pkmeta)
-        type_table = self.type_tables.get(pktupl)
-        if type_table is None:
-            self.errors.append(PackageNotExistError(self.src_path, pkmeta))
         for alias_pair in node.alias_pairs:
             old_meta = alias_pair.old_name
             new_meta = alias_pair.new_name or alias_pair.old_name
             old_name = old_meta.text
             new_name = new_meta.text
             self.using_type_table.setdefault(new_name, {}).setdefault((pktupl, old_name), []).append(new_meta)
-            if type_table is not None and old_name not in type_table:
+        type_table = self.type_tables.get(pktupl)
+        if type_table is None:
+            self.errors.append(PackageNotExistError(self.src_path, pkmeta))
+            return
+        for alias_pair in node.alias_pairs:
+            old_meta = alias_pair.old_name
+            new_meta = alias_pair.new_name or alias_pair.old_name
+            old_name = old_meta.text
+            new_name = new_meta.text
+            if old_name not in type_table:
                 self.errors.append(TypeNotExistError(self.src_path, old_meta))
 
     # substitution
