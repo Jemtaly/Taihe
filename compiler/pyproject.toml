@@ -70,6 +70,8 @@ lint.ignore = [
     # -> "too restrictive"
     "F541", # "f-string without any placeholders"
     # -> "some of them are for aesthetic reasons"
+    "B007", # "Loop control variable `field_name` not used within loop body"
+    # -> "temporary"
     "D100",
     "D101",
     "D102",
