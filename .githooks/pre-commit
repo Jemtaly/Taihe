@@ -1,4 +1,3 @@
 #!/usr/bin/bash
-./scripts/check
-exitCode="$?"
-exit $exitCode
+./scripts/check || exit 1
+./scripts/test || exit 1
