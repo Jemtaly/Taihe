@@ -21,7 +21,7 @@ jobs:
       - name: Test and Report Coverage
         run: scripts/test
 
-  all_checks_passed:
+  all_tests_passed:
     needs:
       - test
     runs-on: ubuntu-latest
