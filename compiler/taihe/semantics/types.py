@@ -3,7 +3,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntFlag, auto
-from typing import Optional, override
+from pathlib import Path
+from typing import Any, Optional, override
 
 from taihe.exceptions import (
     EnumValueCollisionError,
@@ -18,13 +19,13 @@ from taihe.exceptions import (
     TypeNotExistError,
     TypeNotImportedError,
 )
+from taihe.parse import ast
 
 ############################
 # Infrastructure for Types #
 ############################
 
 
-ErrorManager = list
 NamespaceTree = dict[str, "NamespaceTree"]
 
 
@@ -38,11 +39,14 @@ class Type:
 
 
 class UserType(Type):
-    pass
+    pkg_name: tuple[str, ...]
+    decl_name: str
+    target: Optional["TypeDeclBase"]
 
-
-class UnknownType(UserType):
-    pass
+    def __init__(self, pkg_name, decl_name):
+        self.pkg_name = pkg_name
+        self.decl_name = decl_name
+        self.target = None
 
 
 ##################
@@ -109,155 +113,162 @@ _TYPE_MAPS: dict[str, PrimitiveType] = {ty.name: ty for ty in [I8, I16, I32, I64
 ################
 
 
+class PackageRef:
+    name: tuple[str, ...]
+    target: Optional["PackageBase"]
+
+    def __init__(self, name: tuple[str, ...]):
+        self.name = name
+        self.target = None
+
+
+class PackageImport:
+    name: tuple[str, ...]
+    pkg_ref: PackageRef
+
+    def __init__(self, name: tuple[str, ...], pkg_ref: PackageRef):
+        self.name = name
+        self.pkg_ref = pkg_ref
+
+
+class TypeDeclRef:
+    name: str
+    target: Optional["TypeDeclBase"]
+
+    def __init__(self, pkg_ref: PackageRef, name: str):
+        self.name = name
+        self.target = None
+
+
+class TypeImport:
+    name: str
+    pkg_ref: PackageRef
+    type_decl_ref: TypeDeclRef
+
+    def __init__(self, name: str, pkg_ref: PackageRef, type_decl_ref: TypeDeclRef):
+        self.name = name
+        self.pkg_ref = pkg_ref
+        self.type_decl_ref = type_decl_ref
+
+
 class SpecFieldDecl:
-    error_manager: ErrorManager
-
     parent: "Package"
-
     name: str
 
 
 class ParamDecl:
-    error_manager: ErrorManager
-
     parent: "FuncDecl"
-
     name: str
 
     qual: TypeQualifier
     ty: Type
 
-    def __init__(self, parent: "FuncDecl", error_manager: ErrorManager, name: str, qual: TypeQualifier, ty: Type):
+    def __init__(self, parent: "FuncDecl", name: str, qual: TypeQualifier, ty: Type):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
         self.qual = qual
         self.ty = ty
         if qual.value == TypeQualifier.MUT:
-            self.error_manager.append(QualifierError)
+            raise  # QualifierError
 
 
 class FuncDecl(SpecFieldDecl):
-    params: list[ParamDecl]
+    params: dict[str, ParamDecl]
     return_types: list[Type]
 
-    def __init__(self, parent: "Package", error_manager: ErrorManager, name: str):
+    def __init__(self, parent: "Package", name: str):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
-        self.params = []
+        self.params = {}
         self.return_types = []
 
     def add_param(self, name: str, qual: TypeQualifier, ty: Type) -> ParamDecl:
-        param = ParamDecl(self, self.error_manager, name, qual, ty)
-        self.params.append(param)
+        param = ParamDecl(self, name, qual, ty)
+        if self.params.get(name) is not None:
+            raise  # SymbolConflictError
+        self.params[name] = param
         return param
 
     def add_return_type(self, ty: Type):
         self.return_types.append(ty)
 
-    def check_param_conflicts(self):
-        param_dict: dict[str, list[ParamDecl]] = {}
-        for param in self.params:
-            param_dict.setdefault(param.name, []).append(param)
-        for param_name, params in param_dict.items():
-            if len(params) > 1:
-                self.error_manager.append(SymbolConflictError)
+
+class TypeDeclBase:
+    pass
 
 
-class TypeDecl(UserType, SpecFieldDecl):
+class UnknownTypeDecl(TypeDeclBase):
+    pass
+
+
+class TypeDecl(TypeDeclBase, SpecFieldDecl):
     pass
 
 
 class StructFieldDecl:
-    error_manager: ErrorManager
-
     parent: "StructDecl"
-
     name: str
 
     ty: Type
 
-    def __init__(self, parent: "StructDecl", error_manager: ErrorManager, name: str, ty: Type):
+    def __init__(self, parent: "StructDecl", name: str, ty: Type):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
         self.ty = ty
 
 
 class StructDecl(TypeDecl):
-    fields: list[StructFieldDecl]
+    fields: dict[str, StructFieldDecl]
 
-    def __init__(self, parent: "Package", error_manager: ErrorManager, name: str):
+    def __init__(self, parent: "Package", name: str):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
-        self.fields = []
+        self.fields = {}
 
     def add_field(self, name: str, ty: Type) -> StructFieldDecl:
-        field = StructFieldDecl(self, self.error_manager, name, ty)
-        self.fields.append(field)
+        field = StructFieldDecl(self, name, ty)
+        if self.fields.get(name) is not None:
+            raise  # SymbolConflictError
+        self.fields[name] = field
         return field
-
-    def check_field_conflicts(self):
-        field_dict: dict[str, list[StructFieldDecl]] = {}
-        for field in self.fields:
-            field_dict.setdefault(field.name, []).append(field)
-        for field_name, fields in field_dict.items():
-            if len(fields) > 1:
-                self.error_manager.append(SymbolConflictError)
 
 
 class EnumFieldDecl:
-    error_manager: ErrorManager
-
     parent: "EnumDecl"
-
     name: str
 
     val: int
 
-    def __init__(self, parent: "EnumDecl", error_manager: ErrorManager, name: str, val: int):
+    def __init__(self, parent: "EnumDecl", name: str, val: int):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
         self.val = val
 
 
 class EnumDecl(TypeDecl):
-    fields: list[EnumFieldDecl]
+    fields: dict[str, EnumFieldDecl]
+    values: dict[int, EnumFieldDecl]
     next_val: int
 
-    def __init__(self, parent: "Package", error_manager: ErrorManager, name: str):
+    def __init__(self, parent: "Package", name: str):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
-        self.fields = []
+        self.fields = {}
+        self.values = {}
         self.next_val = 0
 
     def add_field(self, name: str, val: int | None) -> EnumFieldDecl:
-        if val is not None:
-            self.next_val = val
-        field = EnumFieldDecl(self, self.error_manager, name, self.next_val)
-        self.fields.append(field)
-        self.next_val += 1
+        if val is None:
+            val = self.next_val
+        field = EnumFieldDecl(self, name, val)
+        if self.values.get(val) is not None:
+            raise  # EnumValueCollisionError
+        if self.fields.get(name) is not None:
+            raise  # SymbolConflictError
+        self.values[val] = field
+        self.fields[name] = field
+        self.next_val = val + 1
         return field
-
-    def check_field_conflicts(self):
-        field_dict: dict[str, list[EnumFieldDecl]] = {}
-        for field in self.fields:
-            field_dict.setdefault(field.name, []).append(field)
-        for field_name, fields in field_dict.items():
-            if len(fields) > 1:
-                self.error_manager.append(SymbolConflictError)
-
-    def check_value_conflicts(self):
-        value_dict: dict[int, list[EnumFieldDecl]] = {}
-        for field in self.fields:
-            value_dict.setdefault(field.val, []).append(field)
-        for field_name, fields in value_dict.items():
-            if len(fields) > 1:
-                self.error_manager.append(EnumValueCollisionError)
 
 
 ######################
@@ -266,177 +277,132 @@ class EnumDecl(TypeDecl):
 
 
 class PackageBase(ABC):
-    parent: "PackageGroup"
-
-    error_manager: ErrorManager
-
-    name: tuple[str, ...]
-
     @abstractmethod
-    def lookup(self, type_name: str) -> UserType: ...
-
-
-class Package(PackageBase):
-    type_table: dict[str, list[TypeDecl]]
-
-    imported_type_dict: dict[str, list[tuple[UserType, list]]]
-    imported_pkg_dict: dict[tuple[str, ...], list[tuple[PackageBase, list]]]
-
-    decls: list[SpecFieldDecl]  # All declarations, including type declarations and function declarations.
-    namespace_tree: NamespaceTree
-
-    def __init__(self, parent: "PackageGroup", error_manager: ErrorManager, name: tuple[str, ...], namespace_tree: NamespaceTree):
-        self.parent = parent
-        self.error_manager = error_manager
-        self.name = name
-        self.imported_type_dict = {}
-        self.imported_pkg_dict = {}
-        self.type_table = {}
-        self.decls = []
-        self.namespace_tree = namespace_tree
-
-    def import_types(self, pkg_name: tuple[str, ...], orig_type_names: list[str], type_names: list[str]):
-        orig_pkg = self.parent.lookup(pkg_name)
-        for type_name, orig_type_name in zip(type_names, orig_type_names, strict=True):
-            orig_type_decl = orig_pkg.lookup(orig_type_name)
-            self.imported_type_dict.setdefault(type_name, []).append((orig_type_decl, []))
-
-    def import_pkg(self, orig_pkg_name: tuple[str, ...], pkg_name: tuple[str, ...]):
-        orig_pkg = self.parent.lookup(orig_pkg_name)
-        self.imported_pkg_dict.setdefault(pkg_name, []).append((orig_pkg, []))
-
-    def decl_func(self, name: str) -> FuncDecl:
-        func_decl = FuncDecl(self, self.error_manager, name)
-        self.decls.append(func_decl)
-        return func_decl
-
-    def decl_struct(self, name: str) -> StructDecl:
-        struct_decl = StructDecl(self, self.error_manager, name)
-        self.decls.append(struct_decl)
-        self.type_table.setdefault(name, []).append(struct_decl)
-        return struct_decl
-
-    def decl_enum(self, name: str) -> EnumDecl:
-        enum_decl = EnumDecl(self, self.error_manager, name)
-        self.decls.append(enum_decl)
-        self.type_table.setdefault(name, []).append(enum_decl)
-        return enum_decl
-
-    def check_decl_conflicts(self):
-        decl_dict: dict[str, list[SpecFieldDecl]] = {}
-        for decl in self.decls:
-            decl_dict.setdefault(decl.name, []).append(decl)
-        for decl_name, decls in decl_dict.items():
-            if len(decls) > 1:
-                self.error_manager.append(SymbolConflictError)
-            if self.namespace_tree.get(decl_name) is not None:
-                self.error_manager.append(SymbolConflictWithNamespaceError)
-
-    def import_local_types(self):
-        for type_name, type_decls in self.type_table.items():
-            user_type = UnknownType() if len(type_decls) != 1 else type_decls[0]
-            self.imported_type_dict.setdefault(type_name, []).append((user_type, []))
-
-    def check_import_conflicts(self):
-        for imported_type_name, imported_types in self.imported_type_dict.items():
-            if len(imported_types) > 1:
-                self.error_manager.append(TypeAliasConflictError)
-        for imported_pkg_name, imported_pkgs in self.imported_pkg_dict.items():
-            if len(imported_pkgs) > 1:
-                self.error_manager.append(PackageAliasConflictError)
-
-    @override
-    def lookup(self, type_name: str) -> UserType:
-        if (target_type_decls := self.type_table.get(type_name)) is None:
-            self.error_manager.append(TypeNotExistError)
-            return UnknownType()
-        if len(target_type_decls) != 1:
-            return UnknownType()
-        return target_type_decls[0]
-
-    def resolve(self, pkg_name: tuple[str, ...], type_name: str) -> UserType:
-        if pkg_name:
-            if (orig_pkg_names := self.imported_pkg_dict.get(pkg_name)) is None:
-                self.error_manager.append(PackageNotImportedError)
-                return UnknownType()
-            if len(orig_pkg_names) != 1:
-                return UnknownType()
-            orig_pkg, _ = orig_pkg_names[0]
-            orig_user_type = orig_pkg.lookup(type_name)
-        else:
-            if (orig_type_names := self.imported_type_dict.get(type_name)) is None:
-                self.error_manager.append(TypeNotImportedError)
-                return UnknownType()
-            if len(orig_type_names) != 1:
-                return UnknownType()
-            orig_user_type, _ = orig_type_names[0]
-        return orig_user_type
-
-
-class DuplicatePackage(PackageBase):
-    pkgs: list[Package]
-
-    def __init__(self, parent: "PackageGroup", error_manager: ErrorManager, name: tuple[str, ...], pkgs: list[Package]):
-        self.parent = parent
-        self.error_manager = error_manager
-        self.name = name
-        self.pkgs = pkgs
-
-    @override
-    def lookup(self, type_name: str) -> UserType:
-        target_type_decls: list[TypeDecl] = []
-        for pkg in self.pkgs:
-            target_type_decls += pkg.type_table.get(type_name, [])
-        if len(target_type_decls) == 0:
-            self.error_manager.append(TypeNotExistError)
-            return UnknownType()
-        if len(target_type_decls) != 1:
-            return UnknownType()
-        return target_type_decls[0]
+    def lookup_type(self, name: str, error_manager: list): ...
 
 
 class UnknownPackage(PackageBase):
-    def __init__(self, parent: "PackageGroup", error_manager: ErrorManager, name: tuple[str, ...]):
+    @override
+    def lookup_type(self, name: str, error_manager: list):
+        return UnknownTypeDecl()
+
+
+class Package(PackageBase):
+    parent: "PackageGroup"
+    name: tuple[str, ...]
+
+    namespace_tree: NamespaceTree
+
+    func_decl_table: dict[str, FuncDecl]
+    type_decl_table: dict[str, TypeDecl]
+    type_import_table: dict[str, TypeImport]
+    pkg_import_table: dict[tuple[str, ...], PackageImport]
+
+    def __init__(self, parent: "PackageGroup", name: tuple[str, ...], namespace_tree: NamespaceTree):
         self.parent = parent
-        self.error_manager = error_manager
         self.name = name
+        self.namespace_tree = namespace_tree
+        self.func_decl_table = {}
+        self.type_decl_table = {}
+        self.type_import_table = {}
+        self.pkg_import_table = {}
+
+    def import_type(self, name: str, type_import: TypeImport):
+        if (self.type_decl_table.get(name) or self.type_import_table.get(name)) is not None:
+            raise  # SymbolConflictError
+        self.type_import_table[name] = type_import
+
+    def import_pkg(self, pkg_name: tuple[str, ...], pkg_import: PackageImport):
+        if self.pkg_import_table.get(pkg_name) is not None:
+            raise  # PackageAliasConflictError
+        self.pkg_import_table[pkg_name] = pkg_import
+
+    def add_func(self, name: str) -> FuncDecl:
+        func_decl = FuncDecl(self, name)
+        if self.func_decl_table.get(name) is not None:
+            raise  # SymbolConflictError
+        if self.namespace_tree.get(name) is not None:
+            raise  # SymbolConflictWithNamespaceError
+        self.func_decl_table[name] = func_decl
+        return func_decl
+
+    def add_struct(self, name: str) -> StructDecl:
+        struct_decl = StructDecl(self, name)
+        if (self.func_decl_table.get(name) or self.type_decl_table.get(name) or self.type_import_table.get(name)) is not None:
+            raise  # SymbolConflictError
+        if self.namespace_tree.get(name) is not None:
+            raise  # SymbolConflictWithNamespaceError
+        self.type_decl_table[name] = struct_decl
+        return struct_decl
+
+    def add_enum(self, name: str) -> EnumDecl:
+        enum_decl = EnumDecl(self, name)
+        if (self.func_decl_table.get(name) or self.type_decl_table.get(name) or self.type_import_table.get(name)) is not None:
+            raise  # SymbolConflictError
+        if self.namespace_tree.get(name) is not None:
+            raise  # SymbolConflictWithNamespaceError
+        self.type_decl_table[name] = enum_decl
+        return enum_decl
 
     @override
-    def lookup(self, type_name: str) -> UserType:
-        return UnknownType()
+    def lookup_type(self, name: str, error_manager: list):
+        target = self.type_decl_table.get(name)
+        if target is None:
+            error_manager.append(TypeNotExistError)
+            return UnknownTypeDecl()
+        return target
+
+    def resolve_user_type(self, user_type: UserType, error_manager: list):
+        if user_type.target is not None:
+            return
+        if user_type.pkg_name:
+            pkg_import = self.pkg_import_table.get(user_type.pkg_name)
+            if pkg_import is None:
+                raise  # PackageNotImportedError
+            assert pkg_import.pkg_ref.target is not None
+            user_type.target = pkg_import.pkg_ref.target.lookup_type(user_type.decl_name, error_manager)
+            if user_type.target is None:
+                raise  # TypeNotExistError
+        else:
+            user_type.target = self.type_decl_table.get(user_type.decl_name)
+            if user_type.target is not None:
+                return
+            type_import = self.type_import_table.get(user_type.decl_name)
+            if type_import is None:
+                raise  # TypeNotImportedError
+            assert type_import.type_decl_ref.target is not None
+            user_type.target = type_import.type_decl_ref.target
 
 
 class PackageGroup:
-    error_manager: ErrorManager
-
-    pkg_table: dict[tuple[str, ...], list[Package]]
+    pkg_table: dict[tuple[str, ...], Package]
     namespace_root: NamespaceTree
 
-    def __init__(self, error_manager: ErrorManager):
+    def __init__(self):
         self.pkg_table = {}
-        self.error_manager = error_manager
         self.namespace_root = {}
-
-    def lookup(self, name: tuple[str, ...]) -> PackageBase:
-        if (target_pkgs := self.pkg_table.get(name)) is None:
-            self.error_manager.append(PackageNotExistError)
-            return UnknownPackage(self, self.error_manager, name)
-        if len(target_pkgs) != 1:
-            return DuplicatePackage(self, self.error_manager, name, target_pkgs)
-        return target_pkgs[0]
 
     def add_package(self, pkg_name: tuple[str, ...]) -> Package:
         namespace = self.namespace_root
+        pkg_name_parts: tuple[str, ...] = ()
         for pkg_name_part in pkg_name:
+            pkg_name_parts = *pkg_name_parts, pkg_name_part
+            pkg = self.pkg_table.get(pkg_name_parts)
+            if pkg is not None and (pkg.func_decl_table.get(pkg_name_part) or pkg.type_decl_table.get(pkg_name_part)) is not None:
+                raise  # SymbolConflictWithNamespaceError
             namespace = namespace.setdefault(pkg_name_part, {})
-        package = Package(self, self.error_manager, pkg_name, namespace)
-        self.pkg_table.setdefault(pkg_name, []).append(package)
-        return package
+        pkg = Package(self, pkg_name, namespace)
+        if self.pkg_table.get(pkg_name) is not None:
+            raise  # PackageNameConflictError
+        self.pkg_table[pkg_name] = pkg
+        return pkg
 
-    def check_package_conflicts(self):
-        for pkg_name, pkgs in self.pkg_table.items():
-            if len(pkgs) != 1:
-                self.error_manager.append(PackageNameConflictError)
+    def lookup_pkg(self, name: tuple[str, ...], error_manager: list):
+        target = self.pkg_table.get(name)
+        if target is None:
+            error_manager.append(PackageNotExistError)
+            return UnknownPackage()
+        return target
 
     def check_recursive_inclusion(self):
         pass
