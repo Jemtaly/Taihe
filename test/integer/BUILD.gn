@@ -1,0 +1,6 @@
+source_set("integer_test") {
+  deps = [
+    "./author_test:author_test",
+    "./user_test:user_test"
+  ]
+}
