@@ -89,11 +89,13 @@ def get_bool_val(node: ast.BoolExpr) -> bool:
 
 
 def get_package_group(files: dict[Path, ast.Spec], error_manager: ErrorManager) -> types.PackageGroup:
-    package_group = types.PackageGroup(error_manager)
+    package_group = types.PackageGroup()
     packages: list[tuple[Path, ast.Spec, types.Package]] = []
     for filename, spec in files.items():
         name = tuple(filename.stem.split("."))
         package = package_group.add_package(name)
         packages.append((filename, spec, package))
+
+    return package_group
     
 

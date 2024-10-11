@@ -278,12 +278,12 @@ class EnumDecl(TypeDecl):
 
 class PackageBase(ABC):
     @abstractmethod
-    def lookup_type(self, name: str, error_manager: list): ...
+    def lookup_type_decl(self, name: str, error_manager: list) -> TypeDeclBase: ...
 
 
 class UnknownPackage(PackageBase):
     @override
-    def lookup_type(self, name: str, error_manager: list):
+    def lookup_type_decl(self, name: str, error_manager: list) -> TypeDeclBase:
         return UnknownTypeDecl()
 
 
@@ -345,33 +345,31 @@ class Package(PackageBase):
         return enum_decl
 
     @override
-    def lookup_type(self, name: str, error_manager: list):
+    def lookup_type_decl(self, name: str, error_manager: list) -> TypeDeclBase:
         target = self.type_decl_table.get(name)
         if target is None:
             error_manager.append(TypeNotExistError)
             return UnknownTypeDecl()
         return target
 
-    def resolve_user_type(self, user_type: UserType, error_manager: list):
-        if user_type.target is not None:
-            return
-        if user_type.pkg_name:
-            pkg_import = self.pkg_import_table.get(user_type.pkg_name)
+    def resolve_user_type(self, pkg_name: tuple[str, ...], decl_name: str, error_manager: list) -> TypeDeclBase:
+        if pkg_name:
+            pkg_import = self.pkg_import_table.get(pkg_name)
             if pkg_import is None:
-                raise  # PackageNotImportedError
+                error_manager.append(PackageNotImportedError)
+                return UnknownTypeDecl()
             assert pkg_import.pkg_ref.target is not None
-            user_type.target = pkg_import.pkg_ref.target.lookup_type(user_type.decl_name, error_manager)
-            if user_type.target is None:
-                raise  # TypeNotExistError
+            return pkg_import.pkg_ref.target.lookup_type_decl(decl_name, error_manager)
         else:
-            user_type.target = self.type_decl_table.get(user_type.decl_name)
-            if user_type.target is not None:
-                return
-            type_import = self.type_import_table.get(user_type.decl_name)
+            type_decl = self.type_decl_table.get(decl_name)
+            if type_decl is not None:
+                return type_decl
+            type_import = self.type_import_table.get(decl_name)
             if type_import is None:
-                raise  # TypeNotImportedError
+                error_manager.append(TypeNotImportedError)
+                return UnknownTypeDecl()
             assert type_import.type_decl_ref.target is not None
-            user_type.target = type_import.type_decl_ref.target
+            return type_import.type_decl_ref.target
 
 
 class PackageGroup:
@@ -397,7 +395,7 @@ class PackageGroup:
         self.pkg_table[pkg_name] = pkg
         return pkg
 
-    def lookup_pkg(self, name: tuple[str, ...], error_manager: list):
+    def lookup_pkg(self, name: tuple[str, ...], error_manager: list) -> PackageBase:
         target = self.pkg_table.get(name)
         if target is None:
             error_manager.append(PackageNotExistError)
