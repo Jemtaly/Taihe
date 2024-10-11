@@ -1,5 +1,0 @@
-[run]
-omit =
-    test_*
-    ../taihe/parse/antlr/*.py
-    ../run-test
