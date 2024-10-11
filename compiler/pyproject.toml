@@ -16,16 +16,6 @@ exceptiongroup = "^1.2.2"
 coverage = "^7.6.1"
 pytest = "^8.3.3"
 
-[tool.pytest.ini_options]
-markers = [
-    "except_package_error",
-    "except_symbol_error",
-    "except_mut_error",
-    "except_enum_error",
-    "except_type_error",
-    "except_struct_error",
-]
-
 [[tool.poetry.source]]
 name = "tsinghua"
 url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"

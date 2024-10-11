@@ -11,7 +11,6 @@ from taihe.exceptions import (
     PackageNotImportedError,
     QualifierError,
     RecursiveInclusionError,
-    SemanticError,
     SymbolConflictError,
     SymbolConflictWithNamespaceError,
     TypeAliasConflictError,
@@ -45,12 +44,8 @@ def write_file(test_case: str) -> None:
             f.writelines(file[i + 1])
 
 
-@pytest.mark.except_package_error
-@pytest.mark.parametrize("except_error", [PackageAliasConflictError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_pkg_alias_conflict() -> None:
+    test_case = """package.taihe
         ---
         use package.example1 as example;
         use package.example2 as example;
@@ -61,87 +56,71 @@ def write_file(test_case: str) -> None:
         package.example2.taihe
         ---
         """
-    ],
-)
-def test_pkg_alias_conflict(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(PackageAliasConflictError):
         run_test()
 
 
-@pytest.mark.except_package_error
-@pytest.mark.parametrize("except_error", [PackageNotExistError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_pkg_not_exist() -> None:
+    test_case = """package.taihe
         ---
         use a;
         """
-    ],
-)
-def test_pkg_not_exist(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(PackageNotExistError):
         run_test()
 
 
-@pytest.mark.except_package_error
-@pytest.mark.parametrize("except_error", [PackageNotImportedError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_pkg_not_imported() -> None:
+    test_case = """package.taihe
         ---
         struct BadStruct {
             a: unimported.package.Type;
         }
         """
-    ],
-)
-def test_pkg_not_imported(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(PackageNotImportedError):
         run_test()
 
 
-@pytest.mark.except_symbol_error
-@pytest.mark.parametrize("except_error", [SymbolConflictError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_sym_conflict_1() -> None:
+    test_case = """package.taihe
         ---
         function bad_func(a: i32, a: i32): ();
-        """,
-        """package.taihe
+        """
+    write_file(test_case)
+    with pytest.raises(SymbolConflictError):
+        run_test()
+
+
+def test_sym_conflict_2() -> None:
+    test_case = """package.taihe
         ---
         enum BadEnum {
             A;
             A;
         }
-        """,
-        """package.taihe
+        """
+    write_file(test_case)
+    with pytest.raises(SymbolConflictError):
+        run_test()
+
+
+def test_sym_conflict_3() -> None:
+    test_case = """package.taihe
         ---
         struct BadStruct {
             a: i32;
             a: i32;
         }
-        """,
-    ],
-)
-def test_sym_conflict(except_error: SemanticError, test_case: str) -> None:
+        """
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(SymbolConflictError):
         run_test()
 
 
-@pytest.mark.except_symbol_error
-@pytest.mark.parametrize("except_error", [SymbolConflictWithNamespaceError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_sym_conflict_namespace() -> None:
+    test_case = """package.taihe
         ---
         use package.example1.a;
         ---
@@ -154,24 +133,23 @@ def test_sym_conflict(except_error: SemanticError, test_case: str) -> None:
         package.example1.a.taihe
         ---
         """
-    ],
-)
-def test_sym_conflict_namespace(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(SymbolConflictWithNamespaceError):
         run_test()
 
 
-@pytest.mark.except_mut_error
-@pytest.mark.parametrize("except_error", [QualifierError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_qualifier_1() -> None:
+    test_case = """package.taihe
         ---
         function bad_func(a: mut i32): ();
-        """,
-        """package.taihe
+        """
+    write_file(test_case)
+    with pytest.raises(QualifierError):
+        run_test()
+
+
+def test_qualifier_2() -> None:
+    test_case = """package.taihe
         ---
         enum Enum {
             A;
@@ -180,49 +158,41 @@ def test_sym_conflict_namespace(except_error: SemanticError, test_case: str) -> 
             a: Enum;
         }
         function bad_func(a: mut Struct, b: mut Enum): ();
-        """,
-    ],
-)
-def test_qualifier(except_error: SemanticError, test_case: str) -> None:
+        """
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(QualifierError):
         run_test()
 
 
-@pytest.mark.except_enum_error
-@pytest.mark.parametrize("except_error", [EnumValueCollisionError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_enum_value_collision_1() -> None:
+    test_case = """package.taihe
         ---
         enum BadEnum {
             A=if !(if 1+1==2 then 2<1&&3<2 else 1!=1) then -1 else -2;
             B=-1;
         }
-        """,
-        """package.taihe
+        """
+    write_file(test_case)
+    with pytest.raises(EnumValueCollisionError):
+        run_test()
+
+
+def test_enum_value_collision2() -> None:
+    test_case = """package.taihe
         ---
         enum BadEnum {
             A = 0b01 << 0b01;
             B = if (7 << 1 + 1) + (3 * 3 - 2 & 11) == 31 && 1 + 1 == 2 then 1 else 10;
             C;
         }
-        """,
-    ],
-)
-def test_enum_value_collision(except_error: SemanticError, test_case: str) -> None:
+        """
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(EnumValueCollisionError):
         run_test()
 
 
-@pytest.mark.except_type_error
-@pytest.mark.parametrize("except_error", [TypeAliasConflictError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_type_alias_conflict() -> None:
+    test_case = """package.taihe
         ---
         from package.example1 use A;
         from package.example2 use A;
@@ -232,34 +202,33 @@ def test_enum_value_collision(except_error: SemanticError, test_case: str) -> No
         struct A {
             a: i32;
         }
-                ---
+        ---
         package.example2.taihe
         ---
         struct A {
             a: i32;
         }
         """
-    ],
-)
-def test_type_alias_conflict(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(TypeAliasConflictError):
         run_test()
 
 
-@pytest.mark.except_type_error
-@pytest.mark.parametrize("except_error", [TypeNotExistError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_type_not_exist_1() -> None:
+    test_case = """package.taihe
         ---
         from package.example1 use A;
         ---
         package.example1.taihe
         ---
-        """,
-        """package.taihe
+        """
+    write_file(test_case)
+    with pytest.raises(TypeNotExistError):
+        run_test()
+
+
+def test_type_not_exist_2() -> None:
+    test_case = """package.taihe
         ---
         use package.example1;
         struct BadStruct {
@@ -271,40 +240,26 @@ def test_type_alias_conflict(except_error: SemanticError, test_case: str) -> Non
         struct A {
             a: i32;
         }
-        """,
-    ],
-)
-def test_type_not_exist(except_error: SemanticError, test_case: str) -> None:
+        """
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(TypeNotExistError):
         run_test()
 
 
-@pytest.mark.except_type_error
-@pytest.mark.parametrize("except_error", [TypeNotImportedError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_type_not_imported() -> None:
+    test_case = """package.taihe
         ---
         struct BadStruct {
             a: UnimportedType;
         }
         """
-    ],
-)
-def test_type_not_imported(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(TypeNotImportedError):
         run_test()
 
 
-@pytest.mark.except_struct_error
-@pytest.mark.parametrize("except_error", [RecursiveInclusionError])
-@pytest.mark.parametrize(
-    "test_case",
-    [
-        """package.taihe
+def test_recursive_inclusion() -> None:
+    test_case = """package.taihe
         ---
         struct A {
             a: B;
@@ -316,9 +271,6 @@ def test_type_not_imported(except_error: SemanticError, test_case: str) -> None:
             a: A;
         }
         """
-    ],
-)
-def test_recursive_inclusion(except_error: SemanticError, test_case: str) -> None:
     write_file(test_case)
-    with pytest.raises(except_error):
+    with pytest.raises(RecursiveInclusionError):
         run_test()
