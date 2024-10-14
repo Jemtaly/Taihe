@@ -1,0 +1,36 @@
+action("run_cmake") {
+  script = "//call_cmake.py"
+  outputs = [ "$target_out_dir/abc.txt" ]
+}
+
+
+action("taihe_author") {
+  script = "//compiler/run-taihe.py"
+  outputs = [ "$target_out_dir/output.txt" ]
+  args = [
+    "/root/TaiheCompiler/test/integer/idl",
+    "/root/TaiheCompiler/test/integer/author/include",
+    "--author"
+  ]
+}
+
+
+shared_library("author") {
+  sources = [ 
+    "./src/integer.arithmetic.impl.c",
+    "./src/integer.arithmetic.impl.cpp",
+    "./src/integer.io.impl.cpp", 
+  ]
+  deps = [
+    ":taihe_author",
+    ":run_cmake",
+  ]
+  lib_dirs = [ "/root/TaiheCompiler/out/runtime" ]
+  libs = ["taihe-rt"]
+  include_dirs = [
+    "./include",
+    "//test/integer/author/include",
+    "//runtime/include"
+  ]
+  ldflags = ["-Wl,-rpath=/root/TaiheCompiler/out/runtime"]
+}

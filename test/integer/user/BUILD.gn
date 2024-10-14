@@ -1,0 +1,24 @@
+action("taihe_user") {
+  script = "//compiler/run-taihe.py"
+  outputs = [ "$target_out_dir/output.txt" ]
+  args = [
+    "/root/TaiheCompiler/test/integer/idl",
+    "/root/TaiheCompiler/test/integer/user/include",
+    "--user"
+  ]
+}
+
+
+executable("user") {
+  sources = [ "./src/main.cpp" ]
+  deps = [
+    ":taihe_user",
+    "//test/integer/author:author"
+  ]
+  include_dirs = [
+    "./include",
+    "//test/integer/author/include",
+    "//runtime/include"
+  ]
+  ldflags = ["-Wl,-rpath=/root/TaiheCompiler/out"]
+}

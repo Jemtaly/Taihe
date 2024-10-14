@@ -1,5 +1,4 @@
 # Binaries
-build
 *.exe
 
 # Compiler
@@ -31,3 +30,6 @@ test/*/user_test
 
 # Clangd
 .cache
+
+# out
+out

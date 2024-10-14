@@ -1,6 +1,5 @@
 group("default") {
   deps = [
-    "//runtime:string",
     "//test/integer:integer_test"
   ]
 }
