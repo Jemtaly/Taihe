@@ -3,17 +3,22 @@
 import shutil
 from pathlib import Path
 import argparse
+import os
 from taihe.compilation import compile as taihec
 
 
-def clean_directory(directory):
-    if directory.exists():
-        shutil.rmtree(directory)
+def copy_directory(src_directory, dst_directory):
+    if src_directory.exists():
+        shutil.copytree(src_directory, dst_directory, dirs_exist_ok=True)
 
 
-def main(idl_dir: str, target_dir: str, author: bool, user: bool):
+def main(taihe_file: str, gen_dir: str, target_dir: str, author: bool, user: bool):
+    idl_dir = os.path.dirname(taihe_file)
+    print("idl_dir: " + idl_dir)
+    print("target_dir: " + target_dir)
     idl_dir = Path(idl_dir)
     target_dir = Path(target_dir)
+    gen_dir = Path(gen_dir)
 
     if not idl_dir.is_dir():
         raise FileNotFoundError(f"'{idl_dir}' is not an valid directory.")
@@ -24,10 +29,12 @@ def main(idl_dir: str, target_dir: str, author: bool, user: bool):
     print("Generating codes...")
     taihec(
         src_dirs=[idl_dir],
-        dst_dir=target_dir,
+        dst_dir=gen_dir,
         gen_author=author,
         gen_user=user,
     )
+    copy_directory(gen_dir, target_dir)
+
     print("generate done")
 
 
@@ -36,14 +43,19 @@ if __name__ == "__main__":
         description="Build and run project from a target directory",
     )
     parser.add_argument(
-        "idl_dir",
+        "taihe_file",
         type=str,
-        help="The idl directory containing .taihe files for the project",
+        help="The .taihe file need to compile",
     )
     parser.add_argument(
-        "target_dir",
+        "gen_headers_dir",
         type=str,
-        help="The directory used to store generated header files.",
+        help="The directory used to generate header files",
+    )
+    parser.add_argument(
+        "target_headers_dir",
+        type=str,
+        help="The directory developer given to store generated header files",
     )
     parser.add_argument(
         "-a",
@@ -59,4 +71,4 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    main(args.idl_dir, args.target_dir, args.author, args.user)
+    main(args.taihe_file, args.gen_headers_dir, args.target_headers_dir, args.author, args.user)

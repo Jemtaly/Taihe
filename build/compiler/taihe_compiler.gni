@@ -1,0 +1,38 @@
+template("taihe_compiler") {
+  action_foreach(target_name) {
+    assert(defined(invoker.idl_sources), "taihe compiler must specify a \"idl_sources\" value")
+    assert(defined(invoker.output_dir), "taihe compiler must specify a \"headers_dir\" value")
+    assert(defined(invoker.mode), "taihe compiler must specify a \"mode\" value")
+
+    mnemonic = "TAIHE"
+
+    sources = invoker.idl_sources
+
+    script = "//compiler/run.py"
+
+    if (invoker.mode == "author") {
+      outputs = [
+        "$target_out_dir/{{source_name_part}}.abi.h",
+        "$target_out_dir/{{source_name_part}}.impl.h",
+        "$target_out_dir/{{source_name_part}}.impl.hpp",
+      ]
+    } else {
+      outputs = [
+        "$target_out_dir/include/{{source_name_part}}.abi.h",
+        "$target_out_dir/include/{{source_name_part}}.abi.hpp",
+      ]
+    }
+
+    args = [
+      "{{source}}",
+      rebase_path("$target_out_dir/include"),
+      rebase_path(invoker.output_dir),
+    ]
+
+    if (invoker.mode == "author") {
+      args += ["--author"]
+    } else {
+      args += ["--user"]
+    }
+  }
+}

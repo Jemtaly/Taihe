@@ -1,0 +1,25 @@
+defines =
+include_dirs = -I../test/integer/author/include -I../runtime/include
+cflags =
+cflags_cc =
+root_out_dir = .
+target_out_dir = obj/test/integer/author
+target_output_name = libauthor
+
+build obj/test/integer/author/src/../test/integer/author/src/integer.arithmetic.impl.c.o: cc ../test/integer/author/src/integer.arithmetic.impl.c || phony/test/integer/author/integer_test_author
+  source_file_part = integer.arithmetic.impl.c
+  source_name_part = integer.arithmetic.impl
+build obj/test/integer/author/src/integer.arithmetic.impl.o: cxx ../test/integer/author/src/integer.arithmetic.impl.cpp || phony/test/integer/author/integer_test_author
+  source_file_part = integer.arithmetic.impl.cpp
+  source_name_part = integer.arithmetic.impl
+build obj/test/integer/author/src/integer.io.impl.o: cxx ../test/integer/author/src/integer.io.impl.cpp || phony/test/integer/author/integer_test_author
+  source_file_part = integer.io.impl.cpp
+  source_name_part = integer.io.impl
+
+build libauthor.so: solink obj/test/integer/author/src/../test/integer/author/src/integer.arithmetic.impl.c.o obj/test/integer/author/src/integer.arithmetic.impl.o obj/test/integer/author/src/integer.io.impl.o || phony/test/integer/author/integer_test_author
+  ldflags = -Wl,-rpath=/root/TaiheCompiler/out/runtime -Lruntime
+  libs = -ltaihe-rt
+  frameworks =
+  swiftmodules =
+  output_extension = .so
+  output_dir = .

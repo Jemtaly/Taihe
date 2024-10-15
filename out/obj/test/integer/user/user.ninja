@@ -1,0 +1,19 @@
+defines =
+include_dirs = -I../test/integer/user/include -I../test/integer/author/include -I../runtime/include
+cflags =
+cflags_cc =
+root_out_dir = .
+target_out_dir = obj/test/integer/user
+target_output_name = user
+
+build obj/test/integer/user/src/main.o: cxx ../test/integer/user/src/main.cpp || phony/test/integer/author/integer_test_author phony/test/integer/user/integer_test_user
+  source_file_part = main.cpp
+  source_name_part = main
+
+build ./user: link obj/test/integer/user/src/main.o libauthor.so || phony/test/integer/user/integer_test_user
+  ldflags = -Wl,-rpath=/root/TaiheCompiler/out
+  libs =
+  frameworks =
+  swiftmodules =
+  output_extension =
+  output_dir = .

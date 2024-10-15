@@ -1,4 +1,4 @@
-group("default") {
+group("taihe-compiler") {
   deps = [
     "//test/integer:integer_test"
   ]

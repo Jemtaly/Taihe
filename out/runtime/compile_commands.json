@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/root/TaiheCompiler/out/runtime",
+  "command": "/usr/bin/clang -Dtaihe_rt_EXPORTS -I/root/TaiheCompiler/runtime/include -fPIC -fvisibility=hidden -std=gnu99 -o CMakeFiles/taihe-rt.dir/src/string.c.o -c /root/TaiheCompiler/runtime/src/string.c",
+  "file": "/root/TaiheCompiler/runtime/src/string.c"
+}
+]

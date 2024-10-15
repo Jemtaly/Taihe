@@ -1,0 +1,1 @@
+build.ninja.stamp: ../.gn ../BUILD.gn ../build/compiler/taihe_compiler.gni ../build/config/BUILDCONFIG.gn ../build/toolchain/BUILD.gn ../build/toolchain/clang_toolchain.gni ./args.gn ../test/integer/BUILD.gn ../test/integer/author/BUILD.gn ../test/integer/user/BUILD.gn

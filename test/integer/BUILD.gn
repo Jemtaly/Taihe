@@ -1,4 +1,4 @@
-source_set("integer_test") {
+group("integer_test") {
   deps = [
     "./author:author",
     "./user:user"
