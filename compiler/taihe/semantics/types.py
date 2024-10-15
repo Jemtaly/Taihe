@@ -38,15 +38,8 @@ class Type:
     pass
 
 
-class UserType(Type):
-    pkg_name: tuple[str, ...]
-    decl_name: str
-    target: Optional["TypeDeclBase"]
-
-    def __init__(self, pkg_name, decl_name):
-        self.pkg_name = pkg_name
-        self.decl_name = decl_name
-        self.target = None
+class TypeRef:
+    target: Optional[Type]
 
 
 ##################
@@ -108,12 +101,21 @@ STRING = StringType("String")
 _TYPE_MAPS: dict[str, PrimitiveType] = {ty.name: ty for ty in [I8, I16, I32, I64, U8, U16, U32, U64, F16, F32, BOOL, STRING]}
 
 
+class PrimitiveTypeRef(TypeRef):
+    name: str
+    target: Optional[PrimitiveType]
+
+    def __init__(self, name: str):
+        self.name = name
+        self.target = None
+
+
 ################
 # Declarations #
 ################
 
 
-class PackageRef:
+class ImportedPackage:
     name: tuple[str, ...]
     target: Optional["PackageBase"]
 
@@ -124,31 +126,31 @@ class PackageRef:
 
 class PackageImport:
     name: tuple[str, ...]
-    pkg_ref: PackageRef
+    imported_pkg: ImportedPackage
 
-    def __init__(self, name: tuple[str, ...], pkg_ref: PackageRef):
+    def __init__(self, name: tuple[str, ...], imported_pkg: ImportedPackage):
         self.name = name
-        self.pkg_ref = pkg_ref
+        self.imported_pkg = imported_pkg
 
 
-class TypeDeclRef:
+class ImportedType:
+    imported_pkg: ImportedPackage
     name: str
     target: Optional["TypeDeclBase"]
 
-    def __init__(self, pkg_ref: PackageRef, name: str):
+    def __init__(self, imported_pkg: ImportedPackage, name: str):
+        self.imported_pkg = imported_pkg
         self.name = name
         self.target = None
 
 
 class TypeImport:
     name: str
-    pkg_ref: PackageRef
-    type_decl_ref: TypeDeclRef
+    imported_type: ImportedType
 
-    def __init__(self, name: str, pkg_ref: PackageRef, type_decl_ref: TypeDeclRef):
+    def __init__(self, name: str, imported_type: ImportedType):
         self.name = name
-        self.pkg_ref = pkg_ref
-        self.type_decl_ref = type_decl_ref
+        self.imported_type = imported_type
 
 
 class SpecFieldDecl:
@@ -161,39 +163,29 @@ class ParamDecl:
     name: str
 
     qual: TypeQualifier
-    ty: Type
+    tr: TypeRef
 
-    def __init__(self, parent: "FuncDecl", name: str, qual: TypeQualifier, ty: Type):
+    def __init__(self, parent: "FuncDecl", name: str, qual: TypeQualifier, tr: TypeRef):
         self.parent = parent
         self.name = name
         self.qual = qual
-        self.ty = ty
+        self.tr = tr
         if qual.value == TypeQualifier.MUT:
             raise  # QualifierError
 
 
 class FuncDecl(SpecFieldDecl):
-    params: dict[str, ParamDecl]
-    return_types: list[Type]
+    params: list[ParamDecl]
+    return_tr: TypeRef
 
-    def __init__(self, parent: "Package", name: str):
+    def __init__(self, parent: "Package", name: str, params: list[ParamDecl], return_tr: TypeRef):
         self.parent = parent
         self.name = name
-        self.params = {}
-        self.return_types = []
-
-    def add_param(self, name: str, qual: TypeQualifier, ty: Type) -> ParamDecl:
-        param = ParamDecl(self, name, qual, ty)
-        if self.params.get(name) is not None:
-            raise  # SymbolConflictError
-        self.params[name] = param
-        return param
-
-    def add_return_type(self, ty: Type):
-        self.return_types.append(ty)
+        self.params = params
+        self.return_tr = return_tr
 
 
-class TypeDeclBase:
+class TypeDeclBase(Type):
     pass
 
 
@@ -205,16 +197,27 @@ class TypeDecl(TypeDeclBase, SpecFieldDecl):
     pass
 
 
+class TypeDeclRef(TypeRef):
+    pkg_name: tuple[str, ...]
+    decl_name: str
+    target: Optional[TypeDeclBase]
+
+    def __init__(self, pkg_name, decl_name):
+        self.pkg_name = pkg_name
+        self.decl_name = decl_name
+        self.target = None
+
+
 class StructFieldDecl:
     parent: "StructDecl"
     name: str
 
-    ty: Type
+    tr: TypeRef
 
-    def __init__(self, parent: "StructDecl", name: str, ty: Type):
+    def __init__(self, parent: "StructDecl", name: str, tr: TypeRef):
         self.parent = parent
         self.name = name
-        self.ty = ty
+        self.tr = tr
 
 
 class StructDecl(TypeDecl):
@@ -225,8 +228,8 @@ class StructDecl(TypeDecl):
         self.name = name
         self.fields = {}
 
-    def add_field(self, name: str, ty: Type) -> StructFieldDecl:
-        field = StructFieldDecl(self, name, ty)
+    def add_field(self, name: str, tr: TypeRef) -> StructFieldDecl:
+        field = StructFieldDecl(self, name, tr)
         if self.fields.get(name) is not None:
             raise  # SymbolConflictError
         self.fields[name] = field
@@ -317,8 +320,8 @@ class Package(PackageBase):
             raise  # PackageAliasConflictError
         self.pkg_import_table[pkg_name] = pkg_import
 
-    def add_func(self, name: str) -> FuncDecl:
-        func_decl = FuncDecl(self, name)
+    def add_func(self, name: str, params: list[ParamDecl], return_tr: TypeRef) -> FuncDecl:
+        func_decl = FuncDecl(self, name, params, return_tr)
         if self.func_decl_table.get(name) is not None:
             raise  # SymbolConflictError
         if self.namespace_tree.get(name) is not None:
@@ -358,8 +361,8 @@ class Package(PackageBase):
             if pkg_import is None:
                 error_manager.append(PackageNotImportedError)
                 return UnknownTypeDecl()
-            assert pkg_import.pkg_ref.target is not None
-            return pkg_import.pkg_ref.target.lookup_type_decl(decl_name, error_manager)
+            assert pkg_import.imported_pkg.target is not None
+            return pkg_import.imported_pkg.target.lookup_type_decl(decl_name, error_manager)
         else:
             type_decl = self.type_decl_table.get(decl_name)
             if type_decl is not None:
@@ -368,8 +371,8 @@ class Package(PackageBase):
             if type_import is None:
                 error_manager.append(TypeNotImportedError)
                 return UnknownTypeDecl()
-            assert type_import.type_decl_ref.target is not None
-            return type_import.type_decl_ref.target
+            assert type_import.imported_type.target is not None
+            return type_import.imported_type.target
 
 
 class PackageGroup:
