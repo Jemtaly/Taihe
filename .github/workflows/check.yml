@@ -1,6 +1,6 @@
 name: check
 
-on: 
+on:
     [push, pull_request]
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
         working-directory: compiler
         run: poetry lock --no-update && poetry install --no-root
       - name: Check Format
-        run: scripts/check
+        run: ./scripts/check
 
   all_checks_passed:
     needs:
