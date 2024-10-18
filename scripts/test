@@ -3,6 +3,7 @@
 # Test and report code coverage.
 
 source "$(dirname "$0")/common_lib.sh"
+init_py_env
 
 coverage run -m -p pytest
 coverage run -p ./run-test ../test/integer -c
