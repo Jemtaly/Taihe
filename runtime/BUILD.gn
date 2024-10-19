@@ -1,6 +1,0 @@
-static_library("string") {
-  sources = [
-    "./src/string.c",
-  ]
-  include_dirs = ["//runtime/include"]
-}

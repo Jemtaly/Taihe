@@ -1,12 +1,12 @@
 template("taihe_compiler") {
   assert(defined(invoker.sources), "taihe compiler must specify a \"sources\" value")
+  assert(defined(invoker.mode), "taihe compiler must specify a \"mode\" value")
+  assert(invoker.mode == "author" || invoker.mode == "user", "\"mode\" value can only be \"author\" or \"user\"")
 
   code_gen_target_name = target_name + "_code_gen"
   config_target_name = target_name + "_config"
 
   action_foreach(code_gen_target_name) {
-    assert(defined(invoker.mode), "taihe compiler must specify a \"mode\" value")
-
     sources = invoker.sources
 
     script = "$taihe_source_path/compiler/run.py"
