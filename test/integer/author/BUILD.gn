@@ -1,14 +1,19 @@
 import("//build/compiler/taihe_compiler.gni")
 
-taihe_compiler("integer_test_author") {
-  idl_sources = [
-    "//test/integer/idl/integer.arithmetic.taihe",
-    "//test/integer/idl/integer.io.taihe"
+
+taihe_compiler("integer_test_author_compiler") {
+  sources = [
+    "../idl/integer.arithmetic.taihe",
+    "../idl/integer.io.taihe"
   ]
-  output_dir = "//test/integer/author/include"
   mode = "author"
 }
 
+config("integer_test_author_config") {
+  include_dirs = [
+    "$taihe_source_path/runtime/include",
+  ]
+}
 
 shared_library("author") {
   sources = [ 
@@ -17,13 +22,12 @@ shared_library("author") {
     "./src/integer.io.impl.cpp",
   ]
   deps = [
-    ":integer_test_author",
+    ":integer_test_author_compiler",
   ]
-  include_dirs = [
-    "./include",
-    "//runtime/include"
+  public_configs = [
+    ":integer_test_author_config",
   ]
-  lib_dirs = [ "/root/TaiheCompiler/out/runtime" ]
+  lib_dirs = [ libtaihe_rt_path ]
   libs = ["taihe-rt"]
-  ldflags = ["-Wl,-rpath=/root/TaiheCompiler/out/runtime"]
+  ldflags = ["-Wl,-rpath=$libtaihe_rt_path"]
 }

@@ -1,3 +1,0 @@
-/root/TaiheCompiler/out/runtime/CMakeFiles/taihe-rt.dir
-/root/TaiheCompiler/out/runtime/CMakeFiles/edit_cache.dir
-/root/TaiheCompiler/out/runtime/CMakeFiles/rebuild_cache.dir

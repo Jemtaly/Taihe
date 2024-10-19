@@ -1,24 +1,21 @@
 import("//build/compiler/taihe_compiler.gni")
 
-taihe_compiler("integer_test_user") {
-  idl_sources = [
-    "//test/integer/idl/integer.arithmetic.taihe",
-    "//test/integer/idl/integer.io.taihe"
+taihe_compiler("integer_test_user_compiler") {
+  sources = [
+    "../idl/integer.arithmetic.taihe",
+    "../idl/integer.io.taihe"
   ]
-  output_dir = "//test/integer/user/include"
   mode = "user"
 }
 
 executable("user") {
-  sources = [ "./src/main.cpp" ]
+  sources = [ 
+    "./src/main.cpp",
+  ]
   deps = [
-    ":integer_test_user",
-    "//test/integer/author:author"
+    ":integer_test_user_compiler",
+    "//author:author"
   ]
-  include_dirs = [
-    "./include",
-    "//test/integer/author/include",
-    "//runtime/include"
-  ]
-  ldflags = ["-Wl,-rpath=/root/TaiheCompiler/out"]
+  ldpath = rebase_path("$root_out_dir")
+  ldflags = ["-Wl,-rpath=$ldpath"]
 }

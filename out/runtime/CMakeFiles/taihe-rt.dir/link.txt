@@ -1,1 +1,0 @@
-/usr/bin/clang -fPIC -shared -Wl,-soname,libtaihe-rt.so -o libtaihe-rt.so CMakeFiles/taihe-rt.dir/src/string.c.o 

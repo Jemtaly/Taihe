@@ -12,9 +12,9 @@ template("taihe_compiler") {
 
     if (invoker.mode == "author") {
       outputs = [
-        "$target_out_dir/{{source_name_part}}.abi.h",
-        "$target_out_dir/{{source_name_part}}.impl.h",
-        "$target_out_dir/{{source_name_part}}.impl.hpp",
+        "$target_out_dir/include/{{source_name_part}}.abi.h",
+        "$target_out_dir/include/{{source_name_part}}.impl.h",
+        "$target_out_dir/include/{{source_name_part}}.impl.hpp",
       ]
     } else {
       outputs = [

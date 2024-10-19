@@ -1,0 +1,4 @@
+set_default_toolchain("//build/toolchain:clang")
+
+taihe_source_path = "/root/TaiheCompiler"
+libtaihe_rt_path = "$taihe_source_path/out/runtime"

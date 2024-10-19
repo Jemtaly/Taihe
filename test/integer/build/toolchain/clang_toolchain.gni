@@ -34,7 +34,7 @@ template("clang_toolchain") {
           command = "${invoker.cc} -MMD -MF $depfile @$rspfile -c {{source}} -o {{output}} -std=gnu11"
           description = "CC {{output}}"
           outputs = [
-              "{{source_out_dir}}/{{source}}${obj_extension}",
+              "{{source_out_dir}}/{{source_file_part}}${obj_extension}",
           ]
       }
 
@@ -46,7 +46,7 @@ template("clang_toolchain") {
           command = "${invoker.cxx} -MMD -MF $depfile @$rspfile -c {{source}} -o {{output}} -std=gnu++17"
           description = "CXX {{output}}"
           outputs = [
-              "{{source_out_dir}}/{{source_name_part}}${obj_extension}",
+              "{{source_out_dir}}/{{source_file_part}}${obj_extension}",
           ]
       }
 
