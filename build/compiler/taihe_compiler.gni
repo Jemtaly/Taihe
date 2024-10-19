@@ -1,14 +1,15 @@
 template("taihe_compiler") {
-  action_foreach(target_name) {
-    assert(defined(invoker.idl_sources), "taihe compiler must specify a \"idl_sources\" value")
-    assert(defined(invoker.output_dir), "taihe compiler must specify a \"headers_dir\" value")
+  assert(defined(invoker.sources), "taihe compiler must specify a \"sources\" value")
+
+  code_gen_target_name = target_name + "_code_gen"
+  config_target_name = target_name + "_config"
+
+  action_foreach(code_gen_target_name) {
     assert(defined(invoker.mode), "taihe compiler must specify a \"mode\" value")
 
-    mnemonic = "TAIHE"
+    sources = invoker.sources
 
-    sources = invoker.idl_sources
-
-    script = "//compiler/run.py"
+    script = "$taihe_source_path/compiler/run.py"
 
     if (invoker.mode == "author") {
       outputs = [
@@ -26,7 +27,6 @@ template("taihe_compiler") {
     args = [
       "{{source}}",
       rebase_path("$target_out_dir/include"),
-      rebase_path(invoker.output_dir),
     ]
 
     if (invoker.mode == "author") {
@@ -34,5 +34,24 @@ template("taihe_compiler") {
     } else {
       args += ["--user"]
     }
+  }
+
+  config(config_target_name) {
+    include_dirs = [ 
+      "$target_out_dir/include"
+    ]
+  }
+
+  source_set(target_name) {
+    sources = get_target_outputs(":$code_gen_target_name")
+
+    deps = [
+      ":$code_gen_target_name",
+    ]
+
+    public_configs = [
+      ":$config_target_name",
+    ]
+
   }
 }
