@@ -1,12 +1,12 @@
 #+TITLE: 在项目的 gn 构建流程中加入 Taihe
 
-* 如何 Taihe 引入项目：
+* 如何将 Taihe 引入项目：
 
 需要将 Taihe 中的 *runtime* 和 *compiler* 部分加入到项目构建流程。
 
 - Taihe runtime 部分产物为 libtaihe-rt.so，可以通过设置 libs 和 lib_dirs 字段来设置依赖
 
-  #+BEGIN_SRC bash
+  #+BEGIN_SRC gn
   shared_library("author") {
     lib_dirs = [ libtaihe_rt_path ]
     libs = ["taihe-rt"]
@@ -17,7 +17,7 @@
 
   1. *使用 taihe_compiler 模板：* 实例化一个 taihe_compiler，指定需要编译的 .taihe 文件，以及编译的模式
 
-     #+BEGIN_SRC bash
+     #+BEGIN_SRC gn
      taihe_compiler("author_compiler") {
        sources = [
          "xxx.taihe"
@@ -32,7 +32,7 @@
 
   2. *设置依赖：* 通过 deps 字段引入 "author_compiler"，会帮用户基于提供的 .taihe 文件生成头文件，并将这些头文件引入到构建过程中
 
-     #+BEGIN_SRC bash
+     #+BEGIN_SRC gn
      shared_library("author") {
        deps = [
          ":author_compiler,
@@ -48,7 +48,7 @@
 
 1. clone taihe 项目并编译出 libtaihe-rt.so
 
-   #+BEGIN_SRC bash
+   #+BEGIN_SRC gn
    git clone git@github.com:Jemtaly/TaiheCompiler.git
    cd TaiheCompiler
    mkdir -p out/runtime
@@ -62,7 +62,7 @@
 
 3. 在 BUILDCONFIG.gn 中指定 【taihe 源代码路径】和 【libtaihe-rt.so 路径】
 
-   #+BEGIN_SRC bash
+   #+BEGIN_SRC gn
    taihe_source_path = "/root/TaiheCompiler"
    libtaihe_rt_path = "$taihe_source_path/out/runtime"
    #+END_SRC
@@ -71,7 +71,7 @@
 
    - 使用 taihe_compiler：
 
-     #+BEGIN_SRC bash
+     #+BEGIN_SRC gn
      import("//build/compiler/taihe_compiler.gni")
      
      # 实例化 taihe_compiler，指定编译模式为 "author"
@@ -93,7 +93,7 @@
 
    - 设置依赖 libtaihe_rt.so：
 
-     #+BEGIN_SRC bash
+     #+BEGIN_SRC gn
      shared_library("author") {
        lib_dirs = [ libtaihe_rt_path ]
        libs = ["taihe-rt"]
