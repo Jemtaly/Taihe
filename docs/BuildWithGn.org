@@ -1,6 +1,6 @@
 #+TITLE: 在项目的 gn 构建流程中加入 Taihe
 
-* 如何将 Taihe 加入项目构建流程
+** 如何将 Taihe 加入项目构建流程
 
 需要将 Taihe 中的 *runtime* 和 *compiler* 部分加入到项目构建流程
 
@@ -41,7 +41,7 @@
      }
      #+END_SRC
 
-* 示例项目：
+** 示例项目：
 
 *路径：* TaiheCompiler/test/integer
 
