@@ -13,7 +13,7 @@
   }
   #+END_SRC
 
-- Taihe compiler 部分的运行调用使用 taihe_compiler.gni 文件进行了封装，在使用时直接在 BUILD.gn 中使用 taihe_compiler 模板实例化，并设置到 deps 中即可
+- Taihe compiler 部分的运行调用使用 taihe_compiler 模板进行了封装，在使用时直接在 BUILD.gn 中使用模板实例化，并设置到 deps 中即可
 
   1. *使用 taihe_compiler 模板：* 实例化一个 taihe_compiler，指定需要编译的 .taihe 文件，以及编译的模式
 
@@ -31,7 +31,7 @@
 
      - mode： taihe_compiler 提供两种编译模式，author 模式和 user 模式 
 
-  2. *设置依赖：* 通过 deps 字段引入 "author_compiler"，会帮用户基于提供的 .taihe 文件生成头文件，并将这些头文件引入到构建过程中
+  2. *设置依赖：* 通过 deps 字段引入 "author_compiler"，会编译提供的 .taihe 文件生成头文件，并将这些头文件引入到后续构建过程中
 
      #+BEGIN_SRC gn
      shared_library("author") {
@@ -57,11 +57,11 @@
    cmake -DCMAKE_C_COMPILER={clang_path} -DCMAKE_CXX_COMPILER={clang++_path} ../../runtime && make
    #+END_SRC
 
-2. 将 taihe_compiler.gni 复制到项目的 build 目录下
+2. 将 taihe_compiler.gni 文件复制到项目的 build 目录下
 
    *taihe_compiler.gni  的存放路径：* TaiheCompiler/build/compiler/taihe_compiler.gni，在示例项目 test/integer 中可以将模板移动到 build/compiler 下
 
-3. 在 BUILDCONFIG.gn 中指定 【taihe 源代码路径】和 【libtaihe-rt.so 路径】
+3. 在 BUILDCONFIG.gn 中指定 【taihe 源代码路径】和 【libtaihe-rt.so 存放路径】
 
    #+BEGIN_SRC gn
    taihe_source_path = "/root/TaiheCompiler"
