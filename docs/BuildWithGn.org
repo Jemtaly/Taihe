@@ -1,10 +1,10 @@
 #+TITLE: 在项目的 gn 构建流程中加入 Taihe
 
-* 如何将 Taihe 引入项目：
+* 如何将 Taihe 加入项目构建流程
 
-需要将 Taihe 中的 *runtime* 和 *compiler* 部分加入到项目构建流程。
+需要将 Taihe 中的 *runtime* 和 *compiler* 部分加入到项目构建流程
 
-- Taihe runtime 部分产物为 libtaihe-rt.so，可以通过设置 libs 和 lib_dirs 字段来设置依赖
+- Taihe runtime 部分产物为 libtaihe-rt.so，可以通过 libs 和 lib_dirs 字段来设置依赖
 
   #+BEGIN_SRC gn
   shared_library("author") {
@@ -20,7 +20,8 @@
      #+BEGIN_SRC gn
      taihe_compiler("author_compiler") {
        sources = [
-         "xxx.taihe"
+         "a.taihe",
+         "b.taihe"
        ]
        mode = "author"
      }
@@ -91,7 +92,7 @@
      }
      #+END_SRC
 
-   - 设置依赖 libtaihe_rt.so：
+   - 设置依赖 libtaihe-rt.so：
 
      #+BEGIN_SRC gn
      shared_library("author") {
