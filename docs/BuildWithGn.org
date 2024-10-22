@@ -59,7 +59,7 @@
 
 2. 将 taihe_compiler.gni 文件复制到项目的 build 目录下
 
-   *taihe_compiler.gni  的存放路径：* TaiheCompiler/build/compiler/taihe_compiler.gni，在示例项目 test/integer 中可以将模板移动到 build/compiler 下
+   在示例项目 test/integer 中将模板放在了 build/compiler 下
 
 3. 在 BUILDCONFIG.gn 中指定 【taihe 源代码路径】和 【libtaihe-rt.so 存放路径】
 
