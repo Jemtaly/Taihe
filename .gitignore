@@ -1,5 +1,6 @@
 # Binaries
 *.exe
+out
 
 # Compiler
 __pycache__
@@ -30,6 +31,3 @@ test/*/user_test
 
 # Clangd
 .cache
-
-# out
-out

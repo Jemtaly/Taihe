@@ -80,7 +80,7 @@ template("clang_toolchain") {
           soname = "{{target_output_name}}{{output_extension}}"
           rspfile = "${soname}.rsp"
           rspfile_content = "{{ldflags}} {{inputs}} {{solibs}} {{libs}}"
-          command = "${invoker.ld} -shared -o $soname @$rspfile -fPIC -v"
+          command = "${invoker.ld} -shared -o $soname @$rspfile -fPIC"
           description = "SOLINK $soname"
           default_output_extension = "$solink_extension"
           default_output_dir = "{{root_out_dir}}"

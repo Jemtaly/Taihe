@@ -18,15 +18,12 @@ def main(taihe_file: str, gen_dir: str, author: bool, user: bool):
     if user and author:
         raise ValueError(f"Invalid to set both author and user args as true")
 
-    print("Generating codes...")
     taihec(
         src_dirs=[idl_dir],
         dst_dir=gen_dir,
         gen_author=author,
         gen_user=user,
     )
-
-    print("generate done")
 
 
 if __name__ == "__main__":
