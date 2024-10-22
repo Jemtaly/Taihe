@@ -126,8 +126,8 @@ def get_dup_and_drop(
         target = symbol_tables[pkname][name][0]
         if isinstance(target, ast.Struct | ast.Interface | ast.Runtimeclass):
             return (
-                get_abi_name(pkname, name, suffix="__dup"),
-                get_abi_name(pkname, name, suffix="__drop"),
+                get_abi_name(pkname, (name, "dup")),
+                get_abi_name(pkname, (name, "drop")),
             )
         if isinstance(target, ast.Enum):
             return "", ""
@@ -256,13 +256,35 @@ def get_cpp_name(
     return cpp_name
 
 
-def get_abi_name(
-    pkname: tuple[str, ...],
-    type_name: str,
-    prefix: str = "__",
-    suffix: str = "",
-) -> str:
-    abi_name = prefix + "__".join(pkname) + "__" + type_name + suffix
+def get_abi_name(pkname: tuple[str, ...], type_name: str | tuple[str, ...]) -> str:
+    """Use hexadecimal numbers to represent the original underline positions in a name.
+
+    Design:
+    - 'position' is a list of equal length as abi_name, the default value for each element is 0.
+       When the underline comes from package name or type name,
+       the element at the corresponding position is set to 1.
+    - 'pos_code' converts 'position' to string ,then to binary number, then to hexadecimal.
+    - Finally, using '__p' as the identifier, take the numerical part of 'pos_code' to form suffix.
+
+    For example,
+    get_abi_name(["rgb", "base"], "get_rgb") = __rgb__base__get_rgb__p8
+
+    abi_name = __rgb__base__get_rgb
+    position: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
+    position_str: 00000000000000001000
+    pos_code: 0x8
+    """
+    if isinstance(type_name, str):
+        type_name = (type_name,)
+    name_str = "  " + "  ".join(pkname + type_name)
+    abi_name = "__" + "__".join(pkname + type_name)
+    position = [0] * len(abi_name)
+    for i in range(len(name_str)):
+        if name_str[i] == "_":
+            position[i] = 1
+    position_str = "".join(str(p) for p in position)
+    pos_code = hex(int(position_str, 2))
+    abi_name = abi_name + "__p" + pos_code[2:]
     return abi_name
 
 
@@ -441,7 +463,7 @@ def get_enum_field(self, node: ast.Enum) -> tuple[list[str], list[str], list[int
     for field in node.fields:
         assert isinstance(field.expr, ast.IntLiteralExpr)
         field_name = field.name.text
-        abi_field_name = get_abi_name(self.pkname, enum_name, suffix="__" + field_name)
+        abi_field_name = get_abi_name(self.pkname, (enum_name, field_name))
         val = int(field.expr.val.text)
         abi_f_names.append(abi_field_name)
         field_names.append(field_name)
@@ -538,8 +560,8 @@ def write_struct_in_files(
     abi_struct_name = get_abi_name(self.pkname, struct_name)
     cpp_struct_type = get_cpp_name(self.pkname, struct_name)
     abi_struct_type = get_abi_name(self.pkname, struct_name)
-    abi_struct_dupl_method = get_abi_name(self.pkname, struct_name, suffix="__dup")
-    abi_struct_drop_method = get_abi_name(self.pkname, struct_name, suffix="__drop")
+    abi_struct_dupl_method = get_abi_name(self.pkname, (struct_name, "dup"))
+    abi_struct_drop_method = get_abi_name(self.pkname, (struct_name, "drop"))
 
     if self.author or self.user:
         struct_h = self.files.setdefault(struct_h_name, File(is_header=True))
@@ -695,9 +717,7 @@ def get_function_returns(
             cpp_return_parts.append(cpp_return_part)
             abi_return_parts.append(abi_return_part)
         cpp_return_parts_str = ", ".join(cpp_return_parts)
-        abi_return_struct_name = get_abi_name(
-            self.pkname, func_name, suffix="__return_t"
-        )
+        abi_return_struct_name = get_abi_name(self.pkname, (func_name, "return_t"))
         abi_return_type = f"struct {abi_return_struct_name}"
         cpp_return_type = f"std::tuple<{cpp_return_parts_str}>"
         return_from_abi = f"taihe::core::from_abi<{cpp_return_type}, {abi_return_type}>"
@@ -730,7 +750,7 @@ def write_function_returns_in_files(
     cpp_return_type: str,
 ):
     abi_h_name, abi_hpp_name, _, impl_hpp_name = get_file_names(self.pkname, None)
-    abi_return_struct_name = get_abi_name(self.pkname, func_name, suffix="__return_t")
+    abi_return_struct_name = get_abi_name(self.pkname, (func_name, "return_t"))
     if self.author or self.user:
         abi_h = self.files[abi_h_name]
         abi_h.write(f"struct {abi_return_struct_name} {{\n")
