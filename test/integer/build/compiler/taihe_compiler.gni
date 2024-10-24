@@ -9,7 +9,7 @@ template("taihe_compiler") {
   action_foreach(code_gen_target_name) {
     sources = invoker.sources
 
-    script = "$taihe_source_path/compiler/run.py"
+    script = "$taihe_compiler_path/taihe"
 
     if (invoker.mode == "author") {
       outputs = [
@@ -25,8 +25,8 @@ template("taihe_compiler") {
     }
 
     args = [
-      "{{source}}",
-      rebase_path("$target_out_dir/include"),
+      "-I", "{{source_dir}}",
+      "-O", rebase_path("$target_out_dir/include"),
     ]
 
     if (invoker.mode == "author") {
