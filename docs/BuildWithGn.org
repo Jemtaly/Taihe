@@ -47,26 +47,24 @@
 
 *步骤：*
 
-1. clone taihe 项目并编译出 libtaihe-rt.so
+1. clone taihe 项目并编译
 
    #+BEGIN_SRC gn
    git clone git@github.com:Jemtaly/TaiheCompiler.git
    cd TaiheCompiler
-   mkdir -p out/runtime
-   cd out/runtime
-   cmake -DCMAKE_C_COMPILER={clang_path} -DCMAKE_CXX_COMPILER={clang++_path} ../../runtime && make
+   ./build
    #+END_SRC
 
-2. 将 taihe_compiler.gni 文件复制到项目的 build 目录下
 
-   在示例项目 test/integer 中将模板放在了 build/compiler 下
-
-3. 在 BUILDCONFIG.gn 中指定 【taihe 源代码路径】和 【libtaihe-rt.so 存放路径】
+2. 设置环境变量 TAIHE_PATH
 
    #+BEGIN_SRC gn
-   taihe_source_path = "/root/TaiheCompiler"
-   libtaihe_rt_path = "$taihe_source_path/out/runtime"
+   export TAIHE_PATH={path_to_taihe}
    #+END_SRC
+
+3. 将 taihe_compiler.gni 文件复制到项目的 build 目录下
+
+   在示例项目 test/integer 中将模板放在了 build/compiler 下
 
 4. 将 taihe 加入到 author 和 user 的 BUILD.gn（以 author 的为例）
 
