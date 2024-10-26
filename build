@@ -1,5 +1,5 @@
 # set env
-export TAIHE_SOURCE_PATH = $(pwd)
+export TAIHE_SOURCE_PATH=$(pwd)
 
 # build runtime
 mkdir -p $TAIHE_SOURCE_PATH/out/runtime
