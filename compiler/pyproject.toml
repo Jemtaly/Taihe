@@ -7,6 +7,10 @@ include = [
     "taihe/parse/antlr/*",
 ]
 
+[tool.poetry.scripts]
+taihe="taihe.__main__:main"
+
+
 [tool.poetry.dependencies]
 python = "^3.10"
 antlr4-python3-runtime = "^4.13.2"

@@ -1,0 +1,15 @@
+# set env
+export TAIHE_SOURCE_PATH = $(pwd)
+
+# build runtime
+mkdir -p $TAIHE_SOURCE_PATH/out/runtime
+cd $TAIHE_SOURCE_PATH/out/runtime
+cmake -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++ $TAIHE_SOURCE_PATH/runtime && make
+
+# build compiler
+mkdir -p $TAIHE_SOURCE_PATH/out/compiler
+cd $TAIHE_SOURCE_PATH/compiler
+./generate-grammer
+poetry build
+pip3 install ./dist/*.whl -t $TAIHE_SOURCE_PATH/out/compiler
+
