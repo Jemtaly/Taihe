@@ -9,7 +9,6 @@ bin_dir=$TAIHE_SOURCE_PATH/out/bin
 lib_dir=$TAIHE_SOURCE_PATH/out/lib/taihe
 so_dir=$TAIHE_SOURCE_PATH/out/share/taihe
 include_dir=$TAIHE_SOURCE_PATH/out/include
-src_dir=$TAIHE_SOURCE_PATH/out/src
 
 # build runtime & copy outs
 mkdir -p $TAIHE_SOURCE_PATH/runtime/out
@@ -18,11 +17,9 @@ cmake -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++ ..
 
 mkdir -p $so_dir/runtime/$machine_name
 mkdir -p $include_dir
-mkdir -p $src_dir/runtime
 
 cp $TAIHE_SOURCE_PATH/runtime/out/libtaihe-rt.so $so_dir/runtime/$machine_name
 cp -r $TAIHE_SOURCE_PATH/runtime/include/* $include_dir
-cp -r $TAIHE_SOURCE_PATH/runtime/src/* $src_dir/runtime
 
 
 # build compiler & copy outs
