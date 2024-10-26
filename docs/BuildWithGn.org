@@ -61,7 +61,7 @@
    export TAIHE_PATH={path_to_taihe}
    #+END_SRC
 
-3. 运行实例项目
+3. 运行示例项目
 
    #+BEGIN_SRC gn
    gn gen out
