@@ -1,5 +1,7 @@
 set_default_toolchain("//build/toolchain:clang")
 
-taihe_source_path = getenv("TAIHE_SOURCE_PATH")
-libtaihe_rt_path = "$taihe_source_path/out/runtime"
-taihe_compiler_path = "$taihe_source_path/out/compiler/bin"
+taihe_path = getenv("TAIHE_PATH")
+taihe_out_path = "$taihe_path/out"
+taihe_out_include_path = "$taihe_out_path/include"
+taihe_out_compiler_path = "$taihe_out_path/bin"
+taihe_out_librt_path = "$taihe_out_path/share/taihe/runtime/x86-64"

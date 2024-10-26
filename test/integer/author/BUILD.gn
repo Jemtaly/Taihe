@@ -11,7 +11,7 @@ taihe_compiler("integer_test_author_compiler") {
 
 config("integer_test_author_config") {
   include_dirs = [
-    "$taihe_source_path/runtime/include",
+    "$taihe_out_include_path",
   ]
 }
 
@@ -27,7 +27,7 @@ shared_library("author") {
   public_configs = [
     ":integer_test_author_config",
   ]
-  lib_dirs = [ libtaihe_rt_path ]
+  lib_dirs = [ taihe_out_librt_path ]
   libs = ["taihe-rt"]
-  ldflags = ["-Wl,-rpath=$libtaihe_rt_path"]
+  ldflags = ["-Wl,-rpath=$taihe_out_librt_path"]
 }

@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+import subprocess
+import os
+import sys
+
+taihe_path = os.getenv("TAIHE_PATH")
+taihe_out_compiler_path = os.path.join(taihe_path, "out/libs/taihe/compiler")
+taihe_out_main_path = os.path.join(taihe_path, "out/libs/taihe/compiler/taihe/__main__.py")
+
+
+python_env = {'PYTHONPATH': taihe_out_compiler_path}
+env = {**python_env}
+
+def run_other_script(args):
+    subprocess.run(["python", taihe_out_main_path] + args, env=env)
+
+if __name__ == "__main__":
+    run_other_script(sys.argv[1:])

@@ -9,7 +9,7 @@ template("taihe_compiler") {
   action_foreach(code_gen_target_name) {
     sources = invoker.sources
 
-    script = "$taihe_compiler_path/taihe"
+    script = "$taihe_out_compiler_path/taihec"
 
     if (invoker.mode == "author") {
       outputs = [
