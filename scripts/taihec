@@ -5,8 +5,8 @@ import os
 import sys
 
 taihe_path = os.getenv("TAIHE_PATH")
-taihe_out_compiler_path = os.path.join(taihe_path, "out/libs/taihe/compiler")
-taihe_out_main_path = os.path.join(taihe_path, "out/libs/taihe/compiler/taihe/__main__.py")
+taihe_out_compiler_path = os.path.join(taihe_path, "out/lib/taihe/compiler")
+taihe_out_main_path = os.path.join(taihe_path, "out/lib/taihe/compiler/taihe/__main__.py")
 
 
 python_env = {'PYTHONPATH': taihe_out_compiler_path}
