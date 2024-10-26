@@ -64,6 +64,7 @@
 3. 运行示例项目
 
    #+BEGIN_SRC gn
+   cd ./test/integer
    gn gen out
    ninja -C out
    #+END_SRC   
