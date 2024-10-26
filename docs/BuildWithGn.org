@@ -41,7 +41,7 @@
      }
      #+END_SRC
 
-** 示例项目：
+** 运行示例项目：
 
 *路径：* TaiheCompiler/test/integer
 
@@ -61,41 +61,9 @@
    export TAIHE_PATH={path_to_taihe}
    #+END_SRC
 
-3. 将 taihe_compiler.gni 文件复制到项目的 build 目录下
+3. 运行实例项目
 
-   在示例项目 test/integer 中将模板放在了 build/compiler 下
-
-4. 将 taihe 加入到 author 和 user 的 BUILD.gn（以 author 的为例）
-
-   - 使用 taihe_compiler：
-
-     #+BEGIN_SRC gn
-     import("//build/compiler/taihe_compiler.gni")
-     
-     # 实例化 taihe_compiler，指定编译模式为 "author"
-     taihe_compiler("integer_test_author_compiler") {
-       sources = [
-         "../idl/integer.arithmetic.taihe",
-         "../idl/integer.io.taihe"
-       ]
-       mode = "author"
-     }
-     
-     # 设置依赖
-     shared_library("author") {
-       deps = [
-         ":integer_test_author_compiler",
-       ]
-     }
-     #+END_SRC
-
-   - 设置依赖 libtaihe-rt.so：
-
-     #+BEGIN_SRC gn
-     shared_library("author") {
-       lib_dirs = [ libtaihe_rt_path ]
-       libs = ["taihe-rt"]
-     }
-     #+END_SRC
-
-   
+   #+BEGIN_SRC gn
+   gn gen out
+   ninja -C out
+   #+END_SRC   
