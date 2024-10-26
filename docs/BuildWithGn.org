@@ -55,10 +55,10 @@
    ./scripts/build
    #+END_SRC
 
-2. 设置环境变量 TAIHE_PATH
+2. 给出taihe产物的路径 TAIHE_OUT_PATH
 
    #+BEGIN_SRC gn
-   export TAIHE_PATH={path_to_taihe}
+   export TAIHE_OUT_PATH={path_to_taihe_outs}
    #+END_SRC
 
 3. 运行示例项目
