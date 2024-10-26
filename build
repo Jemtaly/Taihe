@@ -23,7 +23,6 @@ cd $TAIHE_SOURCE_PATH/out/libs/taihe/compiler
 ./generate-grammar
 poetry build
 cp $TAIHE_SOURCE_PATH/scripts/taihec $TAIHE_SOURCE_PATH/out/bin/taihec
-chmod u+x $TAIHE_SOURCE_PATH/out/bin/taihec
 
 
 
