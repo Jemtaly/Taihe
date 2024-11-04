@@ -6,7 +6,7 @@ source "$(dirname "$0")/common_lib.sh"
 
 build-runtime-libs() {
     echo "Building the runtime"
-    local build_dir="runtime/build" arch="$(uname -m)"
+    local build_dir="runtime/out" arch="$(uname -m)"
     cmake -S runtime -B "$build_dir" -G Ninja
     cmake --build "$build_dir"
 
