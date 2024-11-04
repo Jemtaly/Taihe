@@ -1,4 +1,0 @@
-#!/usr/bin/bash
-
-export PYTHONPATH="$TAIHE_OUT_PATH/lib/taihe/compiler"
-exec python3 "$TAIHE_OUT_PATH/lib/taihe/compiler/taihe/__main__.py" "$@"
