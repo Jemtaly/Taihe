@@ -21,7 +21,11 @@ from taihe.semantics.types import (
     TypeQualifier,
 )
 from taihe.utils.diagnostics import DiagnosticsManager
-from taihe.utils.exceptions import TypeNotExistError
+from taihe.utils.exceptions import (
+    DeclRedefDiagError,
+    EnumValueCollisionError,
+    TypeNotExistError,
+)
 from taihe.utils.sources import SourceBase, SourceBuffer, SourceFile, SourceLocation
 
 
@@ -118,6 +122,26 @@ def eval_int_expr(node: ast.IntExpr) -> int:
         )
 
 
+def check_DeclRefDiagError(diag: DiagnosticsManager, items: list):
+    symbol = {}
+    with diag.capture_error():
+        for f in items:
+            if prev := symbol.get(f.name, None):
+                raise DeclRedefDiagError(prev, f)
+            else:
+                symbol[f.name] = f
+
+
+def check_EnumValueCollisionError(diag: DiagnosticsManager, items: list):
+    symbol = {}
+    with diag.capture_error():
+        for f in items:
+            if prev := symbol.get(f.value, None):
+                raise EnumValueCollisionError(prev, f, f.value)
+            else:
+                symbol[f.value] = f
+
+
 class AstConverter(Visitor):
     """Converts a node on AST to the intermetiade representation.
 
@@ -153,8 +177,9 @@ class AstConverter(Visitor):
         name = str(node.name)
         loc = self.loc(node.name)
         ty = BuiltinType.lookup(name)
-        if ty is None:
-            raise TypeNotExistError(name, loc=loc)
+        with self.diag.capture_error():
+            if ty is None:
+                raise TypeNotExistError(name, loc=loc)
         return TypeRefDecl(name, ty, loc=loc)
 
     @override
@@ -168,8 +193,15 @@ class AstConverter(Visitor):
     def visit_Struct(self, node: ast.Struct) -> Optional[StructDecl]:
         d = StructDecl(str(node.name), loc=self.loc(node.name))
         no_error = self.diag.for_each(
-            node.fields, lambda f: d.add_field(str(f.name), self.visit(f.type))
+            node.fields,
+            lambda f: d.add_field(
+                str(f.name),
+                self.visit(f.type),
+                loc=self.loc(f.name),
+                ty_loc=self.loc(f.type.name),
+            ),
         )
+        check_DeclRefDiagError(self.diag, d.fields)
         if no_error:
             return d
 
@@ -186,6 +218,8 @@ class AstConverter(Visitor):
                 v = next_value
                 next_value += 1
             decl.add_item(str(node_item.name), v, loc=self.loc(node_item.name))
+        check_DeclRefDiagError(self.diag, decl.items)
+        check_EnumValueCollisionError(self.diag, decl.items)
         return decl
 
     @override
@@ -203,8 +237,11 @@ class AstConverter(Visitor):
         f = FuncDecl(str(node.name), loc=self.loc(node.name))
         no_error = self.diag.for_each(
             node.parameters,
-            lambda p: f.add_param(str(p.name), self.visit(p.param_type)),
+            lambda p: f.add_param(
+                str(p.name), self.visit(p.param_type), loc=self.loc(p.name)
+            ),
         )
+        check_DeclRefDiagError(self.diag, f.params)
         if no_error:
             return f
 
@@ -227,6 +264,7 @@ class AstConverter(Visitor):
                 p.old_name.text,
                 alias=alias,
                 loc=self.loc(p.new_name or p.old_name),
+                pkg_loc=self.loc(node.pkname),
             )
 
     @override

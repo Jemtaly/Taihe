@@ -127,9 +127,15 @@ class DeclarationImportDecl(ImportDecl):
     name: str
     """Optionally use another name for the imported declaration."""
 
-    def __init__(self, pkg: str, sym: str, *, alias: str = "", **kwargs):
+    pkg_loc: SourceLocation
+    """The location of the package."""
+
+    def __init__(
+        self, pkg: str, sym: str, *, pkg_loc: SourceLocation, alias: str = "", **kwargs
+    ):
         super().__init__(name=alias or sym, pkg=pkg, **kwargs)
         self.decl = sym
+        self.pkg_loc = pkg_loc
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
@@ -236,10 +242,12 @@ class StructFieldDecl(Decl):
 
     ty: Type
     parent: Optional["StructDecl"] = None
+    ty_loc: SourceLocation
 
-    def __init__(self, name: str, ty: Type, **kwargs):
+    def __init__(self, name: str, ty: Type, ty_loc: SourceLocation, **kwargs):
         super().__init__(name, **kwargs)
         self.ty = ty
+        self.ty_loc = ty_loc
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
