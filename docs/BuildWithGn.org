@@ -1,6 +1,6 @@
-#+TITLE: 在项目的 gn 构建流程中加入 Taihe
+#+TITLE: 在项目的 GN 构建流程中加入 Taihe
 
-** 如何将 Taihe 加入项目构建流程
+* 如何将 Taihe 加入项目构建流程
 
 需要将 Taihe 中的 *runtime* 和 *compiler* 部分加入到项目构建流程
 
@@ -41,7 +41,7 @@
      }
      #+END_SRC
 
-** 运行示例项目：
+* 运行示例项目
 
 *路径：* TaiheCompiler/test/integer
 
@@ -55,7 +55,7 @@
    ./scripts/build
    #+END_SRC
 
-2. 给出taihe产物的路径 TAIHE_OUT_PATH
+2. 给出 taihe 产物的路径 TAIHE_OUT_PATH
 
    #+BEGIN_SRC gn
    export TAIHE_OUT_PATH={path_to_taihe_outs}
@@ -67,4 +67,4 @@
    cd ./test/integer
    gn gen out --args='target_cpu="{设置成"uname -m"的返回值}"'
    ninja -C out
-   #+END_SRC   
+   #+END_SRC
