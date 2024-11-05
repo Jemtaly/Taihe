@@ -9,6 +9,7 @@ from typing import (
     TYPE_CHECKING,
     ClassVar,
     Optional,
+    TextIO,
     TypeVar,
 )
 
@@ -59,7 +60,7 @@ class DiagBase:
     """The base class for diagnostic messages."""
 
     LEVEL: ClassVar[Level] = Level.ERROR
-    DESC: ClassVar[str] = "<todo-diagbase-desc>"
+    LEVEL_DESC: ClassVar[str] = "<todo-diagbase-desc>"
     STYLE = AnsiStyle.CYAN
 
     MSG: ClassVar[str] = "<todo-diagbase-msg>"
@@ -76,8 +77,12 @@ class DiagBase:
         """Returns the associated notes."""
         return ()
 
-    def _format(self, f: FilterT):
-        return f"{f(AnsiStyle.BRIGHT)}{self.loc or '???'}: {f(self.STYLE)}{self.DESC}{f(AnsiStyle.RESET)}: {self.format_msg()}{f(AnsiStyle.RESET_ALL)}"
+    def _format(self, f: FilterT) -> str:
+        return (
+            f"{f(AnsiStyle.BRIGHT)}{self.loc or '???'}: "  # "example.taihe:7:20: "
+            f"{f(self.STYLE)}{self.LEVEL_DESC}{f(AnsiStyle.RESET)}: "  # "error: "
+            f"{self.format_msg()}{f(AnsiStyle.RESET_ALL)}"  # "redefinition of ..."
+        )
 
     def __str__(self) -> str:
         return self._format(_discard)
@@ -91,28 +96,28 @@ class DiagBase:
 @dataclass
 class DiagNote(DiagBase):
     LEVEL = Level.NOTE
-    DESC = "note"
+    LEVEL_DESC = "note"
     STYLE = AnsiStyle.CYAN
 
 
 @dataclass
 class DiagWarn(DiagBase):
     LEVEL = Level.WARN
-    DESC = "warning"
+    LEVEL_DESC = "warning"
     STYLE = AnsiStyle.MAGENTA
 
 
 @dataclass
 class DiagError(DiagBase, Exception):
     LEVEL = Level.ERROR
-    DESC = "error"
+    LEVEL_DESC = "error"
     STYLE = AnsiStyle.RED
 
 
 @dataclass
 class DiagFatalError(DiagError):
     LEVEL = Level.FATAL
-    DESC = "fatal"
+    LEVEL_DESC = "fatal"
 
 
 ########################
@@ -131,14 +136,21 @@ class AdhocDiagNote(DiagNote):
 class DiagnosticsManager:
     """Manages diagnostic messages."""
 
-    def __init__(self):
-        if stderr.isatty():
+    def __init__(self, out: TextIO = stderr):
+        self._out = out
+        if self._out.isatty():
             self._color_filter_fn = _passthrough
         else:
             self._color_filter_fn = _discard
 
+    def _write(self, s: str):
+        self._out.write(s)
+
+    def _flush(self):
+        self._out.flush()
+
     # TODO: could be slow.
-    def _render_lines(self, loc: "SourceLocation"):
+    def _render_source_location(self, loc: "SourceLocation"):
         MAX_LINE_NO_SPACE = 5
         if loc.line == 0:
             return
@@ -147,30 +159,35 @@ class DiagnosticsManager:
         if loc.line - 1 > len(line_contents):
             return
 
+        # The first line: content.
         line_content = line_contents[loc.line - 1].rstrip("\n")
-        print(f"{loc.line:{MAX_LINE_NO_SPACE}} | {line_content}")
+        self._write(f"{loc.line:{MAX_LINE_NO_SPACE}} | {line_content}\n")
 
         if loc.column == 0 or len(line_content) == 0:
             return
 
+        # The second line: marker.
         col_begin = min(loc.column - 1, len(line_content) - 1)
         col_end = min(loc.column - 1 + max(loc.span, 1), len(line_content))
         markers = "^" * (col_end - col_begin)
-        f = self._color_filter_fn
-        print(
-            f"{'':{MAX_LINE_NO_SPACE}} | {f(AnsiStyle.GREEN + AnsiStyle.BRIGHT)}{'':{col_begin}}{markers}{f(AnsiStyle.RESET_ALL)}"
+        c = self._color_filter_fn
+        self._write(
+            f"{'':{MAX_LINE_NO_SPACE}} | "
+            f"{c(AnsiStyle.GREEN + AnsiStyle.BRIGHT)}"
+            f"{'':{col_begin}}{markers}{c(AnsiStyle.RESET_ALL)}\n"
         )
 
     def _render(self, d: DiagBase):
-        print(f"{d._format(self._color_filter_fn)}")
+        self._write(f"{d._format(self._color_filter_fn)}\n")
         if d.loc:
-            self._render_lines(d.loc)
+            self._render_source_location(d.loc)
 
     def emit(self, diag: DiagBase):
         """Emits a new diagnostic message."""
         self._render(diag)
         for n in diag.notes():
             self._render(n)
+        stderr.flush()
 
     @contextmanager
     def capture_error(self):

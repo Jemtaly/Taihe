@@ -284,11 +284,11 @@ def check_cycle_error(pg: PackageGroup, diag: DiagnosticsManager):
         for s in pkg.structs:
             children = struct_table.setdefault((pkg.name, s.name), [])
             for j in s.fields:
-                # pyre-fixme[16]: `Type` has no attribute `ref_ty`.
                 if isinstance(j.ty.ref_ty, StructDecl):
-                    # pyre-fixme[16]: `Type` has no attribute `name`.
+                    # pyre-fixme[16]: Optional type has no attribute `parent`.
                     children.append((j.name, (j.ty.ref_ty.parent.name, j.ty.name)))
                     strcut_table_reverse[
+                        # pyre-fixme[16]: Optional type has no attribute `parent`.
                         str((j.name, (j.ty.ref_ty.parent.name, j.ty.name)))
                     ] = j
 

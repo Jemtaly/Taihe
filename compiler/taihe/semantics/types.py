@@ -1,4 +1,4 @@
-"""Defines the high-level types inside a compiler."""
+"""Defines the type system."""
 
 from dataclasses import dataclass
 from enum import Enum, IntFlag, auto
@@ -13,7 +13,13 @@ if TYPE_CHECKING:
 
 
 class TypeAlike(Protocol):
-    """Represents `Type`s and its containers (QualifiedType and TypeRef)."""
+    """Represents classes that are similar to, but not necessarily identical to, types.
+
+    This protocol defines a single method, `_accept`, which is used by `TypeVisitor` instances
+    to traverse and process instances of classes conforming to this protocol.
+
+    Notable implementors to this protocol are type containers, i.e. `QualifiedType` and `TypeRef`.
+    """
 
     def _accept(self, v: "TypeVisitor") -> Any: ...
 
@@ -33,7 +39,7 @@ class TypeRef(TypeAlike):
     struct Foo { ... }.     // `Foo` is a `TypeDecl`.
 
     fn func(foo: Foo);      // `Foo` is a `TypeRef`, which points to `Foo`.
-    fn func(foo: BadType);  // `Foo` is a `TypeRef`, which points to `None`.
+    fn func(foo: BadType);  // `BadType` is a `TypeRef`, which points to `None`.
     ```
     """
 
@@ -41,6 +47,7 @@ class TypeRef(TypeAlike):
     ref_ty: Optional[Type] = None
 
     def _accept(self, v: "TypeVisitor") -> Any:
+        v.visiting = self
         return v.visit_type_ref(self)
 
     def __repr__(self) -> str:
@@ -61,6 +68,7 @@ class QualifiedType(TypeAlike):
     qual: TypeQualifier = TypeQualifier.NONE
 
     def _accept(self, v: "TypeVisitor") -> Any:
+        v.visiting = self
         return v.visit_qualified_type(self)
 
     def __repr__(self) -> str:
@@ -94,6 +102,7 @@ class BuiltinType(Type):
     kind: BuiltinTypeKind
 
     def _accept(self, v: "TypeVisitor") -> Any:
+        v.visiting = self
         return v.visit_builtin_type(self)
 
     @staticmethod
@@ -101,7 +110,7 @@ class BuiltinType(Type):
         return _TYPE_MAPS.get(name)
 
     def __repr__(self) -> str:
-        return f"<type-builtin {self.name!r})>"
+        return f"<type-builtin {self.name!r}>"
 
 
 @dataclass(frozen=True, repr=False)
@@ -111,12 +120,14 @@ class ScalarType(BuiltinType):
     is_float: bool = False
 
     def _accept(self, v: "TypeVisitor") -> Any:
+        v.visiting = self
         return v.visit_scalar_type(self)
 
 
 @dataclass(frozen=True, repr=False)
 class SpecialType(BuiltinType):
     def _accept(self, v: "TypeVisitor") -> Any:
+        v.visiting = self
         return v.visit_special_type(self)
 
 
@@ -126,8 +137,8 @@ STRING = SpecialType("String", BuiltinTypeKind.STRING)
 BOOL = ScalarType(
     "bool", BuiltinTypeKind.BOOL, 8, is_signed=False
 )  # Essentially a `u8`
-F16 = ScalarType("f16", BuiltinTypeKind.FLOAT, 16, is_signed=True)
-F32 = ScalarType("f32", BuiltinTypeKind.FLOAT, 32, is_signed=True)
+F32 = ScalarType("f32", BuiltinTypeKind.FLOAT, 32, is_signed=True, is_float=True)
+F64 = ScalarType("f64", BuiltinTypeKind.FLOAT, 64, is_signed=True, is_float=True)
 
 I8 = ScalarType("i8", BuiltinTypeKind.INTEGER, 8, is_signed=True)
 I16 = ScalarType("i16", BuiltinTypeKind.INTEGER, 16, is_signed=True)
@@ -141,5 +152,5 @@ U64 = ScalarType("u64", BuiltinTypeKind.INTEGER, 64, is_signed=False)
 
 _TYPE_MAPS: dict[str, BuiltinType] = {
     ty.name: ty
-    for ty in [VOID, BOOL, STRING, I8, I16, I32, I64, U8, U16, U32, U64, F16, F32]
+    for ty in [VOID, BOOL, STRING, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64]
 }
