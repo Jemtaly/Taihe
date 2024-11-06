@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import Optional
+from typing import Optional, Union
 
 from typing_extensions import override
 
@@ -8,11 +8,14 @@ from taihe.semantics.declarations import (
     Decl,
     DeclarationImportDecl,
     EnumDecl,
+    EnumItemDecl,
     FuncDecl,
     ImportDecl,
     Package,
     PackageImportDecl,
+    ParamDecl,
     StructDecl,
+    StructFieldDecl,
     TypeRefDecl,
 )
 from taihe.semantics.types import (
@@ -122,24 +125,25 @@ def eval_int_expr(node: ast.IntExpr) -> int:
         )
 
 
-def check_DeclRefDiagError(diag: DiagnosticsManager, items: list):
+def check_DeclRefDiagError(
+    diag: DiagnosticsManager,
+    items: Union[list[ParamDecl], list[EnumItemDecl], list[StructFieldDecl]],
+):
     symbol = {}
-    with diag.capture_error():
-        for f in items:
-            if prev := symbol.get(f.name, None):
-                raise DeclRedefDiagError(prev, f)
-            else:
-                symbol[f.name] = f
+    for f in items:
+        if prev := symbol.get(f.name, None):
+            diag.emit(DeclRedefDiagError(prev, f))
+        else:
+            symbol[f.name] = f
 
 
-def check_EnumValueCollisionError(diag: DiagnosticsManager, items: list):
+def check_EnumValueCollisionError(diag: DiagnosticsManager, items: list[EnumItemDecl]):
     symbol = {}
-    with diag.capture_error():
-        for f in items:
-            if prev := symbol.get(f.value, None):
-                raise EnumValueCollisionError(prev, f, f.value)
-            else:
-                symbol[f.value] = f
+    for f in items:
+        if prev := symbol.get(f.value, None):
+            diag.emit(EnumValueCollisionError(prev, f, f.value))
+        else:
+            symbol[f.value] = f
 
 
 class AstConverter(Visitor):
@@ -177,9 +181,8 @@ class AstConverter(Visitor):
         name = str(node.name)
         loc = self.loc(node.name)
         ty = BuiltinType.lookup(name)
-        with self.diag.capture_error():
-            if ty is None:
-                raise TypeNotExistError(name, loc=loc)
+        if ty is None:
+            self.diag.emit(TypeNotExistError(name, loc=loc))
         return TypeRefDecl(name, ty, loc=loc)
 
     @override
@@ -195,10 +198,7 @@ class AstConverter(Visitor):
         no_error = self.diag.for_each(
             node.fields,
             lambda f: d.add_field(
-                str(f.name),
-                self.visit(f.type),
-                loc=self.loc(f.name),
-                ty_loc=self.loc(f.type.name),
+                str(f.name), self.visit(f.type), loc=self.loc(f.name)
             ),
         )
         check_DeclRefDiagError(self.diag, d.fields)
@@ -210,7 +210,6 @@ class AstConverter(Visitor):
         decl = EnumDecl(str(node.name), loc=self.loc(node.name))
         next_value = 0
         for node_item in node.fields:
-            # TODO: error handling; overflow check
             if node_item.expr:
                 v = eval_int_expr(node_item.expr)
                 next_value = v + 1

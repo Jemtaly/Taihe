@@ -20,7 +20,11 @@ class EnumValueCollisionDiagNote(DiagNote):
 
 @dataclass
 class RecursiveInclusionNote(DiagNote):
-    MSG = "forward declaration"
+    MSG = "the struct is included in {struct.name}"
+
+    def __init__(self, loc: Optional["SourceLocation"], struct: "Decl"):
+        self.loc = loc
+        self.struct = struct
 
 
 @dataclass
@@ -116,23 +120,32 @@ class SymbolConflictWithNamespaceError(DiagError):
 
 @dataclass
 class RecursiveInclusionError(DiagError):
-    MSG = "{current.description} has incomplete type {struct!r}"
-
-    current: "Decl"
+    MSG = "recursive inclusion is found in {struct.name}"
 
     def __init__(
         self,
-        current: "Decl",
-        ty_loc,
-        struct,
+        loc: Optional["SourceLocation"],
+        struct: "Decl",
+        note: list[tuple[Optional["SourceLocation"], "Decl"]],
     ):
-        self.current = current
-        self.loc = current.loc
-        self.ty_loc = ty_loc
+        self.loc = loc
         self.struct = struct
+        self.note = note
 
     def notes(self):
-        yield RecursiveInclusionNote(loc=self.ty_loc)
+        for n in self.note:
+            yield RecursiveInclusionNote(loc=n[0], struct=n[1])
+
+
+@dataclass
+class NotATypeError(DiagError):
+    MSG = "{name!r} is not a type"
+
+    name: str
+
+    def __init__(self, current: "Decl"):
+        self.loc = current.loc
+        self.name = current.name
 
 
 @dataclass

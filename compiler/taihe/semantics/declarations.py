@@ -265,12 +265,10 @@ class StructFieldDecl(Decl):
 
     ty: TypeRef
     parent: Optional["StructDecl"] = None
-    ty_loc: SourceLocation
 
-    def __init__(self, name: str, ty: TypeRef, ty_loc: SourceLocation, **kwargs):
+    def __init__(self, name: str, ty: TypeRef, **kwargs):
         super().__init__(name, **kwargs)
         self.ty = ty
-        self.ty_loc = ty_loc
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
