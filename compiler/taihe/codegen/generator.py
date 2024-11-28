@@ -33,43 +33,44 @@ from taihe.semantics.types import (
 )
 from taihe.semantics.visitor import DeclVisitor, TypeVisitor
 from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
-from taihe.utils.targets import TargetBuffer, TargetManager
+from taihe.utils.outputs import OutputBase, OutputManager
 
 
-class CTargetBuffer(TargetBuffer):
-    def __init__(self, basename: str, ext: str):
-        super().__init__(basename, ext)
+class COutputBuffer(OutputBase):
+    """Represents a C or C++ target file."""
+
+    def __init__(self, filename: str):
+        super().__init__(filename)
         self.headers: set[str] = set()
         self.code = StringIO()
 
     @override
     def output_to(self, dst_path: PathLike):
-        with open(
-            Path(dst_path) / (self.basename + self.ext), "w", encoding="utf-8"
-        ) as dst:
-            if self.ext == ".h" or self.ext == ".hpp":
+        with open(Path(dst_path) / self.filename, "w", encoding="utf-8") as dst:
+            if self.filename.endswith((".h", ".hpp")):
                 dst.write(f"#pragma once\n")
             for header in self.headers:
                 dst.write(f"#include <{header}>\n")
             dst.write(self.code.getvalue())
 
-    def write(self, code: str):
-        self.code.write(code)
-
+    @override
     def show(self):
-        print(f"// {self.basename + self.ext}")
-        if self.ext == ".h" or self.ext == ".hpp":
+        print(f"// {self.filename}")
+        if self.filename.endswith((".h", ".hpp")):
             print(f"#pragma once")
         for header in self.headers:
             print(f"#include <{header}>")
         print(self.code.getvalue())
 
-    def include(self, *headers: "str | CTargetBuffer | None"):
+    def write(self, code: str):
+        self.code.write(code)
+
+    def include(self, *headers: "str | COutputBuffer | None"):
         for header in headers:
             if isinstance(header, str):
                 self.headers.add(header)
-            elif isinstance(header, CTargetBuffer):
-                self.headers.add(header.basename + header.ext)
+            elif isinstance(header, COutputBuffer):
+                self.headers.add(header.filename)
 
 
 class ABIFuncDeclInfo(AbstractAnalysis):
@@ -153,6 +154,8 @@ class ABINormalTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
             U32: "uint32_t",
             U64: "uint64_t",
         }.get(t)
+        if self.name is None:
+            raise ValueError
 
     def visit_special_type(self, t: SpecialType) -> Any:
         if t == STRING:
@@ -161,7 +164,7 @@ class ABINormalTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
 
 
 class ABICodeGenerator(DeclVisitor):
-    def __init__(self, tm: TargetManager, am: AnalysisManager):
+    def __init__(self, tm: OutputManager, am: AnalysisManager):
         self._current_package_group = None
         self._current_package = None
         self._current_abi_target = None
@@ -185,14 +188,14 @@ class ABICodeGenerator(DeclVisitor):
         self._current_package_group = None
 
     @property
-    def _abi_target(self) -> CTargetBuffer:
+    def _abi_target(self) -> COutputBuffer:
         assert self._current_abi_target
         return self._current_abi_target
 
     @override
     def visit_package(self, p: Package):
         pkg_name = p.name
-        self._current_abi_target = CTargetBuffer(pkg_name, ".h")
+        self._current_abi_target = COutputBuffer(pkg_name)
         self.tm.add(self._current_abi_target)
 
         self._current_abi_target.include("taihe/common.h")
@@ -207,7 +210,7 @@ class ABICodeGenerator(DeclVisitor):
     def visit_enum_decl(self, d: EnumDecl) -> Any:
         enum_abi_info = ABIEnumDeclInfo.get(self.am, d)
 
-        enum_abi_target = CTargetBuffer(enum_abi_info.header, ".h")
+        enum_abi_target = COutputBuffer(enum_abi_info.header)
         self.tm.add(enum_abi_target)
 
         enum_abi_target.write(f"enum {enum_abi_info.name} {{\n")
@@ -219,9 +222,9 @@ class ABICodeGenerator(DeclVisitor):
 
     @override
     def visit_struct_decl(self, d: StructDecl) -> Any:
-        struct_abi_info = ABIEnumDeclInfo.get(self.am, d)
+        struct_abi_info = ABIStructDeclInfo.get(self.am, d)
 
-        struct_abi_target = CTargetBuffer(struct_abi_info.header, ".h")
+        struct_abi_target = COutputBuffer(struct_abi_info.header)
         self.tm.add(struct_abi_target)
 
         struct_abi_target.write(f"struct {struct_abi_info.name} {{\n")

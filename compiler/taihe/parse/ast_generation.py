@@ -3,6 +3,7 @@ from typing import Any
 from antlr4 import CommonTokenStream, StdinStream, Token
 from antlr4.error.ErrorListener import ErrorListener
 
+from taihe.utils.exceptions import IDLSyntaxError
 from taihe.parse.antlr.TaiheAST import TaiheAST
 from taihe.parse.antlr.TaiheLexer import TaiheLexer
 from taihe.parse.antlr.TaiheParser import TaiheParser

@@ -10,8 +10,8 @@ from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import DiagnosticsManager, Level
+from taihe.utils.outputs import OutputManager
 from taihe.utils.sources import SourceManager
-from taihe.utils.targets import TargetManager
 
 
 @dataclass
@@ -52,7 +52,7 @@ class CompilerInstance:
 
     analysis_manager: AnalysisManager
 
-    target_manager: TargetManager
+    target_manager: OutputManager
 
     def __init__(self, invocation: CompilerInvocation):
         self.invocation = invocation
@@ -60,7 +60,7 @@ class CompilerInstance:
         self.diagnostics_manager = DiagnosticsManager()
         self.package_group = PackageGroup()
         self.analysis_manager = AnalysisManager()
-        self.target_manager = TargetManager()
+        self.target_manager = OutputManager()
 
     ##########################
     # The compilation phases #
