@@ -1,14 +1,12 @@
-"""
-Analysis Framework Module
+"""This module provides a framework for managing and caching instances of analysis objects.
 
-This module provides a framework for managing and caching instances of analysis objects.
 Key classes and their responsibilities:
 - `AbstractAnalysis`: Defines the base class for all analysis types, enforcing the use of
   hashable arguments for unique identification and caching.
 - `AnalysisManager`: Manages caching and retrieval of analysis objects.
 - `CacheKey`: Represents a unique key for identifying cached analysis instances.
 
-The framework ensures that analyses are uniquely identified by their type and arguments, 
+The framework ensures that analyses are uniquely identified by their type and arguments,
 avoiding redundant computation or memory usage.
 """
 

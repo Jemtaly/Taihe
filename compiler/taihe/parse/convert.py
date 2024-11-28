@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from typing_extensions import override
 
 from taihe.parse import Visitor, ast
+from taihe.parse.ast_generation import generate_ast
 from taihe.semantics.declarations import (
     Decl,
     DeclarationImportDecl,
@@ -23,7 +24,7 @@ from taihe.semantics.types import (
     TypeQualifier,
 )
 from taihe.utils.diagnostics import DiagnosticsManager
-from taihe.utils.sources import SourceBase, SourceBuffer, SourceFile, SourceLocation
+from taihe.utils.sources import SourceBase, SourceLocation
 
 
 def pkg2str(pkg_name: list[ast.token] | None) -> str:
@@ -279,16 +280,6 @@ class AstConverter(Visitor):
 
     def convert(self) -> Package:
         """Converts the whole source code buffer to a package."""
-        from antlr4 import FileStream, InputStream
+        ast = generate_ast(self.source, self.diag)
 
-        from taihe.parse.ast_generation import generate_ast
-
-        if isinstance(self.source, SourceBuffer):
-            stream = InputStream(self.source.buf)
-        elif isinstance(self.source, SourceFile):
-            stream = FileStream(self.source.source_identifier)
-        else:
-            raise NotImplementedError
-
-        ast = generate_ast(stream)
         return self.visit_Spec(ast)

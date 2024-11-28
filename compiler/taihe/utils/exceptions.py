@@ -15,6 +15,15 @@ if TYPE_CHECKING:
 
 
 @dataclass
+class IDLSyntaxError(DiagFatalError):
+    MSG = "{msg}"
+
+    def __init__(self, loc, msg):
+        self.loc = loc
+        self.msg = msg
+
+
+@dataclass
 class DefinitionConflictDiagNote(DiagNote):
     MSG = "previously defined here"
 
@@ -94,7 +103,7 @@ class EnumValueCollisionError(DiagError):
 
 
 @dataclass
-class PackageNotExistError(DiagFatalError):
+class PackageNotExistError(DiagError):
     MSG = "package {name!r} not exist"
 
     name: str
