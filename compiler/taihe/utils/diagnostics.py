@@ -3,7 +3,7 @@
 from collections.abc import Callable, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import IntEnum
 from sys import stderr
 from typing import (
     TYPE_CHECKING,
@@ -48,7 +48,7 @@ FilterT = Callable[[str], str]
 ###################
 
 
-class Level(Enum):
+class Level(IntEnum):
     NOTE = 0
     WARN = 1
     ERROR = 2
@@ -136,7 +136,10 @@ class AdhocDiagNote(DiagNote):
 class DiagnosticsManager:
     """Manages diagnostic messages."""
 
+    current_max_level: Level
+
     def __init__(self, out: TextIO = stderr):
+        self.current_max_level = Level.NOTE
         self._out = out
         if self._out.isatty():
             self._color_filter_fn = _passthrough
@@ -184,6 +187,7 @@ class DiagnosticsManager:
 
     def emit(self, diag: DiagBase):
         """Emits a new diagnostic message."""
+        self.current_max_level = max(self.current_max_level, diag.LEVEL)
         self._render(diag)
         for n in diag.notes():
             self._render(n)

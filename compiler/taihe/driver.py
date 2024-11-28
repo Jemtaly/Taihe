@@ -9,7 +9,7 @@ from taihe.parse.convert import AstConverter
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
 from taihe.utils.analyses import AnalysisManager
-from taihe.utils.diagnostics import DiagnosticsManager
+from taihe.utils.diagnostics import DiagnosticsManager, Level
 from taihe.utils.sources import SourceManager
 from taihe.utils.targets import TargetManager
 
@@ -90,4 +90,6 @@ class CompilerInstance:
         self.scan()
         self.parse()
         self.validate()
+        if self.diagnostics_manager.current_max_level >= Level.ERROR:
+            return
         self.generate()
