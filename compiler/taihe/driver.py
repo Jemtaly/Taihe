@@ -4,12 +4,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from taihe.codegen.generator import ABICodeGenerator
 from taihe.parse.convert import AstConverter
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
-from taihe.semantics.format import pretty_print
+from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import DiagnosticsManager
 from taihe.utils.sources import SourceManager
+from taihe.utils.targets import TargetManager
 
 
 @dataclass
@@ -48,11 +50,17 @@ class CompilerInstance:
     source_manager: SourceManager
     package_group: PackageGroup
 
+    analysis_manager: AnalysisManager
+
+    target_manager: TargetManager
+
     def __init__(self, invocation: CompilerInvocation):
         self.invocation = invocation
         self.source_manager = SourceManager()
         self.diagnostics_manager = DiagnosticsManager()
         self.package_group = PackageGroup()
+        self.analysis_manager = AnalysisManager()
+        self.target_manager = TargetManager()
 
     ##########################
     # The compilation phases #
@@ -72,8 +80,11 @@ class CompilerInstance:
         analyze_semantics(self.package_group, self.diagnostics_manager)
 
     def generate(self):
-        s = pretty_print(self.package_group)
-        print(s)
+        # s = pretty_print(self.package_group)
+        # print(s)
+        generator = ABICodeGenerator(self.target_manager, self.analysis_manager)
+        generator.handle_decl(self.package_group)
+        self.target_manager.show()
 
     def run(self):
         self.scan()
