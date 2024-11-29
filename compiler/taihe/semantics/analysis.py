@@ -277,7 +277,7 @@ def check_struct_recursive_inclusion(pg: PackageGroup, diag: DiagnosticsManager)
             struct_list = struct_table.setdefault(struct, [])
             for field in struct.fields:
                 if isinstance(field.ty.ref_ty, StructDecl):
-                    struct_list.append((field, field.ty.ref_ty))
+                    struct_list.append(((struct, field), field.ty.ref_ty))
 
     cycles = detect_cycles(struct_table)
     for cycle in cycles:

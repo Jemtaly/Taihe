@@ -11,14 +11,17 @@ if TYPE_CHECKING:
         PackageLevelDecl,
         StructFieldDecl,
         TypeRefDecl,
+        StructDecl,
     )
 
 
 @dataclass
 class IDLSyntaxError(DiagFatalError):
-    MSG = "{msg}"
+    MSG = "unexpected {msg!r}"
 
-    def __init__(self, loc, msg):
+    msg: str
+
+    def __init__(self, loc: SourceLocation, msg: str):
         self.loc = loc
         self.msg = msg
 
@@ -35,7 +38,9 @@ class EnumValueCollisionDiagNote(DiagNote):
 
 @dataclass
 class RecursiveExtensionNote(DiagNote):
-    MSG = "the interface is extended by {iface.name}"
+    MSG = "the interface is extended by {iface.name!r}"
+
+    iface: "IfaceDecl"
 
     def __init__(
         self,
@@ -47,14 +52,16 @@ class RecursiveExtensionNote(DiagNote):
 
 @dataclass
 class RecursiveInclusionNote(DiagNote):
-    MSG = "the struct is included in {struct.name}"
+    MSG = "the struct is included in {struct.name!r}"
+
+    struct: "StructDecl"
 
     def __init__(
         self,
-        last: "StructFieldDecl",
+        last: tuple["StructDecl", "StructFieldDecl"],
     ):
-        self.loc = last.loc
-        self.struct = last.parent
+        self.loc = last[1].loc
+        self.struct = last[0]
 
 
 @dataclass
@@ -86,7 +93,7 @@ class DeclRedefDiagError(DiagError):
 
 @dataclass
 class EnumValueCollisionError(DiagError):
-    MSG = "discriminant value '{value}' already exists"
+    MSG = "discriminant value {value} already exists"
 
     prev: "Decl"
     current: "Decl"
@@ -212,6 +219,7 @@ class SymbolConflictWithNamespaceError(DiagError):
     MSG = "declaration of {current.description} in package {pkg_name!r} shadows a file-level declaration"
 
     current: "PackageLevelDecl"
+    pkg_name: str
 
     def __init__(self, current: "PackageLevelDecl", pkg_name: str):
         self.current = current
@@ -221,7 +229,9 @@ class SymbolConflictWithNamespaceError(DiagError):
 
 @dataclass
 class ExtendsTypeError(DiagError):
-    MSG = "expected an interface, got {name}"
+    MSG = "expected an interface, got {name!r}"
+
+    name: str
 
     def __init__(self, ty: "TypeRefDecl"):
         self.loc = ty.loc
@@ -230,7 +240,10 @@ class ExtendsTypeError(DiagError):
 
 @dataclass
 class RecursiveExtensionError(DiagError):
-    MSG = "recursive extension is found in {iface.name}"
+    MSG = "recursive extension is found in {iface.name!r}"
+
+    last: tuple["IfaceDecl", "TypeRefDecl"]
+    other: list[tuple["IfaceDecl", "TypeRefDecl"]]
 
     def __init__(
         self,
@@ -248,15 +261,18 @@ class RecursiveExtensionError(DiagError):
 
 @dataclass
 class RecursiveInclusionError(DiagError):
-    MSG = "recursive inclusion is found in {struct.name}"
+    MSG = "recursive inclusion is found in {struct.name!r}"
+
+    last: tuple["StructDecl", "StructFieldDecl"]
+    other: list[tuple["StructDecl", "StructFieldDecl"]]
 
     def __init__(
         self,
-        last: "StructFieldDecl",
-        other: list["StructFieldDecl"],
+        last: tuple["StructDecl", "StructFieldDecl"],
+        other: list[tuple["StructDecl", "StructFieldDecl"]],
     ):
-        self.loc = last.loc
-        self.struct = last.parent
+        self.loc = last[1].loc
+        self.struct = last[0]
         self.other = other
 
     def notes(self):
@@ -266,7 +282,10 @@ class RecursiveInclusionError(DiagError):
 
 @dataclass
 class QualifierError(DiagError):
-    MSG = "qualifier {qual} cannot be applied to {name}"
+    MSG = "qualifier {qual!r} cannot be applied to {name!r}"
+
+    name: str
+    qual: str
 
     def __init__(self, ty: "TypeRefDecl"):
         self.loc = ty.loc

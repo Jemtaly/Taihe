@@ -24,7 +24,7 @@ class TaiheErrorListener(ErrorListener):
                 SourceLocation(
                     self.source, line, column + 1, span=len(offendingSymbol.text)
                 ),
-                msg,
+                offendingSymbol.text,
             )
         )
         self.has_error = True

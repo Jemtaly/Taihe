@@ -159,19 +159,21 @@ class DiagnosticsManager:
             return
 
         line_contents = loc.file.read()
-        if loc.line - 1 > len(line_contents):
-            return
+        if loc.line - 1 >= len(line_contents):
+            line = len(line_contents)
+            line_content = line_contents[line - 1].rstrip("\n")
+            col_begin = len(line_content)
+            col_end = len(line_content) + 1
+        else:
+            line = loc.line
+            line_content = line_contents[line - 1].rstrip("\n")
+            col_begin = min(loc.column - 1, len(line_content))
+            col_end = min(loc.column - 1 + max(loc.span, 1), len(line_content) + 1)
 
         # The first line: content.
-        line_content = line_contents[loc.line - 1].rstrip("\n")
-        self._write(f"{loc.line:{MAX_LINE_NO_SPACE}} | {line_content}\n")
-
-        if loc.column == 0 or len(line_content) == 0:
-            return
+        self._write(f"{line:{MAX_LINE_NO_SPACE}} | {line_content}\n")
 
         # The second line: marker.
-        col_begin = min(loc.column - 1, len(line_content) - 1)
-        col_end = min(loc.column - 1 + max(loc.span, 1), len(line_content))
         markers = "^" * (col_end - col_begin)
         c = self._color_filter_fn
         self._write(
