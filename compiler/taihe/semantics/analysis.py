@@ -241,10 +241,10 @@ def check_sym_confilct_namespace(pg: PackageGroup, diag: DiagnosticsManager):
                 break
 
     for p in pg.packages:
-        for i in p.decls:
-            decl_name = p.name + "." + i
-            if decl_name in namespaces:
-                diag.emit(SymbolConflictWithNamespaceError(p.decls[i], p.name))
+        for d in p.decls.values():
+            name = p.name + "." + d.name
+            if name in namespaces:
+                diag.emit(SymbolConflictWithNamespaceError(d, p))
 
 
 def check_decls_and_imports_conflict(pg: PackageGroup, diag: DiagnosticsManager):

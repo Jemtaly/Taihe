@@ -258,7 +258,7 @@ class AstConverter(Visitor):
 
     @override
     def visit_Spec(self, node: ast.Spec) -> Package:
-        pkg = Package(self.source.pkg_name)
+        pkg = Package(self.source.pkg_name, SourceLocation(self.source))
         for u in node.uses:
             for i in self.visit(u):
                 assert isinstance(i, ImportDecl)

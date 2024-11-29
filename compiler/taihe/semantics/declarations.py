@@ -413,13 +413,12 @@ class IfaceDecl(TypeDecl):
 ######################
 
 
-class Package(DeclAlike):
+class Package(Decl):
     """A collection of named identities sharing the same scope."""
 
-    parent: ClassVar = None
+    KIND = "package"
 
-    # Metadata about the package itself.
-    name: str
+    parent: ClassVar = None
 
     # Symbols
     imports: dict[str, ImportDecl]
@@ -435,8 +434,10 @@ class Package(DeclAlike):
     enums: list[EnumDecl]
     interfaces: list[IfaceDecl]
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, loc: Optional[SourceLocation]):
+        self.loc = loc
         self.name = name
+
         self.imports = {}
         self.decls = {}
 

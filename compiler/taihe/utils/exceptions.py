@@ -8,22 +8,23 @@ if TYPE_CHECKING:
     from taihe.semantics.declarations import (
         Decl,
         IfaceDecl,
+        Package,
         PackageLevelDecl,
+        StructDecl,
         StructFieldDecl,
         TypeRefDecl,
-        StructDecl,
     )
 
 
 @dataclass
 class IDLSyntaxError(DiagFatalError):
-    MSG = "unexpected {msg!r}"
+    MSG = "unexpected {token!r}"
 
-    msg: str
+    token: str
 
-    def __init__(self, loc: SourceLocation, msg: str):
+    def __init__(self, loc: SourceLocation, token: str):
         self.loc = loc
-        self.msg = msg
+        self.token = token
 
 
 @dataclass
@@ -38,7 +39,7 @@ class EnumValueCollisionDiagNote(DiagNote):
 
 @dataclass
 class RecursiveExtensionNote(DiagNote):
-    MSG = "the interface is extended by {iface.name!r}"
+    MSG = "the interface is extended by {iface.description}"
 
     iface: "IfaceDecl"
 
@@ -52,7 +53,7 @@ class RecursiveExtensionNote(DiagNote):
 
 @dataclass
 class RecursiveInclusionNote(DiagNote):
-    MSG = "the struct is included in {struct.name!r}"
+    MSG = "the struct is included in {struct.description}"
 
     struct: "StructDecl"
 
@@ -66,9 +67,9 @@ class RecursiveInclusionNote(DiagNote):
 
 @dataclass
 class PackageRedefDiagError(DiagError):
-    MSG = "redefinition of package {pkg_name!r}"
+    MSG = "redefinition of {pkg.description}"
 
-    pkg_name: str
+    pkg: "Package"
     prev: SourceLocation
 
     def notes(self):
@@ -118,7 +119,7 @@ class PackageNotExistError(DiagError):
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -133,7 +134,7 @@ class DeclNotExistError(DiagError):
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -141,14 +142,14 @@ class DeclNotExistError(DiagError):
 
 @dataclass
 class DeclarationNotInScopeError(DiagError):
-    MSG = "declaration {name!r} is not declared or imported in this scope"
+    MSG = "declaration name {name!r} is not declared or imported in this scope"
 
     name: str
 
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -156,14 +157,14 @@ class DeclarationNotInScopeError(DiagError):
 
 @dataclass
 class PackageNotInScopeError(DiagError):
-    MSG = "package {name!r} is not imported in this scope"
+    MSG = "package name {name!r} is not imported in this scope"
 
     name: str
 
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -171,14 +172,14 @@ class PackageNotInScopeError(DiagError):
 
 @dataclass
 class NotATypeError(DiagError):
-    MSG = "declaration {name!r} is not a type"
+    MSG = "{name!r} is not a type name"
 
     name: str
 
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -186,14 +187,14 @@ class NotATypeError(DiagError):
 
 @dataclass
 class NotAPackageError(DiagError):
-    MSG = "{name!r} is not a package"
+    MSG = "{name!r} is not a package name"
 
     name: str
 
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -201,14 +202,14 @@ class NotAPackageError(DiagError):
 
 @dataclass
 class NotADeclarationError(DiagError):
-    MSG = "{name!r} is not a declaration"
+    MSG = "{name!r} is not a declaration name"
 
     name: str
 
     def __init__(
         self,
         name: str,
-        loc: Optional["SourceLocation"],
+        loc: Optional[SourceLocation],
     ):
         self.name = name
         self.loc = loc
@@ -216,15 +217,15 @@ class NotADeclarationError(DiagError):
 
 @dataclass
 class SymbolConflictWithNamespaceError(DiagError):
-    MSG = "declaration of {current.description} in package {pkg_name!r} shadows a file-level declaration"
+    MSG = "declaration of {decl.description} in {pkg.description} shadows a file-level declaration"
 
-    current: "PackageLevelDecl"
-    pkg_name: str
+    decl: "PackageLevelDecl"
+    pkg: "Package"
 
-    def __init__(self, current: "PackageLevelDecl", pkg_name: str):
-        self.current = current
-        self.loc = current.loc
-        self.pkg_name = pkg_name
+    def __init__(self, decl: "PackageLevelDecl", pkg: "Package"):
+        self.decl = decl
+        self.loc = decl.loc
+        self.pkg = pkg
 
 
 @dataclass
@@ -240,9 +241,9 @@ class ExtendsTypeError(DiagError):
 
 @dataclass
 class RecursiveExtensionError(DiagError):
-    MSG = "recursive extension is found in {iface.name!r}"
+    MSG = "recursive extension is found in {iface.description}"
 
-    last: tuple["IfaceDecl", "TypeRefDecl"]
+    iface: "IfaceDecl"
     other: list[tuple["IfaceDecl", "TypeRefDecl"]]
 
     def __init__(
@@ -261,9 +262,9 @@ class RecursiveExtensionError(DiagError):
 
 @dataclass
 class RecursiveInclusionError(DiagError):
-    MSG = "recursive inclusion is found in {struct.name!r}"
+    MSG = "recursive inclusion is found in {struct.description}"
 
-    last: tuple["StructDecl", "StructFieldDecl"]
+    struct: "StructDecl"
     other: list[tuple["StructDecl", "StructFieldDecl"]]
 
     def __init__(
