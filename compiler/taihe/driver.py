@@ -8,6 +8,7 @@ from taihe.codegen.generator import ABICodeGenerator
 from taihe.parse.convert import AstConverter
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
+from taihe.semantics.format import pretty_print
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import DiagnosticsManager, Level
 from taihe.utils.outputs import OutputManager
@@ -79,9 +80,11 @@ class CompilerInstance:
     def validate(self):
         analyze_semantics(self.package_group, self.diagnostics_manager)
 
+    def show(self):
+        s = pretty_print(self.package_group)
+        print(s)
+    
     def generate(self):
-        # s = pretty_print(self.package_group)
-        # print(s)
         generator = ABICodeGenerator(self.target_manager, self.analysis_manager)
         generator.handle_decl(self.package_group)
         self.target_manager.show()
@@ -92,4 +95,5 @@ class CompilerInstance:
         self.validate()
         if self.diagnostics_manager.current_max_level >= Level.ERROR:
             return
+        self.show()
         self.generate()

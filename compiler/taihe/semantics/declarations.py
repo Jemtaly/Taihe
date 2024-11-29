@@ -103,10 +103,6 @@ class TypeRefDecl(Decl, TypeAlike):
     def _accept(self, v: "DeclVisitor | TypeVisitor") -> Any:
         return v.visit_type_ref_decl(self)
 
-    def __repr__(self) -> str:
-        ref_str = repr(self.ref_ty) if self.ref_ty else f"??? {self.name!r}"
-        return f"<type-ref to {self.qual.describe(ref_str)}>"
-
 
 #######################
 # Import Declarations #
@@ -383,12 +379,12 @@ class IfaceDecl(TypeDecl):
     KIND = "struct"
 
     methods: list[IfaceMethodDecl]
-    extends: list[TypeRefDecl]
+    extends: set[TypeRefDecl]
 
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
         self.methods = []
-        self.extends = []
+        self.extends = set()
 
     @override
     def _accept(self, v: "TypeVisitor | DeclVisitor") -> Any:
@@ -405,7 +401,7 @@ class IfaceDecl(TypeDecl):
         self.methods.append(f)
 
     def add_base(self, d: TypeRefDecl):
-        self.extends.append(d)
+        self.extends.add(d)
 
 
 ######################

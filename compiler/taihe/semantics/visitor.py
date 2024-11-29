@@ -144,6 +144,7 @@ class DeclVisitor:
         del d
 
     def visit_func_base_decl(self, d: FuncBaseDecl) -> Any:
+        d._traverse(self)
         return self.visit_decl(d)
 
     ### Imports ###
@@ -173,7 +174,6 @@ class DeclVisitor:
         return self.visit_decl(d)
 
     def visit_func_decl(self, d: FuncDecl) -> Any:
-        d._traverse(self)
         return self.visit_func_base_decl(d)
 
     ### Type (Generic) ###

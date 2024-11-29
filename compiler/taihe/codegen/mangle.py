@@ -55,6 +55,8 @@ class DeclKind(Enum):
     STRUCT = "s"
     ENUM = "e"
     INTERFACE = "i"
+    FTABLE = "F"
+    VTABLE = "V"
 
 
 def _encode_uleb8(value: int) -> list[int]:
