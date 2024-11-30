@@ -54,10 +54,13 @@ class DeclKind(Enum):
     FUNCTION = "f"
     STRUCT = "s"
     ENUM = "e"
+    ENUM_ITEM = "v"
     INTERFACE = "i"
-    IID = "I"
-    FTABLE = "F"
-    VTABLE = "V"
+    IID = "iid"
+    FTABLE = "FTable"
+    VTABLE = "VTable"
+    COPY = "copy"
+    DROP = "drop"
 
 
 def _encode_uleb8(value: int) -> list[int]:

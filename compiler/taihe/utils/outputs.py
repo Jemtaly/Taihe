@@ -26,8 +26,6 @@ class OutputManager:
         self.targets: list[OutputBase] = []
 
     def output_to(self, dst_dir: PathLike):
-        if not path.exists(dst_dir):
-            makedirs(dst_dir, exist_ok=True)
         for target in self.targets:
             target.output_to(dst_dir)
 
