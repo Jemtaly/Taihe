@@ -332,11 +332,7 @@ class ABICodeGenerator(DeclVisitor):
             abi_struct_target.include(ty_info.header)
             copied = ty_info.copy_func(f"data.{field.name}")
             abi_struct_target.write(f"    {copied},\n")
-        abi_struct_target.write(
-            "  };\n"
-            "  return result;\n"
-            "}\n"
-        )
+        abi_struct_target.write("  };\n" "  return result;\n" "}\n")
 
         abi_struct_target.write(
             f"inline void {abi_struct_info.drop_name}(struct {abi_struct_info.name} data) {{\n"
@@ -473,6 +469,8 @@ class ABICodeGenerator(DeclVisitor):
 
         abi_iface_src.include(abi_iface_info.header_1)
 
-        abi_iface_src.write(f"void const* const {abi_iface_info.iid} = &{abi_iface_info.iid};\n")
+        abi_iface_src.write(
+            f"void const* const {abi_iface_info.iid} = &{abi_iface_info.iid};\n"
+        )
 
         self._abi_target.include(abi_iface_info.header_1)

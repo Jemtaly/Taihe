@@ -1,7 +1,7 @@
 """Manage output files."""
 
 from abc import ABC, abstractmethod
-from os import PathLike, makedirs, path
+from os import PathLike
 
 
 class OutputBase(ABC):
