@@ -379,12 +379,12 @@ class IfaceDecl(TypeDecl):
     KIND = "struct"
 
     methods: list[IfaceMethodDecl]
-    parents: set[TypeRefDecl]
+    parents: list[TypeRefDecl]
 
     def __init__(self, name: str, **kwargs):
         super().__init__(name, **kwargs)
         self.methods = []
-        self.parents = set()
+        self.parents = []
 
     @override
     def _accept(self, v: "TypeVisitor | DeclVisitor") -> Any:
@@ -401,7 +401,7 @@ class IfaceDecl(TypeDecl):
         self.methods.append(f)
 
     def add_parent(self, d: TypeRefDecl):
-        self.parents.add(d)
+        self.parents.append(d)
 
 
 ######################

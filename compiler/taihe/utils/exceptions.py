@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
-from taihe.utils.diagnostics import DiagError, DiagFatalError, DiagNote
+from taihe.utils.diagnostics import DiagError, DiagFatalError, DiagNote, DiagWarn
 from taihe.utils.sources import SourceLocation
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ class IDLSyntaxError(DiagFatalError):
 
 @dataclass
 class DefinitionConflictDiagNote(DiagNote):
-    MSG = "previously defined here"
+    MSG = "previously occurred here"
 
 
 @dataclass
@@ -237,6 +237,24 @@ class ExtendsTypeError(DiagError):
     def __init__(self, ty: "TypeRefDecl"):
         self.loc = ty.loc
         self.name = ty.name
+
+
+@dataclass
+class DuplicateExtendsWarn(DiagWarn):
+    MSG = "{iface.description} is extended multiple times"
+
+    iface: "IfaceDecl"
+    prev: "TypeRefDecl"
+    curr: "TypeRefDecl"
+
+    def __init__(self, iface: "IfaceDecl", prev: "TypeRefDecl", curr: "TypeRefDecl"):
+        self.loc = curr.loc
+        self.iface = iface
+        self.curr = curr
+        self.prev = prev
+
+    def notes(self):
+        yield DefinitionConflictDiagNote(loc=self.prev.loc)
 
 
 @dataclass

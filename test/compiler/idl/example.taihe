@@ -102,3 +102,7 @@ interface BadIface: i32 {  // ExtensTypeError
     function a(x: String): ();
     function a(x: i32): ();  // DeclConflictError
 }
+
+interface WarnIfaceA {}
+
+interface WarnIfaceB: WarnIfaceA, WarnIfaceA {} // DuplicateExtendsWarn

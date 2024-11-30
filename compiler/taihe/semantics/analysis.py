@@ -25,6 +25,7 @@ from taihe.utils.exceptions import (
     DeclarationNotInScopeError,
     DeclNotExistError,
     DeclRedefDiagError,
+    DuplicateExtendsWarn,
     EnumValueCollisionError,
     ExtendsTypeError,
     NotADeclarationError,
@@ -46,7 +47,7 @@ def analyze_semantics(pg: PackageGroup, diag: DiagnosticsManager):
     _ResolveImportsPass(diag).handle_decl(pg)
     _CheckFieldCollisionErrorPass(diag).handle_decl(pg)
     check_struct_recursive_inclusion(pg, diag)
-    check_iface_extends(pg, diag)
+    check_iface_parents(pg, diag)
     _CheckQualifierErrorPass(diag).handle_decl(pg)
 
 
@@ -210,10 +211,8 @@ def check_field_name_collision(
 ):
     symbol = {}
     for f in items:
-        if prev := symbol.get(f.name):
+        if (prev := symbol.setdefault(f.name, f)) != f:
             diag.emit(DeclRedefDiagError(prev, f))
-        else:
-            symbol[f.name] = f
 
 
 def check_field_value_collision(
@@ -222,10 +221,8 @@ def check_field_value_collision(
 ):
     symbol = {}
     for f in items:
-        if prev := symbol.get(f.value):
+        if (prev := symbol.setdefault(f.value, f)) != f:
             diag.emit(EnumValueCollisionError(prev, f, f.value))
-        else:
-            symbol[f.value] = f
 
 
 def check_sym_confilct_namespace(pg: PackageGroup, diag: DiagnosticsManager):
@@ -253,16 +250,20 @@ def check_decls_and_imports_conflict(pg: PackageGroup, diag: DiagnosticsManager)
             diag.emit(DeclRedefDiagError(p.imports[redef_decl], p.decls[redef_decl]))
 
 
-def check_iface_extends(pg: PackageGroup, diag: DiagnosticsManager):
+def check_iface_parents(pg: PackageGroup, diag: DiagnosticsManager):
     iface_table = {}
     for pkg in pg.packages:
         for iface in pkg.interfaces:
             base_list = iface_table.setdefault(iface, [])
-            for base in iface.parents:
-                if isinstance(base.ref_ty, IfaceDecl):
-                    base_list.append(((iface, base), base.ref_ty))
+            base_dict = {}
+            for parent in iface.parents:
+                base = parent.ref_ty
+                if not isinstance(base, IfaceDecl):
+                    diag.emit(ExtendsTypeError(parent))
+                elif (prev := base_dict.setdefault(base, parent)) != parent:
+                    diag.emit(DuplicateExtendsWarn(base, prev, parent))
                 else:
-                    diag.emit(ExtendsTypeError(base))
+                    base_list.append(((iface, parent), base))
 
     cycles = detect_cycles(iface_table)
     for cycle in cycles:
