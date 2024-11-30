@@ -1,7 +1,7 @@
 """Manage output files."""
 
 from abc import ABC, abstractmethod
-from os import PathLike
+from os import PathLike, path, makedirs
 
 
 class OutputBase(ABC):
@@ -13,7 +13,7 @@ class OutputBase(ABC):
         self.filename = filename
 
     @abstractmethod
-    def output_to(self, dst_path: PathLike): ...
+    def output_to(self, dst_dir: PathLike): ...
 
     @abstractmethod
     def show(self): ...
@@ -25,9 +25,11 @@ class OutputManager:
     def __init__(self):
         self.targets: list[OutputBase] = []
 
-    def output_to(self, dst_path: PathLike):
+    def output_to(self, dst_dir: PathLike):
+        if not path.exists(dst_dir):
+            makedirs(dst_dir, exist_ok=True)
         for target in self.targets:
-            target.output_to(dst_path)
+            target.output_to(dst_dir)
 
     def show(self):
         for target in self.targets:

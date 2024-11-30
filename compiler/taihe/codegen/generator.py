@@ -75,6 +75,11 @@ class COutputBuffer(OutputBase):
                 self.headers.add(header.filename)
 
 
+class ABIPackageInfo(AbstractAnalysis):
+    def __init__(self, am: AnalysisManager, p: Package) -> None:
+        self.header = f"{p.name}.abi.h"
+
+
 class ABIFuncDeclInfo(AbstractAnalysis):
     def __init__(self, am: AnalysisManager, f: FuncDecl) -> None:
         p = f.parent
@@ -109,7 +114,7 @@ class ABIStructDeclInfo(AbstractAnalysis):
         p = d.parent
         assert p
         segments = [*p.name.split("."), d.name]
-        self.header = f"{p.name}.{d.name}.h"
+        self.header = f"{p.name}.{d.name}.abi.h"
         self.name = encode(segments, DeclKind.STRUCT)
 
 
@@ -118,7 +123,7 @@ class ABIEnumDeclInfo(AbstractAnalysis):
         p = d.parent
         assert p
         segments = [*p.name.split("."), d.name]
-        self.header = f"{p.name}.{d.name}.h"
+        self.header = f"{p.name}.{d.name}.abi.h"
         self.name = encode(segments, DeclKind.ENUM)
 
 
@@ -127,12 +132,13 @@ class ABIIfaceDeclInfo(AbstractAnalysis):
         p = d.parent
         assert p
         segments = [*p.name.split("."), d.name]
-        self.header = f"{p.name}.{d.name}.h"
+        self.header_0 = f"{p.name}.{d.name}.abi.0.h"
+        self.header_1 = f"{p.name}.{d.name}.abi.1.h"
         self.name = encode(segments, DeclKind.INTERFACE)
         self.f_table = encode(segments, DeclKind.FTABLE)
         self.v_table = encode(segments, DeclKind.VTABLE)
         self.ancestors = [d]
-        for extend in d.extends:
+        for extend in d.parents:
             iface = extend.ref_ty
             assert isinstance(iface, IfaceDecl)
             abi_extend_info = ABIIfaceDeclInfo.get(am, iface)
@@ -140,6 +146,7 @@ class ABIIfaceDeclInfo(AbstractAnalysis):
         self.offsets: dict[IfaceDecl, int] = {}
         for i, ancestor in enumerate(self.ancestors):
             self.offsets.setdefault(ancestor, i)
+
 
 class ABINormalTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
     def __init__(self, am: AnalysisManager, t: TypeAlike) -> None:
@@ -163,7 +170,7 @@ class ABINormalTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
     @override
     def visit_iface_decl(self, d: IfaceDecl) -> Any:
         abi_iface_info = ABIIfaceDeclInfo.get(self.am, d)
-        self.header = abi_iface_info.header
+        self.header = abi_iface_info.header_0
         self.name = f"struct {abi_iface_info.name}"
 
     def visit_scalar_type(self, t: ScalarType):
@@ -189,52 +196,12 @@ class ABINormalTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
             self.name = "struct TString*"
 
 
-class ABIParamTypeRefDeclInfo(AbstractAnalysis, TypeVisitor):
-    def __init__(self, am: AnalysisManager, t: TypeAlike) -> None:
-        self.am = am
-        self.header = None
-        self.name = None
-        self.handle_type(t)
-
-    @override
-    def visit_enum_decl(self, d: EnumDecl) -> Any:
-        abi_enum_info = ABIEnumDeclInfo.get(self.am, d)
-        self.header = abi_enum_info.header
-        self.name = f"enum {abi_enum_info.name}"
-
+class ABIParamTypeRefDeclInfo(ABINormalTypeRefDeclInfo):
     @override
     def visit_struct_decl(self, d: StructDecl) -> Any:
         abi_struct_info = ABIStructDeclInfo.get(self.am, d)
         self.header = abi_struct_info.header
         self.name = f"struct {abi_struct_info.name} const*"
-
-    @override
-    def visit_iface_decl(self, d: IfaceDecl) -> Any:
-        abi_iface_info = ABIIfaceDeclInfo.get(self.am, d)
-        self.header = abi_iface_info.header
-        self.name = f"struct {abi_iface_info.name}"
-
-    def visit_scalar_type(self, t: ScalarType):
-        self.name = {
-            BOOL: "bool",
-            F32: "float",
-            F64: "double",
-            I8: "int8_t",
-            I16: "int16_t",
-            I32: "int32_t",
-            I64: "int64_t",
-            U8: "uint8_t",
-            U16: "uint16_t",
-            U32: "uint32_t",
-            U64: "uint64_t",
-        }.get(t)
-        if self.name is None:
-            raise ValueError
-
-    def visit_special_type(self, t: SpecialType) -> Any:
-        if t == STRING:
-            self.header = "taihe/string.abi.h"
-            self.name = "struct TString*"
 
 
 class ABICodeGenerator(DeclVisitor):
@@ -268,8 +235,8 @@ class ABICodeGenerator(DeclVisitor):
 
     @override
     def visit_package(self, p: Package):
-        pkg_name = p.name
-        self._current_abi_target = COutputBuffer(pkg_name)
+        abi_pkg_info = ABIPackageInfo.get(self.am, p)
+        self._current_abi_target = COutputBuffer(abi_pkg_info.header)
         self.tm.add(self._current_abi_target)
 
         self._current_abi_target.include("taihe/common.h")
@@ -285,7 +252,9 @@ class ABICodeGenerator(DeclVisitor):
         abi_func_info = ABIFuncDeclInfo.get(self.am, d)
         abi_return_t_info = ABIFuncReturnTypeInfo.get(self.am, d)
 
-        self._abi_target.write(f"TH_EXPORT {abi_return_t_info.name} {abi_func_info.name}(")
+        self._abi_target.write(
+            f"TH_EXPORT {abi_return_t_info.name} {abi_func_info.name}("
+        )
         params = []
         for param in d.params:
             abi_param_type_info = ABIParamTypeRefDeclInfo.get(self.am, param.ty)
@@ -323,71 +292,83 @@ class ABICodeGenerator(DeclVisitor):
         abi_struct_target.write("};\n")
 
         self._abi_target.include(abi_struct_target)
-    
+
     @override
     def visit_iface_decl(self, d: IfaceDecl) -> Any:
         abi_iface_info = ABIIfaceDeclInfo.get(self.am, d)
 
-        abi_iface_target = COutputBuffer(abi_iface_info.header)
-        self.tm.add(abi_iface_target)
+        abi_iface_target_0 = COutputBuffer(abi_iface_info.header_0)
+        self.tm.add(abi_iface_target_0)
+        abi_iface_target_1 = COutputBuffer(abi_iface_info.header_1)
+        self.tm.add(abi_iface_target_1)
 
-        abi_iface_target.write(f"struct {abi_iface_info.name};\n")
+        abi_iface_target_0.write(f"struct {abi_iface_info.f_table};\n")
+        abi_iface_target_0.write(f"struct {abi_iface_info.v_table};\n")
 
-        abi_iface_target.write(f"struct {abi_iface_info.f_table} {{\n")
+        abi_iface_target_0.write(f"struct {abi_iface_info.name} {{\n")
+        abi_iface_target_0.write(f"  struct {abi_iface_info.v_table}* pvtbl;\n")
+        abi_iface_target_0.write("  void* pdata;\n")
+        abi_iface_target_0.write("};\n")
+
+        abi_iface_target_1.include(abi_iface_target_0)
+        abi_iface_target_1.write(f"struct {abi_iface_info.f_table} {{\n")
         for method in d.methods:
             abi_return_t_info = ABIFuncReturnTypeInfo.get(self.am, method)
 
-            abi_iface_target.write(f"  {abi_return_t_info.name} (*{method.name})(")
+            abi_iface_target_1.write(f"  {abi_return_t_info.name} (*{method.name})(")
             params = ["void *pdata"]
             for param in method.params:
                 abi_param_type_info = ABIParamTypeRefDeclInfo.get(self.am, param.ty)
-                abi_iface_target.include(abi_param_type_info.header)
+                abi_iface_target_1.include(abi_param_type_info.header)
                 params.append(f"{abi_param_type_info.name} {param.name}")
-            abi_iface_target.write(", ".join(params))
-            abi_iface_target.write(");\n")
-        abi_iface_target.write("};\n")
+            abi_iface_target_1.write(", ".join(params))
+            abi_iface_target_1.write(");\n")
+        abi_iface_target_1.write("};\n")
 
-        abi_iface_target.write(f"struct {abi_iface_info.v_table} {{\n")
+        abi_iface_target_1.write(f"struct {abi_iface_info.v_table} {{\n")
         for i, ancestor in enumerate(abi_iface_info.ancestors):
             abi_ancestor_info = ABIIfaceDeclInfo.get(self.am, ancestor)
-            abi_iface_target.write(f"  struct {abi_ancestor_info.f_table}* pftbl_{i};\n");
-        abi_iface_target.write("};\n")
-
-        abi_iface_target.write(f"struct {abi_iface_info.name} {{\n")
-        abi_iface_target.write(f"  struct {abi_iface_info.v_table}* pvtbl;\n")
-        abi_iface_target.write("  void* pdata;\n")
-        abi_iface_target.write("};\n")
+            abi_iface_target_1.write(
+                f"  struct {abi_ancestor_info.f_table}* pftbl_{i};\n"
+            )
+        abi_iface_target_1.write("};\n")
 
         for method in d.methods:
             abi_method_info = ABIIfaceMethodDeclInfo.get(self.am, method)
             abi_return_t_info = ABIFuncReturnTypeInfo.get(self.am, method)
 
-            abi_iface_target.write(f"inline struct {abi_return_t_info.name} {abi_method_info.name}(")
+            abi_iface_target_1.write(
+                f"inline {abi_return_t_info.name} {abi_method_info.name}("
+            )
             params = [f"struct {abi_iface_info.name} fatptr"]
             for param in method.params:
                 abi_param_type_info = ABIParamTypeRefDeclInfo.get(self.am, param.ty)
                 params.append(f"{abi_param_type_info.name} {param.name}")
-            abi_iface_target.write(", ".join(params))
-            abi_iface_target.write(") {\n")
-            abi_iface_target.write(f"  return fatptr.pvtbl->pftbl_0->{method.name}(")
+            abi_iface_target_1.write(", ".join(params))
+            abi_iface_target_1.write(") {\n")
+            abi_iface_target_1.write(f"  return fatptr.pvtbl->pftbl_0->{method.name}(")
             params = ["fatptr.pdata"]
             for param in method.params:
                 params.append(param.name)
-            abi_iface_target.write(", ".join(params))
-            abi_iface_target.write(");\n")
-            abi_iface_target.write("}\n")
+            abi_iface_target_1.write(", ".join(params))
+            abi_iface_target_1.write(");\n")
+            abi_iface_target_1.write("}\n")
 
         for ancestor, i in abi_iface_info.offsets.items():
             if i == 0:
                 continue
             abi_ancestor_info = ABIIfaceDeclInfo.get(self.am, ancestor)
-            abi_iface_target.include(abi_ancestor_info.header)
-            abi_iface_target.write(f"inline struct {abi_ancestor_info.name} convert_{abi_iface_info.name}_to_{abi_ancestor_info.name}(struct {abi_iface_info.name} fatptr) {{\n")
-            abi_iface_target.write(f"  struct {abi_ancestor_info.name} result = {{\n")
-            abi_iface_target.write(f"     (struct {abi_iface_info.v_table}*)(&fatptr.pvtbl->pftbl_0 + {i}),\n")
-            abi_iface_target.write("     fatptr.pdata,\n")
-            abi_iface_target.write("  };\n")
-            abi_iface_target.write("  return result;\n")
-            abi_iface_target.write("}\n")
+            abi_iface_target_1.include(abi_ancestor_info.header_0)
+            abi_iface_target_1.write(
+                f"inline struct {abi_ancestor_info.name} convert_{abi_iface_info.name}_to_{abi_ancestor_info.name}(struct {abi_iface_info.name} fatptr) {{\n"
+            )
+            abi_iface_target_1.write(f"  struct {abi_ancestor_info.name} result = {{\n")
+            abi_iface_target_1.write(
+                f"     (struct {abi_ancestor_info.v_table}*)(&fatptr.pvtbl->pftbl_0 + {i}),\n"
+            )
+            abi_iface_target_1.write("     fatptr.pdata,\n")
+            abi_iface_target_1.write("  };\n")
+            abi_iface_target_1.write("  return result;\n")
+            abi_iface_target_1.write("}\n")
 
-        self._abi_target.include(abi_iface_target)
+        self._abi_target.include(abi_iface_target_1)

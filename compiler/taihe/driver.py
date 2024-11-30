@@ -83,11 +83,14 @@ class CompilerInstance:
     def show(self):
         s = pretty_print(self.package_group)
         print(s)
-    
+
     def generate(self):
         generator = ABICodeGenerator(self.target_manager, self.analysis_manager)
         generator.handle_decl(self.package_group)
-        self.target_manager.show()
+        if self.invocation.out_dir is None:
+            self.target_manager.show()
+        else:
+            self.target_manager.output_to(self.invocation.out_dir)
 
     def run(self):
         self.scan()

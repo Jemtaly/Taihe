@@ -258,7 +258,7 @@ def check_iface_extends(pg: PackageGroup, diag: DiagnosticsManager):
     for pkg in pg.packages:
         for iface in pkg.interfaces:
             base_list = iface_table.setdefault(iface, [])
-            for base in iface.extends:
+            for base in iface.parents:
                 if isinstance(base.ref_ty, IfaceDecl):
                     base_list.append(((iface, base), base.ref_ty))
                 else:

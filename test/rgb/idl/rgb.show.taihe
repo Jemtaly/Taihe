@@ -3,7 +3,7 @@ from rgb.base use RGB;
 function show(color: RGB): ();
 
 interface Base {
-    function base_func(): ();
+    function base_func(child: Child): ();
 }
 
 interface Father: Base {

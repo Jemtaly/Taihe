@@ -212,7 +212,7 @@ class AstConverter(Visitor):
                 d.add_function(m)
         for i in node.extends:
             with self.diag.capture_error():
-                d.add_base(self.visit(i))
+                d.add_parent(self.visit(i))
         return d
 
     @override

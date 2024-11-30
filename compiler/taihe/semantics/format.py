@@ -120,8 +120,8 @@ class _PrettyPrinter(DeclVisitor):
 
     @override
     def visit_iface_decl(self, d: IfaceDecl):
-        if d.extends:
-            fmt_extends = ", ".join(self.handle_decl(e) for e in d.extends)
+        if d.parents:
+            fmt_extends = ", ".join(self.handle_decl(e) for e in d.parents)
             ret = f"interface {d.name}: {fmt_extends} {{"
         else:
             ret = f"interface {d.name} {{"
