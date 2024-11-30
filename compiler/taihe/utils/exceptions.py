@@ -67,9 +67,9 @@ class RecursiveInclusionNote(DiagNote):
 
 @dataclass
 class PackageRedefDiagError(DiagError):
-    MSG = "redefinition of {pkg.description}"
+    MSG = "package name {pkg!r} is duplicated"
 
-    pkg: "Package"
+    pkg_name: str
     prev: SourceLocation
 
     def notes(self):

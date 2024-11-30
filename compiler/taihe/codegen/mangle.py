@@ -55,6 +55,7 @@ class DeclKind(Enum):
     STRUCT = "s"
     ENUM = "e"
     INTERFACE = "i"
+    IID = "I"
     FTABLE = "F"
     VTABLE = "V"
 
