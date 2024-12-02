@@ -25,7 +25,7 @@ from example.foo use Foo as Foobar;  // DeclConflictError
 struct ResolveTypesTester {
     a: unimported.Type;  // PackageNotInScopeError
     b: Bar.Type;  // NotAPackageError
-    c: nonexist.Baz;  // Should no error
+    c: nonexist.Baz;  // Nothing should be reported here
     d: bar.Bar;  // OK
     e: bar.func;  // NotATypeError
     f: bar.Foo;  // DeclNotExistError
@@ -34,7 +34,7 @@ struct ResolveTypesTester {
     v: good_func;  // NotATypeError
     w: Unimported;  // DeclNotInScopeError
     x: bar;  // NotADeclarationError
-    y: MyNonexist;  // Should no error
+    y: MyNonexist;  // Nothing should be reported here
     z: Bar;  // OK
 }
 
@@ -46,7 +46,7 @@ struct BadStruct {  // DeclConflictError
     a: i32;
     a: i32;  // DeclConflictError
     b: TestIface;  // StructFieldTypeError
-    c: MyNonexist;  // Should no error
+    c: MyNonexist;  // Nothing should be reported here
 }
 
 struct RecursiveStructA {
@@ -106,8 +106,9 @@ interface BadIface
     : i32  // ExtensTypeError
     , TestIface
     , TestIface  // DuplicateExtendsWarn
-    , MyNonexist  // Should no error
+    , MyNonexist  // Nothing should be reported here
 {
     function a(x: String): ();
     function a(x: i32): ();  // DeclConflictError
+    function b(x: i32, x: i32): ();  // DeclConflictError
 }
