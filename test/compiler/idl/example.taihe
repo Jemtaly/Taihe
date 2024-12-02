@@ -1,6 +1,6 @@
 // Use Packages
 
-use example.bar as bar; // OK
+use example.bar as bar;  // OK
 
 use example.nonexist as nonexist;  // PackageNotExistError
 
@@ -13,12 +13,12 @@ from example.nonexist use XXX, YYY;  // PackageNotExistError
 
 from example.bar use Bar;  // OK
 
-from example.foo use func as my_func; // NotATypeError
+from example.foo use func as my_func;  // NotATypeError
 
 from example.foo use Nonexist as MyNonexist;  // DeclNotExistError
 
 from example.bar use Bar as Foobar;
-from example.foo use Foo as Foobar; // DeclConflictError
+from example.foo use Foo as Foobar;  // DeclConflictError
 
 // Structs
 
@@ -45,6 +45,8 @@ struct BadStruct {}
 struct BadStruct {  // DeclConflictError
     a: i32;
     a: i32;  // DeclConflictError
+    b: TestIface;  // StructFieldTypeError
+    c: MyNonexist;  // Should no error
 }
 
 struct RecursiveStructA {
@@ -98,11 +100,14 @@ interface RecursiveIfaceB: RecursiveIfaceC {}
 
 interface RecursiveIfaceC: RecursiveIfaceA {}  // RecursiveExtension
 
-interface BadIface: i32 {  // ExtensTypeError
+interface TestIface {}
+
+interface BadIface
+    : i32  // ExtensTypeError
+    , TestIface
+    , TestIface  // DuplicateExtendsWarn
+    , MyNonexist  // Should no error
+{
     function a(x: String): ();
     function a(x: i32): ();  // DeclConflictError
 }
-
-interface WarnIfaceA {}
-
-interface WarnIfaceB: WarnIfaceA, WarnIfaceA {} // DuplicateExtendsWarn

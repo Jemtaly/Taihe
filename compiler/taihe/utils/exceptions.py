@@ -229,6 +229,17 @@ class SymbolConflictWithNamespaceError(DiagError):
 
 
 @dataclass
+class StructFieldTypeError(DiagError):
+    MSG = "expected built-in/struct/enum type, got {name!r}"
+
+    name: str
+
+    def __init__(self, ty: "TypeRefDecl"):
+        self.loc = ty.loc
+        self.name = ty.name
+
+
+@dataclass
 class ExtendsTypeError(DiagError):
     MSG = "expected an interface, got {name!r}"
 

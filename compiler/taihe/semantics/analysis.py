@@ -19,6 +19,7 @@ from taihe.semantics.declarations import (
     TypeDecl,
     TypeRefDecl,
 )
+from taihe.semantics.types import BuiltinType
 from taihe.semantics.visitor import DeclVisitor
 from taihe.utils.diagnostics import DiagnosticsManager
 from taihe.utils.exceptions import (
@@ -36,6 +37,7 @@ from taihe.utils.exceptions import (
     QualifierError,
     RecursiveExtensionError,
     RecursiveInclusionError,
+    StructFieldTypeError,
     SymbolConflictWithNamespaceError,
 )
 
@@ -46,7 +48,7 @@ def analyze_semantics(pg: PackageGroup, diag: DiagnosticsManager):
     check_sym_confilct_namespace(pg, diag)
     _ResolveImportsPass(diag).handle_decl(pg)
     _CheckFieldCollisionErrorPass(diag).handle_decl(pg)
-    check_struct_recursive_inclusion(pg, diag)
+    check_struct_fields(pg, diag)
     check_iface_parents(pg, diag)
     _CheckQualifierErrorPass(diag).handle_decl(pg)
 
@@ -257,8 +259,9 @@ def check_iface_parents(pg: PackageGroup, diag: DiagnosticsManager):
             base_list = iface_table.setdefault(iface, [])
             base_dict = {}
             for parent in iface.parents:
-                base = parent.ref_ty
-                if not isinstance(base, IfaceDecl):
+                if (base := parent.ref_ty) is None:
+                    pass
+                elif not isinstance(base, IfaceDecl):
                     diag.emit(ExtendsTypeError(parent))
                 elif (prev := base_dict.setdefault(base, parent)) != parent:
                     diag.emit(DuplicateExtendsWarn(base, prev, parent))
@@ -271,14 +274,18 @@ def check_iface_parents(pg: PackageGroup, diag: DiagnosticsManager):
         diag.emit(RecursiveExtensionError(last, other))
 
 
-def check_struct_recursive_inclusion(pg: PackageGroup, diag: DiagnosticsManager):
+def check_struct_fields(pg: PackageGroup, diag: DiagnosticsManager):
     struct_table = {}
     for pkg in pg.packages:
         for struct in pkg.structs:
             struct_list = struct_table.setdefault(struct, [])
             for field in struct.fields:
-                if isinstance(field.ty.ref_ty, StructDecl):
-                    struct_list.append(((struct, field), field.ty.ref_ty))
+                if (inner := field.ty.ref_ty) is None:
+                    pass
+                elif not isinstance(inner, BuiltinType | EnumDecl | StructDecl):
+                    diag.emit(StructFieldTypeError(field.ty))
+                elif isinstance(inner, StructDecl):
+                    struct_list.append(((struct, field), inner))
 
     cycles = detect_cycles(struct_table)
     for cycle in cycles:
