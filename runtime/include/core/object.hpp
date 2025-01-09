@@ -267,25 +267,24 @@ struct impl_view {
     }
 };
 
-template<typename Impl, typename... InterfaceHolders>
-inline auto make_holder(auto&&... args) {
+template<typename Impl, typename... InterfaceHolders, typename... Args>
+inline auto make_holder(Args&&... args) {
     return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{
         new data_block_impl<Impl>(
             reinterpret_cast<TypeInfo const*>(
                 &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
-            ), 1, std::forward<decltype(args)>(args)...
+            ), 1, std::forward<Args>(args)...
         ),
     };
 }
 
-template<typename... InterfaceHolders>
-inline auto into_holder(auto&& impl) {
-    using Impl = std::remove_reference_t<decltype(impl)>;
+template<typename... InterfaceHolders, typename Impl>
+inline auto into_holder(Impl&& impl) {
     return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{
         new data_block_impl<Impl>(
             reinterpret_cast<TypeInfo const*>(
                 &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
-            ), 1, std::forward<decltype(impl)>(impl)
+            ), 1, std::forward<Impl>(impl)
         ),
     };
 }
