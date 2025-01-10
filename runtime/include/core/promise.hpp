@@ -21,27 +21,26 @@ using promise_view = impl_view<promise<V, E>>;
 
 template<typename V, typename E, typename... InterfaceHolders>
 auto make_promise() {
-    auto result = make_holder<promise<V, E>, InterfaceHolders...>();
-    return result;
+    return make_holder<promise<V, E>, InterfaceHolders...>();
 }
 
 template<typename V, typename E, typename... InterfaceHolders, typename AsyncFunc, typename... Args>
 auto make_promise(AsyncFunc&& asyncFunc, Args&&... args) {
-    auto result = make_holder<promise<V, E>, InterfaceHolders...>();
+    auto result = make_promise<V, E, InterfaceHolders...>();
     asyncFunc(result, std::forward<Args>(args)...);
     return result;
 }
 
-template<typename V, typename E, typename... Args>
+template<typename V, typename E, typename... InterfaceHolders, typename... Args>
 auto make_resolved(Args&&... args) {
-    auto result = make_holder<promise<V, E>>();
+    auto result = make_promise<V, E, InterfaceHolders...>();
     result->resolve(std::forward<Args>(args)...);
     return result;
 }
 
-template<typename V, typename E, typename... Args>
+template<typename V, typename E, typename... InterfaceHolders, typename... Args>
 auto make_rejected(Args&&... args) {
-    auto result = make_holder<promise<V, E>>();
+    auto result = make_promise<V, E, InterfaceHolders...>();
     result->reject(std::forward<Args>(args)...);
     return result;
 }
@@ -99,8 +98,7 @@ public:
 
     // user
     bool is_pending() const noexcept {
-        std::lock_guard<std::mutex> lock(mutex);
-        return status_ == PromiseState::PENDING;
+        return state.index() == 0;
     }
 
     void wait() {
