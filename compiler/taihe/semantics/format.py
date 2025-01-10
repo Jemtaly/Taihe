@@ -60,9 +60,9 @@ class _PrettyPrinter(DeclVisitor):
             else self.type_name_printer.handle_type(d.resolved_ty)
         )
         return (
-            f"{d.symbol} {AnsiStyle.GREEN}/* {real_type} */{AnsiStyle.RESET}"
+            f"{d.unresolved_name} {AnsiStyle.GREEN}/* {real_type} */{AnsiStyle.RESET}"
             if d.is_resolved
-            else d.symbol
+            else d.unresolved_name
         )
 
     def get_package_ref_decl(self, d: PackageRefDecl) -> str:

@@ -17,6 +17,7 @@ from typing import Generic, Optional, TypeVar
 from taihe.semantics.declarations import (
     AttrItemDecl,
     BaseFuncDecl,
+    BuiltinTypeRefDecl,
     DataTypeDecl,
     Decl,
     DeclarationImportDecl,
@@ -38,6 +39,7 @@ from taihe.semantics.declarations import (
     StructFieldDecl,
     TypeDecl,
     TypeRefDecl,
+    UserTypeRefDecl,
 )
 from taihe.semantics.types import (
     BuiltinType,
@@ -172,10 +174,18 @@ class DeclVisitor:
     def visit_attr_item_decl(self, d: AttrItemDecl) -> None:
         return self.visit_decl(d)
 
-    ### References ###
+    ### Type References ###
 
     def visit_type_ref_decl(self, d: TypeRefDecl) -> None:
         return self.visit_decl(d)
+
+    def visit_user_type_ref_decl(self, d: UserTypeRefDecl) -> None:
+        return self.visit_type_ref_decl(d)
+
+    def visit_builtin_type_ref_decl(self, d: BuiltinTypeRefDecl) -> None:
+        return self.visit_type_ref_decl(d)
+
+    ### Other References ###
 
     def visit_package_ref_decl(self, d: PackageRefDecl) -> None:
         return self.visit_decl(d)

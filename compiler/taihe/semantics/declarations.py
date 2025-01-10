@@ -1,6 +1,6 @@
 """Defines the types for declarations."""
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Protocol
 
@@ -112,13 +112,8 @@ class AttrItemDecl(Decl):
         self.value = value
         self.node_parent = None
 
-    @property
-    def description(self) -> str:
-        """Describes the object in a human-friendly way."""
-        return f"attribute {self.name!r}"
-
     def __repr__(self) -> str:
-        return f"<{self.description} of {self.node_parent} at {self.loc}>"
+        return f"<attribute {self.name} of {self.node_parent} at {self.loc}>"
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
@@ -130,7 +125,7 @@ class AttrItemDecl(Decl):
 ##############
 
 
-class TypeRefDecl(Decl):
+class TypeRefDecl(Decl, metaclass=ABCMeta):
     """Repersents a reference to a `Type`.
 
     Each user of a `Type` must be encapsulated in a `TypeRefDecl`.
@@ -146,7 +141,6 @@ class TypeRefDecl(Decl):
     ```
     """
 
-    symbol: str
     loc: Optional[SourceLocation]
 
     resolved_ty: Optional[Type]
@@ -154,21 +148,62 @@ class TypeRefDecl(Decl):
 
     def __init__(
         self,
-        symbol: str,
         loc: Optional[SourceLocation],
         resolved_ty: Optional[Type] = None,
     ):
         super().__init__()
-        self.symbol = symbol
         self.loc = loc
         self.resolved_ty = resolved_ty
         self.is_resolved = resolved_ty is not None
 
-    def _accept(self, v: "DeclVisitor") -> Any:
-        return v.visit_type_ref_decl(self)
+    @property
+    @abstractmethod
+    def unresolved_name(self) -> str: ...
 
     def __repr__(self) -> str:
-        return f"<type reference {self.symbol} at {self.loc}>"
+        return f"<type reference {self.unresolved_name} at {self.loc}>"
+
+
+class UserTypeRefDecl(TypeRefDecl):
+    symbol: str
+
+    def __init__(
+        self,
+        symbol: str,
+        loc: Optional[SourceLocation],
+        resolved_ty: Optional[Type] = None,
+    ):
+        super().__init__(loc, resolved_ty)
+        self.symbol = symbol
+
+    def _accept(self, v: "DeclVisitor") -> Any:
+        return v.visit_user_type_ref_decl(self)
+
+    @property
+    @override
+    def unresolved_name(self):
+        return self.symbol
+
+
+class BuiltinTypeRefDecl(TypeRefDecl):
+    symbol: str
+
+    def __init__(
+        self,
+        symbol: str,
+        loc: Optional[SourceLocation],
+        resolved_ty: Optional[Type] = None,
+    ):
+        super().__init__(loc, resolved_ty)
+        self.symbol = symbol
+
+    def _accept(self, v: "DeclVisitor") -> Any:
+        return v.visit_builtin_type_ref_decl(self)
+
+    @property
+    @override
+    def unresolved_name(self):
+        return self.symbol
 
 
 class PackageRefDecl(Decl):

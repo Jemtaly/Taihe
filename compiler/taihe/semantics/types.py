@@ -1,9 +1,11 @@
 """Defines the type system."""
 
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Protocol
+
+from typing_extensions import override
 
 if TYPE_CHECKING:
     from taihe.semantics.visitor import TypeVisitor
@@ -19,6 +21,10 @@ class TypeProtocol(Protocol):
 
 class Type(TypeProtocol, metaclass=ABCMeta):
     """Represents a concrete type."""
+
+    @property
+    @abstractmethod
+    def description(self) -> str: ...
 
 
 ##################
@@ -57,6 +63,11 @@ class BuiltinType(Type, metaclass=ABCMeta):
 
     def __repr__(self) -> str:
         return f"<type-builtin {self.name!r}>"
+
+    @property
+    @override
+    def description(self):
+        return f"builtin type {self.name}"
 
 
 @dataclass(frozen=True, repr=False)

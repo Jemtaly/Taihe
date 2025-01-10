@@ -87,9 +87,9 @@ interface BadIface
     , TestIface  // DuplicateExtendsWarn
     , MyNonexist  // Nothing should be reported here
 {
-    function a(x: String): void;
-    function a(x: i32): void;  // DeclConflictError
-    function b(x: i32, x: i32): void;  // DeclConflictError
+    a(x: String): void;
+    a(x: i32): void;  // DeclConflictError
+    b(x: i32, x: i32): void;  // DeclConflictError
 }
 
 // Cycle Detection

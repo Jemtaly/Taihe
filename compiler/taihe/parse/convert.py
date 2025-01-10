@@ -7,6 +7,7 @@ from taihe.parse import Visitor, ast
 from taihe.parse.ast_generation import generate_ast
 from taihe.semantics.declarations import (
     AttrItemDecl,
+    BuiltinTypeRefDecl,
     DeclarationImportDecl,
     DeclarationRefDecl,
     EnumDecl,
@@ -21,7 +22,7 @@ from taihe.semantics.declarations import (
     ParamDecl,
     StructDecl,
     StructFieldDecl,
-    TypeRefDecl,
+    UserTypeRefDecl,
 )
 from taihe.semantics.types import (
     BuiltinType,
@@ -55,8 +56,8 @@ class ExprEvaluator(Visitor):
             "==": int.__eq__,
             "!=": int.__ne__,
         }[node.op.text](
-            self.visit(node.left),
-            self.visit(node.right),
+            int(self.visit(node.left)),
+            int(self.visit(node.right)),
         )
 
     @override
@@ -70,8 +71,8 @@ class ExprEvaluator(Visitor):
             "&&": bool.__and__,
             "||": bool.__or__,
         }[node.op.text](
-            self.visit(node.left),
-            self.visit(node.right),
+            bool(self.visit(node.left)),
+            bool(self.visit(node.right)),
         )
 
     @override
@@ -116,7 +117,7 @@ class ExprEvaluator(Visitor):
             "+": int.__pos__,
             "~": int.__invert__,
         }[node.op.text](
-            self.visit(node.expr),
+            int(self.visit(node.expr)),
         )
 
     @override
@@ -133,8 +134,8 @@ class ExprEvaluator(Visitor):
             "|": int.__or__,
             "^": int.__xor__,
         }[node.op.text](
-            self.visit(node.left),
-            self.visit(node.right),
+            int(self.visit(node.left)),
+            int(self.visit(node.right)),
         )
 
     @override
@@ -168,22 +169,22 @@ class AstConverter(ExprEvaluator):
         return d
 
     @override
-    def visit_PrimitiveType(self, node: ast.PrimitiveType) -> TypeRefDecl:
+    def visit_PrimitiveType(self, node: ast.PrimitiveType) -> BuiltinTypeRefDecl:
         if ty := BuiltinType.lookup(str(node.name)):
-            ty_ref = TypeRefDecl(str(node.name), self.loc(node.name), ty)
+            ty_ref = BuiltinTypeRefDecl(str(node.name), self.loc(node.name), ty)
         else:
-            ty_ref = TypeRefDecl(str(node.name), self.loc(node.name))
+            raise ValueError()
         return ty_ref
 
     @override
-    def visit_UserType(self, node: ast.UserType) -> TypeRefDecl:
+    def visit_UserType(self, node: ast.UserType) -> UserTypeRefDecl:
         if node.pkg_name:
             loc = self.loc(node)
             name = pkg2str(node.pkg_name) + "." + str(node.decl_name)
         else:
             loc = self.loc(node.decl_name)
             name = str(node.decl_name)
-        ty_ref = TypeRefDecl(name, loc)
+        ty_ref = UserTypeRefDecl(name, loc)
         return ty_ref
 
     @override

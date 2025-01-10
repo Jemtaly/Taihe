@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         NamedDecl,
         Package,
         PackageLevelDecl,
+        Type,
         TypeRefDecl,
     )
 
@@ -176,13 +177,13 @@ class SymbolConflictWithNamespaceError(DiagError):
 
 @dataclass
 class ExtendsTypeError(DiagError):
-    MSG = "expected an interface, got {name!r}"
+    MSG = "expected an interface, got {ty.description}"
 
-    name: str
+    ty: "Type"
 
-    def __init__(self, decl: "IfaceParentDecl"):
+    def __init__(self, decl: "IfaceParentDecl", ty: "Type"):
         self.loc = decl.ty_ref.loc
-        self.name = decl.ty_ref.symbol
+        self.ty = ty
 
 
 @dataclass

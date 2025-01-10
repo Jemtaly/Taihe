@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from typing_extensions import override
 
@@ -17,7 +17,7 @@ from taihe.semantics.declarations import (
     PackageRefDecl,
     StructDecl,
     TypeDecl,
-    TypeRefDecl,
+    UserTypeRefDecl,
 )
 from taihe.semantics.visitor import DeclVisitor
 from taihe.utils.diagnostics import AbstractDiagnosticsManager
@@ -35,6 +35,9 @@ from taihe.utils.exceptions import (
     RecursiveInclusionError,
     SymbolConflictWithNamespaceError,
 )
+
+if TYPE_CHECKING:
+    from taihe.semantics.declarations import TypeRefDecl
 
 
 def analyze_semantics(pg: PackageGroup, diag: AbstractDiagnosticsManager):
@@ -136,7 +139,8 @@ class _ResolveImportsPass(DeclVisitor):
 
         d.pkg_ref.is_resolved = True
 
-    def visit_type_ref_decl(self, d: TypeRefDecl):
+    @override
+    def visit_user_type_ref_decl(self, d: UserTypeRefDecl):
         if d.is_resolved:
             return
 
@@ -284,7 +288,7 @@ class _CheckIfaceParentsPass(DeclVisitor):
             if (parent_iface := parent.ty_ref.resolved_ty) is None:
                 pass
             elif not isinstance(parent_iface, IfaceDecl):
-                self.diag.emit(ExtendsTypeError(parent))
+                self.diag.emit(ExtendsTypeError(parent, parent_iface))
             else:
                 parent_iface_list.append(((d, parent.ty_ref), parent_iface))
                 prev = parent_iface_dict.setdefault(parent_iface, parent)
