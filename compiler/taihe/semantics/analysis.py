@@ -1,8 +1,10 @@
+from collections.abc import Iterable
 from typing import TypeVar
 
 from typing_extensions import override
 
 from taihe.semantics.declarations import (
+    BaseFuncDecl,
     DataTypeDecl,
     DeclarationImportDecl,
     DeclarationRefDecl,
@@ -224,16 +226,36 @@ class _CheckFieldNameCollisionErrorPass(DeclVisitor):
         self.diag = diag
 
     @override
-    def visit_named_decl(self, d: NamedDecl) -> None:
-        names = {}
-        for field_name, children in d.symbol_tables.items():
-            for i, f in enumerate(children):
-                if not f.name:
-                    f.name = f"{field_name}_{i}"
-                if (prev := names.setdefault(f.name, f)) != f:
-                    self.diag.emit(DeclRedefError(prev, f))
+    def visit_base_func_decl(self, d: BaseFuncDecl) -> None:
+        self.check_collision_helper(d.params)
+        return super().visit_base_func_decl(d)
 
-        return super().visit_named_decl(d)
+    @override
+    def visit_struct_decl(self, d: StructDecl) -> None:
+        self.check_collision_helper(d.fields)
+        return super().visit_struct_decl(d)
+
+    @override
+    def visit_enum_decl(self, d: EnumDecl) -> None:
+        self.check_collision_helper(d.items)
+        return super().visit_enum_decl(d)
+
+    @override
+    def visit_iface_decl(self, d: IfaceDecl) -> None:
+        self.check_collision_helper(d.methods)
+        return super().visit_iface_decl(d)
+
+    @override
+    def visit_package(self, p: Package) -> None:
+        self.check_collision_helper(p.children)
+        return super().visit_package(p)
+
+    def check_collision_helper(self, children: Iterable[NamedDecl]):
+        names = {}
+        for f in children:
+            assert f.name
+            if (prev := names.setdefault(f.name, f)) != f:
+                self.diag.emit(DeclRedefError(prev, f))
 
 
 class _CheckIfaceParentsPass(DeclVisitor):

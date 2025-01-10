@@ -1,6 +1,6 @@
 """Defines the types for declarations."""
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, ClassVar, Optional, Protocol
 
@@ -34,8 +34,7 @@ class Decl(DeclProtocol, metaclass=ABCMeta):
         i.node_parent = self
         if prev := self.attrs.get(i.name, None):
             raise AttrRedefError(prev, i)
-        else:
-            self.attrs[i.name] = i
+        self.attrs[i.name] = i
 
 
 class NamedDecl(Decl, metaclass=ABCMeta):
@@ -84,10 +83,6 @@ class NamedDecl(Decl, metaclass=ABCMeta):
     def description(self) -> str:
         """Describes the object in a human-friendly way."""
         return f"{self.KIND} {self.name!r}"
-
-    @property
-    @abstractmethod
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]: ...
 
     def __repr__(self) -> str:
         return f"<{self.description} at {self.loc}>"
@@ -287,11 +282,6 @@ class PackageImportDecl(ImportDecl):
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_package_import_decl(self)
 
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
-
     def is_alias(self) -> bool:
         return self.name != self.pkg_ref.symbol
 
@@ -317,11 +307,6 @@ class DeclarationImportDecl(ImportDecl):
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_decl_import_decl(self)
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
 
     def is_alias(self) -> bool:
         return self.name != self.decl_ref.symbol
@@ -356,11 +341,6 @@ class ParamDecl(NamedDecl):
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_param_decl(self)
 
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
-
 
 class BaseFuncDecl(NamedDecl, metaclass=ABCMeta):
     params: list[ParamDecl]
@@ -375,11 +355,6 @@ class BaseFuncDecl(NamedDecl, metaclass=ABCMeta):
         super().__init__(name, loc)
         self.params = []
         self.return_ty_ref = return_ty_ref
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {"param": self.params}
 
     def add_param(self, p: ParamDecl):
         p.node_parent = self
@@ -425,11 +400,6 @@ class EnumItemDecl(NamedDecl):
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_enum_item_decl(self)
 
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
-
 
 class EnumDecl(DataTypeDecl):
     KIND = "enum"
@@ -443,11 +413,6 @@ class EnumDecl(DataTypeDecl):
     @override
     def _accept(self, v: "DeclVisitor | TypeVisitor") -> Any:
         return v.visit_enum_decl(self)
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {"item": self.items}
 
     def add_item(self, f: EnumItemDecl):
         f.node_parent = self
@@ -474,11 +439,6 @@ class StructFieldDecl(NamedDecl):
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_struct_field_decl(self)
 
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
-
 
 class StructDecl(DataTypeDecl):
     KIND = "struct"
@@ -492,11 +452,6 @@ class StructDecl(DataTypeDecl):
     @override
     def _accept(self, v: "TypeVisitor | DeclVisitor") -> Any:
         return v.visit_struct_decl(self)
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {"field": self.fields}
 
     def add_field(self, f: StructFieldDecl):
         f.node_parent = self
@@ -523,11 +478,6 @@ class IfaceParentDecl(NamedDecl):
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_iface_parent_decl(self)
 
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {}
-
 
 class IfaceMethodDecl(BaseFuncDecl):
     KIND = "interface method"
@@ -553,14 +503,6 @@ class IfaceDecl(TypeDecl):
     @override
     def _accept(self, v: "TypeVisitor | DeclVisitor") -> Any:
         return v.visit_iface_decl(self)
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {
-            "method": self.methods,
-            "parent": self.parents,
-        }
 
     def add_method(self, f: IfaceMethodDecl):
         f.node_parent = self
@@ -616,26 +558,23 @@ class Package(NamedDecl):
     def segments(self) -> list[str]:
         return self.name.split(".")
 
+    @property
+    def children(self) -> Iterable[NamedDecl]:
+        yield from self.pkg_imports
+        yield from self.decl_imports
+
+        yield from self.functions
+        yield from self.structs
+        yield from self.enums
+        yield from self.interfaces
+
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_package(self)
-
-    @property
-    @override
-    def symbol_tables(self) -> dict[str, Iterable["NamedDecl"]]:
-        return {
-            "pkg_imports": self.pkg_imports,
-            "decl_imports": self.decl_imports,
-            "functions": self.functions,
-            "structs": self.structs,
-            "enums": self.enums,
-            "interfaces": self.interfaces,
-        }
 
     def _register_to_decl(self, d: PackageLevelDecl):
         if prev := self.decls.get(d.name, None):
             raise DeclRedefError(prev, d)
-        else:
-            self.decls[d.name] = d
+        self.decls[d.name] = d
 
     def add_function(self, f: GlobFuncDecl):
         f.node_parent = self
@@ -672,8 +611,7 @@ class Package(NamedDecl):
     def _register_to_import(self, i: ImportDecl):
         if prev := self.imports.get(i.name, None):
             raise DeclRedefError(prev, i)
-        else:
-            self.imports[i.name] = i
+        self.imports[i.name] = i
 
     def add_decl_import(self, i: DeclarationImportDecl):
         i.node_parent = self
