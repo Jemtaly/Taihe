@@ -78,7 +78,7 @@ void copyColorImpl(weak::IColorable dst, weak::IColorable src) {
 }
 
 struct Visitor {
-    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::rgb>, auto& val) {
+    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::rgb>, const RGB& val) {
         std::ostringstream oss;
         oss << "#" << std::hex << std::setfill('0')
             << std::setw(2) << static_cast<int>(val.r)
@@ -87,12 +87,12 @@ struct Visitor {
             ;
         return oss.str();
     }
-    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::name>, auto& val) {
+    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::name>, const string& val) {
         std::ostringstream oss;
         oss << "Name: " << val.c_str();
         return oss.str();
     }
-    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::color>, auto& val) {
+    string operator()(static_tag_t<ColorOrRGBOrName::tag_t::color>, const Color& val) {
         return val.accept_template(*this);
     }
     string operator()(static_tag_t<Color::tag_t::black>) {
