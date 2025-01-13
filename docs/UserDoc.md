@@ -36,7 +36,7 @@ rgb::base::RGB color_rgb = rgb::base::RGB{0x11, 0x45, 0x14};
     rgb::base::ColorOrRGBOrName color_unknown = rgb::base::ColorOrRGBOrName::make_undefined();
     ```
 
-2. 使用 `enum_obj.emplace_itemname(item_ctor_args, ...)` 在一个已有的 enum 对象上重新构造一个 item 类型对象：
+2. 使用 `enum_obj.emplace_itemname(item_init_args, ...)` 在一个已有的 enum 对象上重新构造一个 item 类型对象：
     ```cpp
     color_my_color.emplace_name("emplace color");
     ```
@@ -62,15 +62,31 @@ rgb::base::RGB color_rgb = rgb::base::RGB{0x11, 0x45, 0x14};
     ```
 
 ## 接口
-用户可自定义一个类实现 IDL 中定义的一个或多个接口，`make_holder<classname, ifacename1, ifacename2, ...>(class_init_args, ...)`。以 test/rgb 中 rgb.show.taihe 文件的定义为例：
+用户可自定义一个类实现 IDL 中定义的一个或多个接口，`make_holder<classname, ifacename1, ifacename2, ...>(class_init_args, ...)`。自定义类中必须实现这些接口的所有方法。以 test/rgb 中 rgb.show.taihe 文件的定义为例：
 ```cpp
 class ColoredCircle {
     // Definition
 }
-auto circle = make_holder<ColoredCircle, rgb::show::IShowable>("A", 10, color_114514);
+rgb::show::IShowable circle =
+    make_holder<ColoredCircle, rgb::show::IShowable>("A", 10, color_114514);
 ```
 
-接口对象的生命周期采用引用计数管理，每个接口对应 `packagename::ifacename` 和 `packagename::weak::ifacename` 两种类型，它们分别对应 C++ 中的 `std::shared_ptr` 和 `std::weak_ptr`。
+子接口向父接口转换是静态、隐式的。其他转换是动态的且需要显式写出，转换后需要判断转换是否成功。
+```cpp
+my::package::IDerived d0;
+my::package::weak::IBase b0 = d0; // OK
+
+my::package::IBase b1;
+my::package::weak::IDerived d1 = b1; // Error
+auto d2 = my::package::weak::IDerived(b1); // OK
+if (d2) {
+    // ...
+} else {
+    std::cout << "Cast failed!" << std::endl;
+}
+```
+
+接口对象的生命周期采用引用计数管理，每个接口对应 `packagename::ifacename` 和 `packagename::weak::ifacename` 两种类型，它们的功能分别类似 C++ STL 库中的 `std::shared_ptr` 和 `std::weak_ptr`。
 
 在传递参数的时候，建议使用`packagename::weak::ifacename`作为参数类型，例如：
 ```cpp
