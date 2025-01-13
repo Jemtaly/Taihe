@@ -173,7 +173,7 @@ class AstConverter(ExprEvaluator):
         if ty := BuiltinType.lookup(str(node.name)):
             ty_ref = TypeRefDecl(str(node.name), self.loc(node.name), ty)
         else:
-            ty_ref = TypeRefDecl(str(node.name), self.loc(node.name))
+            raise ValueError()
         return ty_ref
 
     @override
