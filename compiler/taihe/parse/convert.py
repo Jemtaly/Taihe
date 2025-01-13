@@ -70,8 +70,8 @@ class ExprEvaluator(Visitor):
             "&&": bool.__and__,
             "||": bool.__or__,
         }[node.op.text](
-            self.visit(node.left),
-            self.visit(node.right),
+            bool(self.visit(node.left)),
+            bool(self.visit(node.right)),
         )
 
     @override
@@ -162,7 +162,8 @@ class AstConverter(ExprEvaluator):
     @override
     def visit_AttrItem(self, node: ast.AttrItem) -> AttrItemDecl:
         if val := node.val:
-            d = AttrItemDecl(str(node.name), self.loc(node.name), self.visit(val.expr))
+            value = [self.visit(item) for item in val.items]
+            d = AttrItemDecl(str(node.name), self.loc(node.name), value)
         else:
             d = AttrItemDecl(str(node.name), self.loc(node.name))
         return d

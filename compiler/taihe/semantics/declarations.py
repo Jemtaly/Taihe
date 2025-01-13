@@ -102,14 +102,14 @@ class AttrItemDecl(Decl):
     name: str
     loc: Optional[SourceLocation]
 
-    value: bool | int | str | None
+    value: list[bool | int | str] | None
     node_parent: Optional[Decl]
 
     def __init__(
         self,
         name: str,
         loc: Optional[SourceLocation],
-        value: bool | int | str | None = None,
+        value: list[bool | int | str] | None = None,
     ):
         super().__init__()
         self.name = name
