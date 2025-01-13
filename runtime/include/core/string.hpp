@@ -5,7 +5,9 @@
 #include <cstring>
 #include <stdexcept>
 #include <utility>
+#include <string>
 #include <string_view>
+#include <iostream>
 #include <charconv>
 
 #include <taihe/common.hpp>
@@ -367,67 +369,32 @@ inline bool operator>=(string_view lhs, string_view rhs) {
     return std::string_view(lhs) >= std::string_view(rhs);
 }
 
-// Convert function
-template <typename T>
-inline string string_convert(T value) {
-    static_assert(std::is_arithmetic_v<T>);
+inline std::ostream& operator<<(std::ostream& os, string_view sv) {
+    return os << std::string_view(sv);
+}
+
+template<typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+inline string to_string(T value) {
     char buffer[32];
     std::to_chars_result result;
-    if constexpr (std::is_integral_v<T>) {
-        result = std::to_chars(std::begin(buffer), std::end(buffer), value);
-    } else {
-        // Floating point
-        result = std::to_chars(std::begin(buffer), std::end(buffer), value, std::chars_format::general);
-    }
+    result = std::to_chars(std::begin(buffer), std::end(buffer), value);
     if (result.ec != std::errc{}) {
         throw std::runtime_error("Conversion to char failed");
     }
     *result.ptr = '\0'; // std::to_chars does not write '\0' at the end of the buffer automatcally
-    return string{ std::string_view{buffer, static_cast<std::size_t>(result.ptr - buffer)} };
+    return string{ buffer, static_cast<std::size_t>(result.ptr - buffer) };
 }
 
-inline string to_string(uint8_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(int8_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(uint16_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(int16_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(uint32_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(int32_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(uint64_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(int64_t value) {
-    return string_convert(value);
-}
-
-inline string to_string(float value) {
-    return string_convert(value);
-}
-
-inline string to_string(double value) {
-    return string_convert(value);
-}
-
-inline string to_string(string& value) noexcept {
-    return value;
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+inline string to_string(T value) {
+    char buffer[32];
+    std::to_chars_result result;
+    result = std::to_chars(std::begin(buffer), std::end(buffer), value, std::chars_format::general);
+    if (result.ec != std::errc{}) {
+        throw std::runtime_error("Conversion to char failed");
+    }
+    *result.ptr = '\0'; // std::to_chars does not write '\0' at the end of the buffer automatcally
+    return string{ buffer, static_cast<std::size_t>(result.ptr - buffer) };
 }
 
 template <typename T, std::enable_if_t<std::is_same_v<T, bool>, int> = 0>
