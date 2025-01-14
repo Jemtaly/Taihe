@@ -58,7 +58,7 @@ interfaceParent
 
 interfaceField
     : (LEFT_BRACKET (AttrItemLst_attrs += attrItem (COMMA AttrItemLst_attrs += attrItem)*)? RIGHT_BRACKET)?
-      KW_FUNCTION token_name = ID
+      token_name = ID
       LEFT_PARENTHESIS (ParameterLst_parameters += parameter (COMMA ParameterLst_parameters += parameter)*)? RIGHT_PARENTHESIS COLON (TypeOpt_return_ty = type | KW_VOID)? SEMICOLON # interfaceFunction
     ;
 
@@ -72,7 +72,7 @@ parameter
 ///////////////
 
 attrItem
-    : token_name = ID (ASSIGN_TO AttrValsOpt_val = attrVals)?
+    : token_name = ID (AttrValsOpt_val = attrVals)?
     ;
 
 attrVals

@@ -8,6 +8,7 @@ from taihe.semantics.declarations import (
 )
 from taihe.semantics.types import (
     BOOL,
+    CPTR,
     F32,
     F64,
     I8,
@@ -37,13 +38,25 @@ class KNBridgePackageInfo(AbstractAnalysis[Package]):
 class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
     def __init__(self, am: AnalysisManager, f: BaseFuncDecl) -> None:
         self.name = f.name
-        self.konan_proj_name = f.attrs["konan_name"].value
+        self.params_holder = []
+        self.konan_proj_name = None
+        self.need_ret_holder = False
+
+        temp = f.attrs["konan_name"].value
+        assert isinstance(temp, list)
+        self.konan_proj_name = temp[0]
         assert isinstance(self.konan_proj_name, str)
 
         params = []
         konan_params_only_ty = []
         convert_params = []
+
         for param in f.params:
+            if param.ty_ref.symbol == "String":
+                self.params_holder.append(True)
+            else:
+                self.params_holder.append(False)
+
             param_type_info = KNBridgeTypeInfo.get(am, param.ty_ref.resolved_ty)
             params.append(f"{param_type_info.as_param} {param.name}")
             konan_params_only_ty.append(f"{param_type_info.as_konan_param}")
@@ -54,8 +67,10 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
             else:
                 convert_params.append(f"{param.name}")
 
-        convert_params.append("result_holder.slot()")
-        konan_params_only_ty.append(f"KObjHeader**")
+        if f.return_ty_ref is not None and f.return_ty_ref.symbol == "String":
+            self.need_ret_holder = True
+            convert_params.append("result_holder.slot()")
+            konan_params_only_ty.append(f"KObjHeader**")
 
         self.params_str = ", ".join(params)
         self.konan_params_only_ty = ", ".join(konan_params_only_ty)
@@ -109,6 +124,7 @@ class KNBridgeTypeInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
             U16: "TH_UINT16",
             U32: "TH_UINT32",
             U64: "TH_UINT64",
+            CPTR: "void*",
         }.get(t)
         self.as_param = res
         self.as_owner = res
@@ -162,7 +178,9 @@ class KNBridgeCodeGenerator:
             self.tm, f"include/{kn_bridge_pkg_info.header}", True
         )
 
-        kn_bridge_pkg_name = pkg.attrs["pkg_name"].value
+        temp = pkg.attrs["pkg_name"].value
+        assert isinstance(temp, list)
+        kn_bridge_pkg_name = temp[0]
         assert isinstance(kn_bridge_pkg_name, str)
 
         self.gen_package_th_tydef(kn_bridge_pkg_target, kn_bridge_pkg_name)
@@ -185,7 +203,9 @@ class KNBridgeCodeGenerator:
             self.tm, f"include/{kn_bridge_pkg_info.source}", True
         )
 
-        kn_bridge_pkg_name = pkg.attrs["pkg_name"].value
+        temp = pkg.attrs["pkg_name"].value
+        assert isinstance(temp, list)
+        kn_bridge_pkg_name = temp[0]
         assert isinstance(kn_bridge_pkg_name, str)
 
         self.gen_package_th_tydef(kn_bridge_pkg_target, kn_bridge_pkg_name)
@@ -537,8 +557,10 @@ class KNBridgeCodeGenerator:
         for iface in pkg.interfaces:
             kn_bridge_pkg_target.write(f"      .{iface.name} {{\n")
             for method in iface.methods:
+                temp = method.attrs["konan_name"].value
+                assert isinstance(temp, list)
                 kn_bridge_pkg_target.write(
-                    f"        /* {method.name} = */ {method.attrs['konan_name'].value}_impl, \n"
+                    f"        /* {method.name} = */ {temp[0]}_impl, \n"
                 )
             kn_bridge_pkg_target.write(f"      }}, \n")
         for func in pkg.functions:
@@ -559,6 +581,7 @@ class KNBridgeCodeGenerator:
     ):
         for iface in pkg.interfaces:
             for func in iface.methods:
+                # to be continued
                 kn_bridge_func_info = KNBridgeFuncBaseDeclInfo.get(self.am, func)
                 kn_bridge_pkg_target.write(
                     f'extern "C" {kn_bridge_func_info.return_ty_konan_name} {kn_bridge_func_info.konan_proj_name}(KObjHeader*, {kn_bridge_func_info.konan_params_only_ty});\n'
@@ -567,9 +590,14 @@ class KNBridgeCodeGenerator:
                     f"  ScopedRunnableState stateGuard;\n"
                     f"  FrameOverlay* frame = getCurrentFrame();\n"
                 )
-                for param in func.params:
-                    kn_bridge_pkg_target.write(f"  KObjHolder {param.name}_holder;\n")
+                for index, need_holder in enumerate(kn_bridge_func_info.params_holder):
+                    if need_holder:
+                        kn_bridge_pkg_target.write(
+                            f"  KObjHolder {func.params[index].name}_holder;\n"
+                        )
+
                 kn_bridge_pkg_target.write(f"  KObjHolder thiz_holder;\n")
+                # to be continued
                 kn_bridge_pkg_target.write(f"  try {{\n")
                 if func.return_ty_ref is None:
                     kn_bridge_pkg_target.write(
@@ -601,16 +629,22 @@ class KNBridgeCodeGenerator:
                 f"  ScopedRunnableState stateGuard;\n"
                 f"  FrameOverlay* frame = getCurrentFrame();\n"
             )
-            for param in func.params:
-                kn_bridge_pkg_target.write(f"  KObjHolder {param.name}_holder;\n")
+
+            for index, need_holder in enumerate(kn_bridge_func_info.params_holder):
+                if need_holder:
+                    kn_bridge_pkg_target.write(
+                        f"  KObjHolder {func.params[index].name}_holder;\n"
+                    )
+
             kn_bridge_pkg_target.write(f"  try {{\n")
             if func.return_ty_ref is None:
                 kn_bridge_pkg_target.write(
                     f"{kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
                 )
             else:
+                if kn_bridge_func_info.need_ret_holder:
+                    kn_bridge_pkg_target.write(f"    KObjHolder result_holder;\n")
                 kn_bridge_pkg_target.write(
-                    f"    KObjHolder result_holder;\n"
                     f"    auto result = {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
                     f"    return {kn_bridge_func_info.return_ty_str};\n"
                 )

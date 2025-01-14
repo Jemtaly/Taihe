@@ -82,16 +82,22 @@ class _PrettyPrinter(DeclVisitor):
     def get_attr_item(self, d: AttrItemDecl) -> str:
         if d.value is None:
             return d.name
-        elif isinstance(d.value, bool):
-            value = "TRUE" if d.value else "FALSE"
-        elif isinstance(d.value, int):
-            value = str(d.value)
-        elif isinstance(d.value, str):
-            value = '"' + encode(d.value, "unicode-escape").decode() + '"'
         else:
-            raise ValueError()
+            assert isinstance(d.value, list)
+            lst = []
+            for i in d.value:
+                if isinstance(i, bool):
+                    res = "TRUE" if i else "FALSE"
+                elif isinstance(i, int):
+                    res = str(i)
+                elif isinstance(i, str):
+                    res = '"' + encode(i, "unicode-escape").decode() + '"'
+                else:
+                    raise ValueError()
+                lst.append(res)
+            res_fmt = ", ".join(lst)
 
-        return f"{d.name} = {value}"
+            return f"{d.name}({res_fmt})"
 
     def as_keyword(self, s) -> str:
         return f"{AnsiStyle.CYAN}{s}{AnsiStyle.RESET}"

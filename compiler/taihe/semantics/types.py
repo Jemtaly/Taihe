@@ -96,5 +96,6 @@ CPTR = ScalarType("CPointer", BuiltinTypeKind.INTEGER, 64, is_signed=False)
 STRING = SpecialType("String", BuiltinTypeKind.STRING)
 
 _TYPE_MAPS: dict[str, BuiltinType] = {
-    ty.name: ty for ty in [BOOL, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, CPTR, STRING]
+    ty.name: ty
+    for ty in [BOOL, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, CPTR, STRING]
 }
