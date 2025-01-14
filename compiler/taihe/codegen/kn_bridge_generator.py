@@ -240,11 +240,11 @@ class KNBridgeCodeGenerator:
             f"#define TH_INT8 {kn_bridge_pkg_name}_KByte\n"
             f"#define TH_INT16 {kn_bridge_pkg_name}_KShort\n"
             f"#define TH_INT32 {kn_bridge_pkg_name}_KInt\n"
-            f"#define TH_INT64 {kn_bridge_pkg_name}_KInt\n"
+            f"#define TH_INT64 {kn_bridge_pkg_name}_KLong\n"
             f"#define TH_UINT8 {kn_bridge_pkg_name}_KUByte\n"
             f"#define TH_UINT16 {kn_bridge_pkg_name}_KUShort\n"
             f"#define TH_UINT32 {kn_bridge_pkg_name}_KUInt\n"
-            f"#define TH_UINT64 {kn_bridge_pkg_name}_KUInt\n"
+            f"#define TH_UINT64 {kn_bridge_pkg_name}_KULong\n"
             f"#define TH_STRING KObjHeader*\n"
             f"\n"
         )
