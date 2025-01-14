@@ -24,6 +24,7 @@ from taihe.semantics.declarations import (
     DeclarationRefDecl,
     EnumDecl,
     EnumItemDecl,
+    GenericTypeRefDecl,
     GlobFuncDecl,
     IfaceDecl,
     IfaceMethodDecl,
@@ -183,6 +184,9 @@ class DeclVisitor:
         return self.visit_type_ref_decl(d)
 
     def visit_builtin_type_ref_decl(self, d: BuiltinTypeRefDecl) -> None:
+        return self.visit_type_ref_decl(d)
+
+    def visit_generic_type_ref_decl(self, d: GenericTypeRefDecl) -> None:
         return self.visit_type_ref_decl(d)
 
     ### Other References ###

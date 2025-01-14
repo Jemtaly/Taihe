@@ -12,6 +12,7 @@ from taihe.semantics.declarations import (
     DeclarationRefDecl,
     EnumDecl,
     EnumItemDecl,
+    GenericTypeRefDecl,
     GlobFuncDecl,
     IfaceDecl,
     IfaceMethodDecl,
@@ -185,6 +186,14 @@ class AstConverter(ExprEvaluator):
             loc = self.loc(node.decl_name)
             name = str(node.decl_name)
         ty_ref = UserTypeRefDecl(name, loc)
+        return ty_ref
+
+    @override
+    def visit_GenericType(self, node: ast.GenericType) -> GenericTypeRefDecl:
+        name = str(node.name)
+        loc = self.loc(node)
+        args = [self.visit(arg) for arg in node.args]
+        ty_ref = GenericTypeRefDecl(name, args, loc)
         return ty_ref
 
     @override

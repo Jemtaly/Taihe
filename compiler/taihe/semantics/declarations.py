@@ -206,6 +206,31 @@ class BuiltinTypeRefDecl(TypeRefDecl):
         return self.symbol
 
 
+class GenericTypeRefDecl(TypeRefDecl):
+    symbol: str
+    args: list[TypeRefDecl]
+
+    def __init__(
+        self,
+        symbol: str,
+        args: list[TypeRefDecl],
+        loc: Optional[SourceLocation],
+        resolved_ty: Optional[Type] = None,
+    ):
+        super().__init__(loc, resolved_ty)
+        self.symbol = symbol
+        self.args = args
+
+    def _accept(self, v: "DeclVisitor") -> Any:
+        return v.visit_generic_type_ref_decl(self)
+
+    @property
+    @override
+    def unresolved_name(self):
+        args_fmt = ", ".join(arg.unresolved_name for arg in self.args)
+        return f"{self.symbol}<{args_fmt}>"
+
+
 class PackageRefDecl(Decl):
     symbol: str
     loc: Optional[SourceLocation]
