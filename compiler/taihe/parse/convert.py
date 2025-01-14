@@ -190,8 +190,12 @@ class AstConverter(ExprEvaluator):
 
     @override
     def visit_GenericType(self, node: ast.GenericType) -> GenericTypeRefDecl:
-        name = str(node.name)
-        loc = self.loc(node)
+        if node.pkg_name:
+            loc = self.loc(node)
+            name = pkg2str(node.pkg_name) + "." + str(node.decl_name)
+        else:
+            loc = self.loc(node.decl_name)
+            name = str(node.decl_name)
         args = [self.visit(arg) for arg in node.args]
         ty_ref = GenericTypeRefDecl(name, args, loc)
         return ty_ref

@@ -187,6 +187,9 @@ class DeclVisitor:
         return self.visit_type_ref_decl(d)
 
     def visit_generic_type_ref_decl(self, d: GenericTypeRefDecl) -> None:
+        for i in d.args:
+            self.handle_decl(i)
+
         return self.visit_type_ref_decl(d)
 
     ### Other References ###
