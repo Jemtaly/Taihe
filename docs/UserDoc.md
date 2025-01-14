@@ -16,7 +16,7 @@
 
 ## 2. 函数调用
 
-根据 IDL 文件中定义的函数名称和命名空间，调用函数时格式为 `package::name::func_name()`。以下是一个示例：
+根据 IDL 文件中定义的函数名称和其所在命名空间调用函数。例如 `package::name::func_name()`。以下是一个示例：
 ```cpp
 auto a = integer::io::input_i32();
 auto b = integer::io::input_i32();
@@ -29,7 +29,7 @@ integer::io::output_i32(sum);
 
 ## 3. 结构体
 
-使用 IDL 文件中定义的结构体时，应在对应命名空间下调用结构体名称 `package::name::struct_name`。初始化结构体成员时使用花括号（`{}`）语法。
+使用 IDL 文件中定义的结构体时，应调用对应命名空间下的结构体名称 `package::name::struct_name`。初始化结构体成员时使用花括号（`{}`）语法。
 
 以下是一个示例，假设结构体定义在 `test/rgb` 的 `rgb.base.taihe` 文件中：
 ```cpp
@@ -138,11 +138,22 @@ auto* unsafe_ptr = color.unsafe_get_ptr<Tag::name>();
 
 ## 5. 接口
 
-用户可以通过实现 IDL 文件中定义的接口来自定义类。接口的实例化可以通过 `taihe::core::make_holder<impl_class, interface_1, interface_2, ...>(...)` 方法实现。以下是一个示例，假设接口定义在 `test/rgb` 的 `rgb.show.taihe` 文件中：
+用户可以通过实现 IDL 文件中定义的接口来自定义类。接口的实例化可以通过 `taihe::core::make_holder<impl_class, interface_1, interface_2, ...>(...)` 方法实现。以下是一个示例，仍以 `test/rgb/idl` 目录下 `rgb.show.taihe` 文件中定义的接口为例：
 
 ```cpp
 class ColoredCircle {
-    // 自定义类的定义
+public:
+    // 任意的构造函数
+    ColoredCircle(taihe:core::string_view id, float r, rgb::show::ColorOrRGBOrName const& color);
+
+    // 在 IDL 中定义的接口方法
+    taihe::core::string getId();
+    float calculateArea();
+    rgb::show::ColorOrRGBOrName getColor();
+    void setColor(rgb::show::ColorOrRGBOrName const& color);
+    void show();
+
+    // 其他内部实现……
 };
 
 rgb::show::IShowable circle =
@@ -153,8 +164,8 @@ rgb::show::IShowable circle =
 
 接口对象的生命周期通过引用计数进行管理：
 
-- **强引用**：`package::name::ifacename`，类似于 `std::shared_ptr`。
-- **弱引用**：`package::name::weak::ifacename`，类似于 `std::weak_ptr`。
+- **强引用**：`package::name::iface_name`，类似于 `std::shared_ptr`。
+- **弱引用**：`package::name::weak::iface_name`，类似于 `std::weak_ptr`。
 
 在参数传递时，为避免增加引用计数，可使用弱引用。例如：
 
@@ -185,6 +196,10 @@ void copyColorImpl(rgb::base::weak::IColorable dst, rgb::base::weak::IColorable 
         std::cout << "转换失败！" << std::endl;
     }
     ```
+
+### 5.3 其他
+
+在接口中的方法上添加 `[functor]` 属性可以使该方法成为一个函子，在 C++ 中即体现为对 `operator()` 方法的重载。
 
 ---
 
