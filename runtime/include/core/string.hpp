@@ -70,14 +70,10 @@ public:
         m_handle = nullptr;
     }
 
-    friend void swap(string& lhs, string& rhs) noexcept {
-        std::swap(lhs.m_handle, rhs.m_handle);
-    }
-
     // assignment
     string& operator=(string other) {
         // copy-and-swap idiom
-        swap(*this, other);
+        std::swap(this->m_handle, other.m_handle);
         return *this;
     }
 
@@ -161,19 +157,10 @@ public:
         return rend();
     }
 
-    string substr(size_t pos, size_t len) const noexcept {
-        struct TString* result_handle = tstr_substr(m_handle, pos, len);
-        if (!result_handle) {
-            return string();
-        }
-        string result;
-        result.m_handle = result_handle;
-        return result;
-    }
-
 private:
     friend class string_view;
-    friend inline string concat(string_view left, string_view right);
+    friend string concat(string_view left, string_view right);
+    friend string substr(string_view sv, std::size_t pos, std::size_t len);
 
     TString* m_handle;
 };
@@ -227,14 +214,11 @@ struct string_view {
     // destructor
     ~string_view() {}
 
-    friend void swap(string_view& lhs, string_view& rhs) noexcept {
-        std::swap(lhs.m_handle, rhs.m_handle);
-    }
-
     // assignment
     string_view& operator=(string_view other) {
         // copy-and-swap idiom
-        swap(*this, other);
+        std::swap(this->m_handle, other.m_handle);
+        std::swap(this->m_header, other.m_header);
         return *this;
     }
 
@@ -318,22 +302,24 @@ public:
         return rend();
     }
 
-    string substr(size_t pos, size_t len) const noexcept {
-        struct TString* result_handle = tstr_substr(m_handle, pos, len);
-        if (!result_handle) {
-            return string();
-        }
-        string result;
-        result.m_handle = result_handle;
-        return result;
-    }
-
 private:
-    friend inline string concat(string_view left, string_view right);
+    friend string concat(string_view left, string_view right);
+    friend string substr(string_view sv, std::size_t pos, std::size_t len);
 
     TString* m_handle;
     TString  m_header;
 };
+
+
+inline string substr(string_view sv, std::size_t pos, std::size_t len) {
+    struct TString* result_handle = tstr_substr(sv.m_handle, pos, len);
+    if (!result_handle) {
+        return string();
+    }
+    string result;
+    result.m_handle = result_handle;
+    return result;
+}
 
 inline string concat(string_view left, string_view right) {
     struct TString* result_handle = tstr_concat(left.m_handle, right.m_handle);

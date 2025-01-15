@@ -51,7 +51,6 @@ TVector<T>* tvec_resize(TVector<T>* handle, std::size_t cap) {
 }
 
 namespace taihe::core {
-
 template<typename T>
 struct vector {
 public:
@@ -64,130 +63,112 @@ public:
     using iterator = T*;
     using const_iterator = const T*;
 
-    vector() : m_data(tvec_new<T>(0)) {}
+    vector() : m_handle(tvec_new<T>(0)) {}
 
     explicit vector(size_type cap) 
-        : m_data(tvec_new<T>(cap)) {}
+        : m_handle(tvec_new<T>(cap)) {}
 
-    vector(const T* array, std::size_t size)
-        : m_data(tvec_new<T>(size)) {
-        for (std::size_t i = 0; i < size; ++i) {
-            new (&m_data->data[i]) T(array[i]);
-        }
-        m_data->len = size;
-    }
-
-    vector(std::size_t size, const T& value)
-        : m_data(tvec_new<T>(size)) {
-        for (std::size_t i = 0; i < size; ++i) {
-            new (&m_data->data[i]) T(value);
-        }
-        m_data->len = size;
-    }
-
-    template <typename InputIt>
-    vector(InputIt first, InputIt last) {
-        auto size = std::distance(first, last);
-        m_data = tvec_new<T>(size);
-        std::size_t index = 0;
-        for (auto it = first; it != last; ++it) {
-            new (&m_data->data[index++]) T(*it);
-        }
-        m_data->len = size;
-    }
-
-    vector(std::initializer_list<value_type> value)
-        : vector(value.begin(), value.end()) {}
+    explicit vector(TVector<T>* handle)
+        : m_handle(handle) {}
 
     ~vector() {
-        tvec_drop(m_data);
+        tvec_drop(m_handle);
     }
 
     vector(const vector& other)
-        : m_data(tvec_dup(other.m_data)) {}
+        : m_handle(tvec_dup(other.m_handle)) {}
 
     vector(vector&& other) noexcept
-        : m_data(other.m_data) {
-        other.m_data = nullptr;
+        : m_handle(other.m_handle) {
+        other.m_handle = nullptr;
     }
 
-    vector& operator=(const vector& other) {
-        if (this != &other) {
-            tvec_drop(m_data);
-            m_data = tvec_dup(other.m_data);
-        }
-        return *this;
-    }
-
-    vector& operator=(vector&& other) noexcept {
-        if (this != &other) {
-            tvec_drop(m_data);
-            m_data = other.m_data;
-            other.m_data = nullptr;
-        }
+    vector& operator=(vector other) {
+        std::swap(this->m_handle, other.m_handle);
         return *this;
     }
 
     std::size_t size() const noexcept {
-        return m_data->len;
+        return m_handle->len;
     }
 
     std::size_t capacity() const noexcept {
-        return m_data->cap;
+        return m_handle->cap;
+    }
+
+    void reserve(std::size_t requird_cap) {
+        if (requird_cap > m_handle->cap) {
+            std::size_t new_cap = std::max(requird_cap, m_handle->cap * 2);
+            m_handle = tvec_resize(m_handle, new_cap);
+        }
     }
 
     void push_back(T&& value) {
-        ensure_capacity(m_data->len + 1);
-        new (&m_data->data[m_data->len]) T(std::move(value));
-        ++m_data->len;
+        reserve(m_handle->len + 1);
+        new (&m_handle->data[m_handle->len]) T(std::move(value));
+        ++m_handle->len;
     }
 
     void push_back(T const& value) {
-        ensure_capacity(m_data->len + 1);
-        new (&m_data->data[m_data->len]) T(value);
-        ++m_data->len;
+        reserve(m_handle->len + 1);
+        new (&m_handle->data[m_handle->len]) T(value);
+        ++m_handle->len;
     }
 
     template <typename... Args>
     T& emplace_back(Args&&... args) {
-        ensure_capacity(m_data->len + 1);
-        T* location = &m_data->data[m_data->len];
+        reserve(m_handle->len + 1);
+        T* location = &m_handle->data[m_handle->len];
         new (location) T(std::forward<Args>(args)...);
-        ++m_data->len;
+        ++m_handle->len;
         return *location;
     }
 
     void pop_back() {
-        if (m_data->len > 0) {
-            --m_data->len;
-            std::destroy_at(&m_data->data[m_data->len]);
+        if (m_handle->len > 0) {
+            --m_handle->len;
+            std::destroy_at(&m_handle->data[m_handle->len]);
         }
     }
 
     void clear() noexcept {
-        for (std::size_t i = 0; i < m_data->len; i++) {
-            std::destroy_at(&m_data->data[i]);
+        for (std::size_t i = 0; i < m_handle->len; i++) {
+            std::destroy_at(&m_handle->data[i]);
         }
-        m_data->len = 0;
+        m_handle->len = 0;
     }
 
     T& operator[](std::size_t index) {
-        return m_data->data[index];
+        return m_handle->data[index];
     }
 
     const T& operator[](std::size_t index) const {
-        return m_data->data[index];
+        return m_handle->data[index];
     }
 
 private:
-    TVector<T>* m_data;
+    TVector<T>* m_handle;
 
-    void ensure_capacity(std::size_t requird_cap) {
-        if (requird_cap > m_data->cap) {
-            std::size_t new_capacity = std::max(requird_cap, m_data->cap * 2);
-            m_data = tvec_resize(m_data, new_capacity);
-        }
-    }
+    template<typename cpp_t, typename abi_t>
+    friend abi_t into_abi(cpp_t val);
+    template<typename cpp_t, typename abi_t>
+    friend cpp_t from_abi(abi_t val);
 };
 
+
+
+// returning from abi
+template<typename T>
+inline taihe::core::vector<T> from_abi(TVector<T>* _val) {
+    TVector<T>* r_handle = _val;
+    return taihe::core::vector<T>(r_handle);
+}
+
+// returning into abi
+template<typename T>
+inline TVector<T>* into_abi(taihe::core::vector<T> _val) {
+    TVector<T> *r_handle = _val.m_handle;
+    _val.m_handle = nullptr;
+    return r_handle;
+}
 }
