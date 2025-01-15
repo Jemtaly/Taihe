@@ -39,8 +39,9 @@ TVector<T> tvec_new(std::size_t cap) {
 }
 
 template<typename T>
-TVector<T> tvec_resize(TVector<T>* handle, std::size_t len) {
-
+TVector<T> tvec_resize(TVector<T>* handle, std::size_t cap) {
+    size_t bytes_required = sizeof(TVector) + sizeof(T) * cap;
+    return realloc(handle, cap);
 }
 
 namespace taihe::core {}
