@@ -72,10 +72,22 @@ public:
         if (state.index() != 0) {
             return;
         }
-        V const& value = state.template emplace<1>(std::forward<Args>(args)...);
-        for (const auto& callback : onResolvedCallbacks) {
-            callback(value);
+        try {
+            V const& value = state.template emplace<1>(std::forward<Args>(args)...);
+            for (const auto& callback : onResolvedCallbacks) {
+                try {
+                    callback(value);
+                } catch (...) {
+                    // state.template emplace<2>(std::current_exception());
+                }
+            }
+        } catch (...) {
+            state.template emplace<2>(std::current_exception());
         }
+        // V const& value = state.template emplace<1>(std::forward<Args>(args)...);
+        // for (const auto& callback : onResolvedCallbacks) {
+        //     callback(value);
+        // }
         onResolvedCallbacks.clear();
         onRejectedCallbacks.clear();
         cv.notify_all();
@@ -87,10 +99,22 @@ public:
         if (state.index() != 0) {
             return;
         }
-        E const& error = state.template emplace<2>(std::forward<Args>(args)...);
-        for (const auto& callback : onRejectedCallbacks) {
-            callback(error);
+        try {
+            E const& error = state.template emplace<2>(std::forward<Args>(args)...);
+            for (const auto& callback : onRejectedCallbacks) {
+                try {
+                    callback(error);
+                } catch (...) {
+                    // ...
+                }
+            }
+        } catch (...) {
+            // ...
         }
+        // E const& error = state.template emplace<2>(std::forward<Args>(args)...);
+        // for (const auto& callback : onRejectedCallbacks) {
+        //     callback(error);
+        // }
         onResolvedCallbacks.clear();
         onRejectedCallbacks.clear();
         cv.notify_all();
