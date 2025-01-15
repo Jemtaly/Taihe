@@ -269,23 +269,23 @@ struct impl_view {
 
 template<typename Impl, typename... InterfaceHolders, typename... Args>
 inline auto make_holder(Args&&... args) {
-    return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{
-        new data_block_impl<Impl>(
-            reinterpret_cast<TypeInfo const*>(
-                &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
-            ), 1, std::forward<Args>(args)...
-        ),
-    };
+    data_block_impl<Impl>* handle = reinterpret_cast<data_block_impl<Impl>*>(malloc(sizeof(data_block_impl<Impl>)));
+    handle->rtti_ptr = reinterpret_cast<TypeInfo const*>(
+        &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
+    );
+    tref_set(&handle->m_count, 1);
+    new (static_cast<Impl*>(handle)) Impl(std::forward<Args>(args)...);
+    return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{handle};
 }
 
 template<typename... InterfaceHolders, typename Impl>
 inline auto into_holder(Impl&& impl) {
-    return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{
-        new data_block_impl<Impl>(
-            reinterpret_cast<TypeInfo const*>(
-                &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
-            ), 1, std::forward<Impl>(impl)
-        ),
-    };
+    data_block_impl<Impl>* handle = reinterpret_cast<data_block_impl<Impl>*>(malloc(sizeof(data_block_impl<Impl>)));
+    handle->rtti_ptr = reinterpret_cast<TypeInfo const*>(
+        &typeinfo_impl<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>::rtti
+    );
+    tref_set(&handle->m_count, 1);
+    new (static_cast<Impl*>(handle)) Impl(std::forward<Impl>(impl));
+    return impl_holder<Impl, typename interface_holder_traits<InterfaceHolders>::info_container...>{handle};
 }
 }

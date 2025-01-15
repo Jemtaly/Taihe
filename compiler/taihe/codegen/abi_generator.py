@@ -695,7 +695,7 @@ class ABICodeGenerator:
             f"TH_INLINE void {iface_abi_info.drop_func}(struct {iface_abi_info.mangled_name} tobj) {{\n"
             f"  struct DataBlockHead* data_ptr = tobj.data_ptr;\n"
             f"  if (data_ptr && tref_dec(&data_ptr->m_count)) {{\n"
-            f"    data_ptr->rtti_ptr->free_ptr(data_ptr);\n"
+            f"    data_ptr->rtti_ptr->free(data_ptr);\n"
             f"  }}\n"
             f"}}\n"
         )

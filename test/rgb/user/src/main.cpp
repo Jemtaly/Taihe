@@ -59,51 +59,45 @@ int main() {
     Color yellow = Color::make_yellow();
     ColorOrRGBOrName color_114514 = ColorOrRGBOrName::make_rgb(RGB{0x11, 0x45, 0x14});
     ColorOrRGBOrName color_yellow = ColorOrRGBOrName::make_color(yellow);
-    ColorOrRGBOrName color_my_color = ColorOrRGBOrName::make_name("My Color");
+    ColorOrRGBOrName color_miku = ColorOrRGBOrName::make_name("Miku");
     ColorOrRGBOrName color_unknown = ColorOrRGBOrName::make_undefined();
 
-    std::cout << toString(color_114514).c_str() << std::endl;
-    std::cout << toString(color_yellow).c_str() << std::endl;
-    std::cout << toString(color_my_color).c_str() << std::endl;
-    std::cout << toString(color_unknown).c_str() << std::endl;
+    std::cout << toString(color_114514) << std::endl;
+    std::cout << toString(color_yellow) << std::endl;
+    std::cout << toString(color_miku) << std::endl;
+    std::cout << toString(color_unknown) << std::endl;
 
-    color_my_color.emplace_name("emplace color");
-    std::cout << toString(color_my_color).c_str() << std::endl;
-
-    ColorOrRGBOrName color_ptr = ColorOrRGBOrName::make_name("Color Name");
-    auto* color_ptr_rgb_ptr = color_ptr.get_rgb_ptr();
-    auto* color_unsafe_ptr_rgb_ptr = color_ptr.unsafe_get_rgb_ptr();
-
-    if(color_ptr_rgb_ptr != nullptr)
-    {
-        auto color_rgb = ColorOrRGBOrName::make_rgb(*color_ptr_rgb_ptr);
-        std::cout << toString(color_rgb).c_str() << std::endl;
-    }
-    else
-    {
-        std::cout << "NULL" << std::endl;
+    if (string* safe_ptr = color_miku.get_name_ptr(); safe_ptr != nullptr) {
+        std::cout << "color_miku is holding name, name is " << *safe_ptr << std::endl;
+    } else {
+        std::cout << "Error" << std::endl;
     }
 
-    if(color_ptr.holds_name())
-    {
-        string* color_ptr_name_ptr = color_ptr.get_name_ptr();
-        std::cout << color_ptr_name_ptr->c_str() << std::endl;
+    if (color_miku.holds_name()) {
+        string* color_ptr_name_ptr = color_miku.get_name_ptr();
+        std::cout << "color_miku is holding name, name is " << *color_ptr_name_ptr << std::endl;
+    } else {
+        std::cout << "Error" << std::endl;
     }
 
-    rgb::base::ColorOrRGBOrName::tag_t tag = color_my_color.get_tag();
-    switch (color_ptr.get_tag()) {
-        case ColorOrRGBOrName::tag_t::color:
-            std::cout << "color_ptr has color" << std::endl;
-            break;
-        case ColorOrRGBOrName::tag_t::rgb:
-            std::cout << "color_ptr has rgb" << std::endl;
-            break;
-        case ColorOrRGBOrName::tag_t::name:
-            std::cout << "color_ptr has name" << std::endl;
-            break;
-        default:
-            break;
-        }
+    color_miku.emplace_rgb(RGB{0x39, 0xC5, 0xBB});
+    std::cout << toString(color_miku) << std::endl;
+
+    rgb::base::ColorOrRGBOrName::tag_t tag = color_miku.get_tag();
+    switch (color_miku.get_tag()) {
+    case ColorOrRGBOrName::tag_t::color:
+        std::cout << "color_miku is holding color" << std::endl;
+        break;
+    case ColorOrRGBOrName::tag_t::rgb:
+        std::cout << "color_miku is holding rgb" << std::endl;
+        break;
+    case ColorOrRGBOrName::tag_t::name:
+        std::cout << "color_miku is holding name" << std::endl;
+        break;
+    default:
+        std::cout << "color_miku is holding other stuff" << std::endl;
+        break;
+    }
 
     // User implements the interface
     auto circle = make_holder<ColoredCircle, IShowable>("A", 10, color_114514);

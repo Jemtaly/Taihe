@@ -397,7 +397,7 @@ inline string to_string(T value) {
     return string{ buffer, static_cast<std::size_t>(result.ptr - buffer) };
 }
 
-template <typename T, std::enable_if_t<std::is_same_v<T, bool>, int> = 0>
+template<typename T, std::enable_if_t<std::is_same_v<T, bool>, int> = 0>
 string to_string(T const value) {
     if (value) {
         return string{ "true" };
