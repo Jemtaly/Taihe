@@ -42,7 +42,7 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         self.konan_proj_name = None
         self.need_ret_holder = False
 
-        temp = f.attrs["konan_name"].value
+        temp = f.attrs["inner_name"].value
         assert isinstance(temp, list)
         self.konan_proj_name = temp[0]
         assert isinstance(self.konan_proj_name, str)
@@ -260,6 +260,8 @@ class KNBridgeCodeGenerator:
             f"#endif\n"
             f"#ifdef __cplusplus\n"
             f"typedef bool            {kn_bridge_pkg_name}_KBoolean;\n"
+            f"#else\n"
+            f"typedef _Bool            {kn_bridge_pkg_name}_KBoolean;\n"
             f"#endif\n"
             f"typedef unsigned short     {kn_bridge_pkg_name}_KChar;\n"
             f"typedef signed char        {kn_bridge_pkg_name}_KByte;\n"
@@ -498,6 +500,8 @@ class KNBridgeCodeGenerator:
                 f"}} {kn_bridge_pkg_name}_kref_{iface.name};\n"
             )
 
+        kn_bridge_pkg_target.write(f"\n")
+
     def gen_struct_func(
         self, pkg: Package, kn_bridge_pkg_target: COutputBuffer, kn_bridge_pkg_name: str
     ):
@@ -557,13 +561,14 @@ class KNBridgeCodeGenerator:
         for iface in pkg.interfaces:
             kn_bridge_pkg_target.write(f"      .{iface.name} {{\n")
             for method in iface.methods:
-                temp = method.attrs["konan_name"].value
+                temp = method.attrs["inner_name"].value
                 assert isinstance(temp, list)
                 kn_bridge_pkg_target.write(
                     f"        /* {method.name} = */ {temp[0]}_impl, \n"
                 )
             kn_bridge_pkg_target.write(f"      }}, \n")
-        for func in pkg.functions:
+        # for func in pkg.functions:
+        for _index, func in enumerate(pkg.functions):
             kn_bridge_func_info = KNBridgeFuncBaseDeclInfo.get(self.am, func)
             kn_bridge_pkg_target.write(
                 f"      /* {kn_bridge_func_info.name} = */ {kn_bridge_func_info.konan_proj_name}_impl,\n"
@@ -655,3 +660,7 @@ class KNBridgeCodeGenerator:
                 f"  }} \n"
                 f"}}\n"
             )
+
+    # def check_and_return(value):
+    #     assert value >= 0, "input must be >= 0"
+    #     return "" if value == 0 else "_impl"
