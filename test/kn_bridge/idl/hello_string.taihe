@@ -1,13 +1,19 @@
-[actual_type("class")]
-interface Base {
-    [konan_name("_konan_function_2")]
-    foo(s1: String) : String;
-}
+// [actual_type("class")]
+// interface Base {
+//     [inner_name("_konan_function_2")]
+//     foo(s1: String) : String;
+// 
+//     [inner_name("_konan_function_3")]
+//     bar(s1: String) : String;
+// }
 
-[konan_name("_konan_function_0")]
-function foo1(s1: String, s2: String) : String;
+[inner_name("_konan_function_1"), ArkTsString]
+function concat_func(s1: String, s2: String) : String;
 
-[konan_name("_konan_function_1")]
-function foo2(s1: CPointer, s2: CPointer) : CPointer;
+[inner_name("_konan_function_2")]
+function concat_func(s1: String, s2: String) : String;
+
+[inner_name("_konan_function_0")]
+function c_concat_func(s1: CPointer, s2: CPointer) : CPointer;
 
 [pkg_name("try_lib")]

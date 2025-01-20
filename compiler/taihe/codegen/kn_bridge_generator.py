@@ -51,21 +51,38 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         konan_params_only_ty = []
         convert_params = []
 
+        param_need_napi_env = False
+        return_need_napi_env = False
+
         for param in f.params:
             if param.ty_ref.symbol == "String":
                 self.params_holder.append(True)
             else:
                 self.params_holder.append(False)
 
-            param_type_info = KNBridgeTypeInfo.get(am, param.ty_ref.resolved_ty)
+            if "ArkTsString" in f.attrs:
+                param_type_info = KNBridgeArkTsTypeInfo.get(
+                    am, param.ty_ref.resolved_ty
+                )
+                param_need_napi_env = True
+            else:
+                param_type_info = KNBridgeTypeInfo.get(am, param.ty_ref.resolved_ty)
+
             params.append(f"{param_type_info.as_param} {param.name}")
             konan_params_only_ty.append(f"{param_type_info.as_konan_param}")
-            if param_type_info.param_covert_func:
+            if param_type_info.param_covert_func and not param_need_napi_env:
                 convert_params.append(
                     f"{param_type_info.param_covert_func}({param.name}, {param.name}_holder.slot())"
                 )
+            elif param_type_info.param_covert_func:
+                convert_params.append(
+                    f"{param_type_info.param_covert_func}(env, {param.name}, {param.name}_holder.slot())"
+                )
             else:
                 convert_params.append(f"{param.name}")
+
+        if param_need_napi_env:
+            params.insert(0, f"napi_env env")
 
         if f.return_ty_ref is not None and f.return_ty_ref.symbol == "String":
             self.need_ret_holder = True
@@ -79,21 +96,25 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
             self.return_ty_header = None
             self.return_ty_name = "void"
             self.return_ty_str = ""
-        else:
-            ty_info = KNBridgeTypeInfo.get(am, f.return_ty_ref.resolved_ty)
-            self.return_ty_header = ty_info.header
-            self.return_ty_name = ty_info.as_retval
-            if ty_info.retval_covert_func:
-                self.return_ty_str = f"{ty_info.retval_covert_func}(result)"
-            else:
-                self.return_ty_str = "result"
 
-        if f.return_ty_ref is None:
             self.return_ty_konan_header = None
             self.return_ty_konan_name = "void"
             self.return_ty_konan_str = ""
         else:
-            ty_info = KNBridgeTypeInfo.get(am, f.return_ty_ref.resolved_ty)
+            if "ArkTsString" in f.attrs:
+                ty_info = KNBridgeArkTsTypeInfo.get(am, f.return_ty_ref.resolved_ty)
+                return_need_napi_env = True
+            else:
+                ty_info = KNBridgeTypeInfo.get(am, f.return_ty_ref.resolved_ty)
+            self.return_ty_header = ty_info.header
+            self.return_ty_name = ty_info.as_retval
+            if ty_info.retval_covert_func and not return_need_napi_env:
+                self.return_ty_str = f"{ty_info.retval_covert_func}(result)"
+            elif ty_info.retval_covert_func:
+                self.return_ty_str = f"{ty_info.retval_covert_func}(env, result)"
+            else:
+                self.return_ty_str = "result"
+
             self.return_ty_konan_header = ty_info.header
             self.return_ty_konan_name = ty_info.as_konan_retval
 
@@ -143,6 +164,20 @@ class KNBridgeTypeInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
             self.as_konan_retval = "TH_STRING"
             self.param_covert_func = "CreateStringFromCString"
             self.retval_covert_func = "CreateCStringFromString"
+        else:
+            raise ValueError
+
+
+class KNBridgeArkTsTypeInfo(KNBridgeTypeInfo):
+    def visit_special_type(self, t: SpecialType) -> Any:
+        if t == STRING:
+            self.as_owner = "napi_value"
+            self.as_param = "napi_value"
+            self.as_retval = "napi_value"
+            self.as_konan_param = "TH_STRING"
+            self.as_konan_retval = "TH_STRING"
+            self.param_covert_func = "CreateStringFromArkTsString"
+            self.retval_covert_func = "CreateArkTsStringFromString"
         else:
             raise ValueError
 
@@ -321,6 +356,10 @@ class KNBridgeCodeGenerator:
             f"\n"
             f"KObjHeader* CreateStringFromCString(const char*, KObjHeader**);\n"
             f"char* CreateCStringFromString(const KObjHeader*);\n"
+            f"\n"
+            f"KObjHeader* CreateStringFromArkTsString(napi_env, napi_value, KObjHeader**);\n"
+            f"napi_value CreateArkTsStringFromString(napi_env env, const KObjHeader*);\n"
+            f"\n"
             f"void DisposeCString(char* cstring);\n"
             f'}}  // extern "C"\n'
             f"\n"
