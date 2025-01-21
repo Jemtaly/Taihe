@@ -33,3 +33,11 @@ test/*/user_test
 
 # Clangd
 .cache
+
+# ts test
+test/napi/napi_test/
+test/napi/node_modules/
+test/napi/package-lock.json
+test/napi/package.json
+test/napi/*.js
+test/napi/*.node
