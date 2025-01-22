@@ -614,6 +614,10 @@ class KNBridgeCodeGenerator:
             )
         kn_bridge_pkg_target.write(f"    }},\n" f"  }},\n" f"}};\n")
 
+        kn_bridge_pkg_target.write(
+            f"RUNTIME_EXPORT {kn_bridge_pkg_name}_ExportedSymbols* {kn_bridge_pkg_name}_symbols(void) {{ return &__konan_symbols;}}\n"
+        )
+
     def gen_func_impl(
         self, pkg: Package, kn_bridge_pkg_target: COutputBuffer, kn_bridge_pkg_name: str
     ):
