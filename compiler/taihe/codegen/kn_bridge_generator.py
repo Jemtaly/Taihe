@@ -290,6 +290,7 @@ class KNBridgeCodeGenerator:
         kn_bridge_pkg_target.write(
             f"#ifndef KONAN_{kn_bridge_pkg_name.upper()}_H\n"
             f"#define KONAN_{kn_bridge_pkg_name.upper()}_H\n"
+            f"#include <napi/native_api.h>"
             f"#ifdef __cplusplus\n"
             f'extern "C" {{\n'
             f"#endif\n"
