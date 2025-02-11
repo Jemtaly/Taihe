@@ -101,15 +101,15 @@ class NapiCodeGenerator:
         pkg_napi_target.include("napi/native_api.h")
         pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
 
-        temp = pkg.attrs["pkg_name"].value
+        temp = pkg.attrs["prefix"].value
         assert isinstance(temp, list)
-        kn_bridge_pkg_name = temp[0]
-        assert isinstance(kn_bridge_pkg_name, str)
+        kn_bridge_prefix = temp[0]
+        assert isinstance(kn_bridge_prefix, str)
 
         descs = []
         func_names = []
         for func in pkg.functions:
-            self.gen_kn_func(func, pkg_napi_target, kn_bridge_pkg_name)
+            self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix)
             func_desc = f'{{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
             descs.append(func_desc)
             func_names.append(func.name)
@@ -155,7 +155,7 @@ class NapiCodeGenerator:
         self,
         func: GlobFuncDecl,
         pkg_napi_target: COutputBuffer,
-        kn_bridge_pkg_name: str,
+        kn_bridge_prefix: str,
     ):
         pkg_napi_target.write(
             f"static napi_value {func.name}(napi_env env, napi_callback_info info)\n"
@@ -177,7 +177,7 @@ class NapiCodeGenerator:
         if "ArkTsString" in func.attrs:
             args_str = "env, " + args_str
         pkg_napi_target.write(
-            f"    {kn_bridge_pkg_name}_ExportedSymbols *lib = {kn_bridge_pkg_name}_symbols();\n"
+            f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
         )
         if func.return_ty_ref and func.return_ty_ref.resolved_ty == STRING:
             pkg_napi_target.write(
