@@ -4,6 +4,7 @@ from taihe.codegen.abi_generator import (
     COutputBuffer,
 )
 from taihe.codegen.cpp_proj_generator import PackageCppProjInfo
+from taihe.codegen.kn_bridge_generator import KNBridgePackageInfo
 from taihe.semantics.declarations import (
     GlobFuncDecl,
     Package,
@@ -93,14 +94,21 @@ class NapiCodeGenerator:
 
     def gen_kn_package_file(self, pkg: Package):
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
+        pkg_kn_bridge_info = KNBridgePackageInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
             self.tm, f"{pkg_napi_info.kn_header}", False
         )
-        pkg_napi_target.include("node/node_api.h")
+        pkg_napi_target.include("napi/native_api.h")
+        pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
+
+        temp = pkg.attrs["pkg_name"].value
+        assert isinstance(temp, list)
+        kn_bridge_pkg_name = temp[0]
+        assert isinstance(kn_bridge_pkg_name, str)
 
         desc = []
         for func in pkg.functions:
-            self.gen_kn_func(func, pkg_napi_info, pkg_napi_target)
+            self.gen_kn_func(func, pkg_napi_target, kn_bridge_pkg_name)
             func_desc = f'        {{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
             desc.append(func_desc)
 
@@ -128,7 +136,7 @@ class NapiCodeGenerator:
     def gen_module_init(self, desc_str: str, pkg_napi_target: COutputBuffer):
         pkg_napi_target.write(
             f"EXTERN_C_START\n"
-            f"napi_value Init(napi_env env, napi_value exports) {{\n"
+            f"napi_value Init_function(napi_env env, napi_value exports) {{\n"
             f"    napi_property_descriptor desc[] = {{\n"
             f"{desc_str}\n"
             f"    }};\n"
@@ -140,8 +148,8 @@ class NapiCodeGenerator:
             f"    .nm_version = 1,\n"
             f"    .nm_flags = 0,\n"
             f"    .nm_filename = nullptr,\n"
-            f"    .nm_register_func = Init,\n"
-            f'   .nm_modname = "entry",\n'
+            f"    .nm_register_func = Init_function,\n"
+            f'    .nm_modname = "entry",\n'
             f"    .nm_priv = ((void*)0),\n"
             f"    .reserved = {{ 0 }},\n"
             f"}};\n"
@@ -154,21 +162,40 @@ class NapiCodeGenerator:
     def gen_kn_func(
         self,
         func: GlobFuncDecl,
-        pkg_napi_info: PackageNapiInfo,
         pkg_napi_target: COutputBuffer,
+        kn_bridge_pkg_name: str,
     ):
         pkg_napi_target.write(
             f"static napi_value {func.name}(napi_env env, napi_callback_info info)\n"
             f"{{\n"
         )
         self.gen_func_get_cb_info(func, pkg_napi_target)
-        args = [f"args[{i}]" for i in range(len(func.params))]
+        args = []
+        for i, param in enumerate(func.params):
+            if param.ty_ref.resolved_ty == STRING:
+                args.append(f"args[{i}]")
+                continue
+            type_napi_param_info = TypeNapiInfo.get(self.am, param.ty_ref.resolved_ty)
+            pkg_napi_target.write(
+                f"    {type_napi_param_info.as_c} value{i};\n"
+                f"    {type_napi_param_info.from_js_to_c_func}(env, args[{i}], &value{i});\n"
+            )
+            args.append(f"value{i}")
         args_str = ", ".join(args)
+        if "ArkTsString" in func.attrs:
+            args_str = "env, " + args_str
         pkg_napi_target.write(
-            f"    dynamic_Exportedsymbols *lib = dynamic_symbols();\n"
-            f"    napi_value res = lib->kotlin.root.{func.name}(env, {args_str});\n"
-            f"    return res;\n"
+            f"    {kn_bridge_pkg_name}_ExportedSymbols *lib = {kn_bridge_pkg_name}_symbols();\n"
         )
+        if func.return_ty_ref and func.return_ty_ref.resolved_ty == STRING:
+            pkg_napi_target.write(
+                f"    napi_value result = lib->kotlin.root.{func.name}({args_str});\n"
+                f"    return result;\n"
+            )
+        else:
+            self.gen_func_return_value(
+                func, pkg_napi_target, args_str, f"lib->kotlin.root.{func.name}"
+            )
         pkg_napi_target.write(f"}}\n")
 
     def gen_func(

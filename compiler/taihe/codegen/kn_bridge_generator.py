@@ -210,7 +210,7 @@ class KNBridgeCodeGenerator:
     def gen_package_header_file(self, pkg: Package):
         kn_bridge_pkg_info = KNBridgePackageInfo.get(self.am, pkg)
         kn_bridge_pkg_target = COutputBuffer.create(
-            self.tm, f"include/{kn_bridge_pkg_info.header}", True
+            self.tm, f"{kn_bridge_pkg_info.header}", True
         )
 
         temp = pkg.attrs["pkg_name"].value
@@ -235,7 +235,7 @@ class KNBridgeCodeGenerator:
     def gen_package_source_file(self, pkg: Package):
         kn_bridge_pkg_info = KNBridgePackageInfo.get(self.am, pkg)
         kn_bridge_pkg_target = COutputBuffer.create(
-            self.tm, f"include/{kn_bridge_pkg_info.source}", True
+            self.tm, f"{kn_bridge_pkg_info.source}", True
         )
 
         temp = pkg.attrs["pkg_name"].value
