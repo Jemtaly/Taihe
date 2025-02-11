@@ -17,6 +17,8 @@ compiler/taihe/parse/antlr
 # Temporary directories
 test/*/author_test
 test/*/user_test
+test/*/napi_test
+test/*/kn_test
 
 # files
 *.log
@@ -35,7 +37,6 @@ test/*/user_test
 .cache
 
 # ts test
-test/napi/napi_test/
 test/napi/node_modules/
 test/napi/package-lock.json
 test/napi/package.json
