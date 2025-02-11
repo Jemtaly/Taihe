@@ -30,8 +30,9 @@ from taihe.utils.outputs import OutputManager
 
 class PackageNapiInfo(AbstractAnalysis[Package]):
     def __init__(self, am: AnalysisManager, p: Package) -> None:
-        self.header = f"{p.name}.napi.cpp"
-        self.kn_header = f"kn_{p.name}.napi.cpp"
+        self.source = f"{p.name}.napi.cpp"
+        self.kn_source = f"kn_{p.name}.napi.cpp"
+        self.kn_header = f"kn_{p.name}.napi.h"
         self.full_name = "::".join(p.segments)
 
 
@@ -96,10 +97,17 @@ class NapiCodeGenerator:
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
         pkg_kn_bridge_info = KNBridgePackageInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
+            self.tm, f"{pkg_napi_info.kn_source}", False
+        )
+        pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
+
+        pkg_napi_h_target = COutputBuffer.create(
             self.tm, f"{pkg_napi_info.kn_header}", False
         )
-        pkg_napi_target.include("napi/native_api.h")
-        pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
+        pkg_napi_h_target.include("napi/native_api.h")
+        pkg_napi_h_target.write(
+            f"#ifndef {pkg.name}_NAPI_H\n" f"#define {pkg.name}_NAPI_H\n"
+        )
 
         temp = pkg.attrs["prefix"].value
         assert isinstance(temp, list)
@@ -114,13 +122,18 @@ class NapiCodeGenerator:
             descs.append(func_desc)
             func_names.append(func.name)
 
+            pkg_napi_h_target.write(
+                f"napi_value init_{func.name}(napi_env env, napi_value exports);\n"
+            )
+
         self.gen_module_init(descs, func_names, pkg_napi_target)
+        pkg_napi_h_target.write(f"#endif\n")
 
     def gen_package_file(self, pkg: Package):
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
         pkg_cpp_proj_info = PackageCppProjInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
-            self.tm, f"{pkg_napi_info.header}", False
+            self.tm, f"{pkg_napi_info.source}", False
         )
         pkg_napi_target.include("node/node_api.h")
         pkg_napi_target.include(pkg_cpp_proj_info.header)
