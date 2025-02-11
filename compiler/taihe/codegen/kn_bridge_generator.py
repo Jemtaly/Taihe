@@ -54,6 +54,8 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         param_need_napi_env = False
         return_need_napi_env = False
 
+        if "ArkTsString" in f.attrs:
+            param_need_napi_env = True
         for param in f.params:
             if param.ty_ref.symbol == "String":
                 self.params_holder.append(True)
@@ -64,7 +66,6 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
                 param_type_info = KNBridgeArkTsTypeInfo.get(
                     am, param.ty_ref.resolved_ty
                 )
-                param_need_napi_env = True
             else:
                 param_type_info = KNBridgeTypeInfo.get(am, param.ty_ref.resolved_ty)
 

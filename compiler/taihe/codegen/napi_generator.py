@@ -186,9 +186,9 @@ class NapiCodeGenerator:
                 f"    {type_napi_param_info.from_js_to_c_func}(env, args[{i}], &value{i});\n"
             )
             args.append(f"value{i}")
-        args_str = ", ".join(args)
         if "ArkTsString" in func.attrs:
-            args_str = "env, " + args_str
+            args.insert(0, "env")
+        args_str = ", ".join(args)
         pkg_napi_target.write(
             f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
         )
