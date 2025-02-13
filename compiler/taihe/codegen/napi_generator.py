@@ -100,6 +100,7 @@ class NapiCodeGenerator:
             self.tm, f"{pkg_napi_info.kn_source}", False
         )
         pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
+        pkg_napi_target.include(f"{pkg_napi_info.kn_header}")
 
         pkg_napi_h_target = COutputBuffer.create(
             self.tm, f"{pkg_napi_info.kn_header}", False
