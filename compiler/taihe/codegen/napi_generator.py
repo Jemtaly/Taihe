@@ -117,6 +117,7 @@ class NapiCodeGenerator:
 
         descs = []
         func_names = []
+        pkg_napi_h_target.write(f"EXTERN_C_START\n")
         for func in pkg.functions:
             self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix)
             func_desc = f'{{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
@@ -126,6 +127,7 @@ class NapiCodeGenerator:
             pkg_napi_h_target.write(
                 f"napi_value init_{func.name}(napi_env env, napi_value exports);\n"
             )
+        pkg_napi_h_target.write(f"EXTERN_C_END\n")
 
         self.gen_module_init(descs, func_names, pkg_napi_target)
         pkg_napi_h_target.write(f"#endif\n")
