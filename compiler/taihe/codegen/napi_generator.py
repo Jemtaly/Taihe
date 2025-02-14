@@ -177,7 +177,8 @@ class NapiCodeGenerator:
             f"static napi_value {func.name}(napi_env env, napi_callback_info info)\n"
             f"{{\n"
         )
-        self.gen_func_get_cb_info(func, pkg_napi_target)
+        if len(func.params):
+            self.gen_func_get_cb_info(func, pkg_napi_target)
         args = []
         for i, param in enumerate(func.params):
             if param.ty_ref.resolved_ty == STRING:
@@ -216,7 +217,8 @@ class NapiCodeGenerator:
             f"static napi_value napi_{func.name}(napi_env env, napi_callback_info info)\n"
             f"{{\n"
         )
-        self.gen_func_get_cb_info(func, pkg_napi_target)
+        if len(func.params):
+            self.gen_func_get_cb_info(func, pkg_napi_target)
         args_str = self.gen_func_get_value(func, pkg_napi_target)
         full_func_name = pkg_napi_info.full_name + "::" + func.name
         self.gen_func_return_value(func, pkg_napi_target, args_str, full_func_name)

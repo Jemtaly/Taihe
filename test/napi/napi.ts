@@ -1,4 +1,4 @@
-import { add, mul, sub } from "./integer"
+import { add, mul, sub, show } from "./integer"
 import { concat, to_i32, from_i32 } from "./string";
 
 function main() {
@@ -14,6 +14,8 @@ function main() {
   console.log(result5)
   let result6 = sub(3.2, 2.3, true);
   console.log(result6)
+  let result7 = show();
+  console.log("show: ", result7);
 }
 
 main();

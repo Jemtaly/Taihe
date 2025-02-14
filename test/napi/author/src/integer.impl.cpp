@@ -20,6 +20,11 @@ float ohos_int_sub(float a, float b, bool c) {
     }
 }
 
+taihe::core::string ohos_show() {
+    return "success";
+}
+
 TH_EXPORT_CPP_API_add(ohos_int_add)
 TH_EXPORT_CPP_API_mul(ohos_int_mul)
 TH_EXPORT_CPP_API_sub(ohos_int_sub)
+TH_EXPORT_CPP_API_show(ohos_show)
