@@ -1,0 +1,73 @@
+[object_kind("class")]
+interface Clazz1 {
+[inner_name("_konan_function_11")]
+init(name: String): Clazz1;
+[inner_name("_konan_function_12")]
+get_name(thiz: Clazz1): String;
+[inner_name("_konan_function_13"), ArkTsString]
+memberFunction_arktsstr(thiz: Clazz1, str: String): String;
+[inner_name("_konan_function_14"), ArkTsString]
+memberFunction_arktsstr_as_param(thiz: Clazz1, str: String): void;
+[inner_name("_konan_function_15"), ArkTsString]
+memberFunction_arktsstr_as_retval(thiz: Clazz1): String;
+[inner_name("_konan_function_16")]
+memberFunction_base0(thiz: Clazz1, p: i32): i32;
+[inner_name("_konan_function_17")]
+memberFunction_no_param(thiz: Clazz1): i32;
+[inner_name("_konan_function_18")]
+memberFunction_no_ret(thiz: Clazz1, str: String): void;
+[inner_name("_konan_function_19")]
+memberFunction_override(thiz: Clazz1, p: i32): i32;
+[inner_name("_konan_function_20")]
+memberFunction_str(thiz: Clazz1, str: String): String;
+[inner_name("_konan_function_21")]
+memberFunction_str_as_param(thiz: Clazz1, str: String): void;
+[inner_name("_konan_function_22")]
+memberFunction_str_as_retval(thiz: Clazz1): String;
+}
+
+[object_kind("class")]
+interface Clazz_son0 {
+[inner_name("_konan_function_24")]
+init(name1: String, age: i32): Clazz_son0;
+[inner_name("_konan_function_25")]
+get_age(thiz: Clazz_son0): i32;
+[inner_name("_konan_function_26")]
+get_name1(thiz: Clazz_son0): String;
+[inner_name("_konan_function_27")]
+memberFunction_override(thiz: Clazz_son0, p: i32): i32;
+[inner_name("_konan_function_28")]
+memberFunction_son0(thiz: Clazz_son0, p: i32): i32;
+}
+
+[inner_name("_konan_function_0")]
+function get_global_val_str(): String;
+
+[inner_name("_konan_function_1")]
+function get_global_var_str(): String;
+
+[inner_name("_konan_function_2")]
+function set_global_var_str(set: String): void;
+
+[inner_name("_konan_function_3")]
+function class_func1(obj: Clazz1): Clazz1;
+
+[inner_name("_konan_function_4"), ArkTsString]
+function fun_arktsstr(str: String): String;
+
+[inner_name("_konan_function_5"), ArkTsString]
+function fun_arktsstr_as_param(str: String): void;
+
+[inner_name("_konan_function_6"), ArkTsString]
+function fun_arktsstr_as_retval(): String;
+
+[inner_name("_konan_function_7")]
+function fun_str(str: String): String;
+
+[inner_name("_konan_function_8")]
+function fun_str_as_param(str: String): void;
+
+[inner_name("_konan_function_9")]
+function fun_str_as_retval(): String;
+
+[prefix("test0217")]

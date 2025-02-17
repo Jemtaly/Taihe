@@ -1,8 +1,10 @@
+import re
 from typing import Any, Optional
 
 from taihe.codegen.abi_generator import COutputBuffer
 from taihe.semantics.declarations import (
     BaseFuncDecl,
+    IfaceDecl,
     Package,
     PackageGroup,
 )
@@ -47,6 +49,20 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         self.konan_proj_name = temp[0]
         assert isinstance(self.konan_proj_name, str)
 
+        base_types = [
+            "bool",
+            "f32",
+            "f64",
+            "i8",
+            "i16",
+            "i32",
+            "i64",
+            "u8",
+            "u16",
+            "u32",
+            "u64",
+        ]
+
         params = []
         konan_params_only_ty = []
         convert_params = []
@@ -57,7 +73,7 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         if "ArkTsString" in f.attrs:
             param_need_napi_env = True
         for param in f.params:
-            if param.ty_ref.symbol == "String":
+            if param.ty_ref.symbol not in base_types:
                 self.params_holder.append(True)
             else:
                 self.params_holder.append(False)
@@ -71,13 +87,17 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
 
             params.append(f"{param_type_info.as_param} {param.name}")
             konan_params_only_ty.append(f"{param_type_info.as_konan_param}")
-            if param_type_info.param_covert_func and not param_need_napi_env:
+            if (
+                param_type_info.param_covert_func
+                and param.ty_ref.symbol == "String"
+                and param_need_napi_env
+            ):
                 convert_params.append(
-                    f"{param_type_info.param_covert_func}({param.name}, {param.name}_holder.slot())"
+                    f"{param_type_info.param_covert_func}(env, {param.name}, {param.name}_holder.slot())"
                 )
             elif param_type_info.param_covert_func:
                 convert_params.append(
-                    f"{param_type_info.param_covert_func}(env, {param.name}, {param.name}_holder.slot())"
+                    f"{param_type_info.param_covert_func}({param.name}, {param.name}_holder.slot())"
                 )
             else:
                 convert_params.append(f"{param.name}")
@@ -85,10 +105,16 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
         if param_need_napi_env:
             params.insert(0, f"napi_env env")
 
-        if f.return_ty_ref is not None and f.return_ty_ref.symbol == "String":
+        if f.name == "init":
+            konan_params_only_ty.insert(0, f"KObjHeader*")
+            convert_params.insert(0, f"result")
+
+        if f.return_ty_ref is not None and f.return_ty_ref.symbol not in base_types:
             self.need_ret_holder = True
-            convert_params.append("result_holder.slot()")
-            konan_params_only_ty.append(f"KObjHeader**")
+
+            if f.name != "init":
+                convert_params.append("result_holder.slot()")
+                konan_params_only_ty.append(f"KObjHeader**")
 
         self.params_str = ", ".join(params)
         self.konan_params_only_ty = ", ".join(konan_params_only_ty)
@@ -120,6 +146,18 @@ class KNBridgeFuncBaseDeclInfo(AbstractAnalysis[BaseFuncDecl]):
             self.return_ty_konan_name = ty_info.as_konan_retval
 
 
+class IfaceDeclInfo(AbstractAnalysis[IfaceDecl]):
+    def __init__(self, am: AnalysisManager, d: IfaceDecl) -> None:
+        p = d.node_parent
+        assert p
+        self.name = d.name
+        self.as_owner = self.name
+        self.as_param = self.name
+        self.as_retval = self.name
+        self.as_konan_param = self.name
+        self.as_konan_retval = self.name
+
+
 class KNBridgeTypeInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
     def __init__(self, am: AnalysisManager, t: Optional[Type]) -> None:
         self.am = am
@@ -132,6 +170,17 @@ class KNBridgeTypeInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
         self.param_covert_func = None
         self.retval_covert_func = None
         self.handle_type(t)
+
+    def visit_iface_decl(self, d: IfaceDecl) -> Any:
+        iface_info = IfaceDeclInfo.get(self.am, d)
+        self.as_owner = iface_info.as_owner
+        self.as_param = "TH_" + iface_info.as_param
+        self.as_retval = "TH_" + iface_info.as_retval
+        self.as_konan_param = "KObjHeader*"
+        self.as_konan_retval = "KObjHeader*"
+        self.param_covert_func = "DerefStablePointer"
+        self.param_covert_func = "DerefStablePointer_addpinned"
+        self.retval_covert_func = "(" + self.as_retval + ")TH_RET_OBJ"
 
     def visit_scalar_type(self, t: ScalarType):
         res = {
@@ -219,7 +268,7 @@ class KNBridgeCodeGenerator:
         kn_bridge_prefix = temp[0]
         assert isinstance(kn_bridge_prefix, str)
 
-        self.gen_package_th_tydef(kn_bridge_pkg_target, kn_bridge_prefix)
+        self.gen_package_th_tydef(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
 
         self.gen_package_kn_typedef(kn_bridge_pkg_target, kn_bridge_prefix)
 
@@ -231,7 +280,7 @@ class KNBridgeCodeGenerator:
 
         self.gen_struct_below(kn_bridge_pkg_target, kn_bridge_prefix)
 
-        self.gen_package_th_tyundef(kn_bridge_pkg_target)
+        self.gen_package_th_tyundef(pkg, kn_bridge_pkg_target)
 
     def gen_package_source_file(self, pkg: Package):
         kn_bridge_pkg_info = KNBridgePackageInfo.get(self.am, pkg)
@@ -244,7 +293,7 @@ class KNBridgeCodeGenerator:
         kn_bridge_prefix = temp[0]
         assert isinstance(kn_bridge_prefix, str)
 
-        self.gen_package_th_tydef(kn_bridge_pkg_target, kn_bridge_prefix)
+        self.gen_package_th_tydef(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
 
         self.gen_package_kn_typedef(kn_bridge_pkg_target, kn_bridge_prefix)
 
@@ -264,10 +313,10 @@ class KNBridgeCodeGenerator:
 
         self.gen_singleton_struct(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
 
-        self.gen_package_th_tyundef(kn_bridge_pkg_target)
+        self.gen_package_th_tyundef(pkg, kn_bridge_pkg_target)
 
     def gen_package_th_tydef(
-        self, kn_bridge_pkg_target: COutputBuffer, kn_bridge_prefix: str
+        self, pkg: Package, kn_bridge_pkg_target: COutputBuffer, kn_bridge_prefix: str
     ):
         kn_bridge_pkg_target.write(
             f"#define TH_BOOL {kn_bridge_prefix}_KBoolean\n"
@@ -283,6 +332,14 @@ class KNBridgeCodeGenerator:
             f"#define TH_UINT64 {kn_bridge_prefix}_KULong\n"
             f"#define TH_STRING KObjHeader*\n"
             f"\n"
+        )
+        for iface in pkg.interfaces:
+            kn_bridge_pkg_target.write(
+                f"#define TH_{iface.name} {kn_bridge_prefix}_kref_{iface.name}\n"
+            )
+        kn_bridge_pkg_target.write(
+            f"#define TH_RET_OBJ(result) {{ .pinned = CreateStablePointer(result) }}\n"
+            f"#define DerefStablePointer_addpinned(a, b) DerefStablePointer((a).pinned, b)\n"
         )
 
     def gen_package_kn_typedef(
@@ -418,7 +475,7 @@ class KNBridgeCodeGenerator:
             f"}}\n"
         )
 
-    def gen_package_th_tyundef(self, kn_bridge_pkg_target: COutputBuffer):
+    def gen_package_th_tyundef(self, pkg: Package, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
             f"#ifdef TH_BOOL\n"
             f"#undef TH_BOOL\n"
@@ -455,6 +512,23 @@ class KNBridgeCodeGenerator:
             f"#endif\n"
             f"#ifdef TH_STRING\n"
             f"#undef TH_STRING\n"
+            f"#endif\n"
+            f"\n"
+        )
+        for iface in pkg.interfaces:
+            kn_bridge_pkg_target.write(
+                f"#ifdef TH_{iface.name}\n"
+                f"#undef TH_{iface.name}\n"
+                f"#endif\n"
+                f"\n"
+            )
+
+        kn_bridge_pkg_target.write(
+            f"#ifdef TH_RET_OBJ\n"
+            f"#undef TH_RET_OBJ\n"
+            f"#endif\n"
+            f"#ifdef DerefStablePointer_addpinned\n"
+            f"#undef DerefStablePointer_addpinned\n"
             f"#endif\n"
             f"\n"
         )
@@ -568,7 +642,7 @@ class KNBridgeCodeGenerator:
                     self.am, method
                 )
                 kn_bridge_pkg_target.write(
-                    f"        {kn_bridge_iface_method_info.return_ty_name} (*{kn_bridge_iface_method_info.name})({kn_bridge_prefix}_kref_{iface.name} thiz, {kn_bridge_iface_method_info.params_str});\n"
+                    f"        {kn_bridge_iface_method_info.return_ty_name} (*{kn_bridge_iface_method_info.name})({kn_bridge_iface_method_info.params_str});\n"
                 )
             kn_bridge_pkg_target.write(f"      }} {iface.name};\n")
 
@@ -629,13 +703,34 @@ class KNBridgeCodeGenerator:
     def gen_iface_func_impl(
         self, pkg: Package, kn_bridge_pkg_target: COutputBuffer, kn_bridge_prefix: str
     ):
+        type_func_name = None
         for iface in pkg.interfaces:
+            init_func_fin = False
             for func in iface.methods:
                 # to be continued
                 kn_bridge_func_info = KNBridgeFuncBaseDeclInfo.get(self.am, func)
+                if kn_bridge_func_info.name == "init":
+                    init_func_fin = True
+                    type_func_name = (
+                        "_konan_function_"
+                        + str(
+                            int(
+                                re.findall(r"\d+", kn_bridge_func_info.konan_proj_name)[
+                                    0
+                                ]
+                            )
+                            - 1
+                        )
+                        + "_type"
+                    )
+                    kn_bridge_pkg_target.write(
+                        f'extern "C" {kn_bridge_prefix}_KType* {type_func_name}(void);\n'
+                    )
+                    kn_bridge_func_info.return_ty_konan_name = "void"
+
                 kn_bridge_pkg_target.write(
-                    f'extern "C" {kn_bridge_func_info.return_ty_konan_name} {kn_bridge_func_info.konan_proj_name}(KObjHeader*, {kn_bridge_func_info.konan_params_only_ty});\n'
-                    f"static {kn_bridge_func_info.return_ty_name} {kn_bridge_func_info.konan_proj_name}_impl({kn_bridge_prefix}_kref_{iface.name} thiz, {kn_bridge_func_info.params_str}) {{\n"
+                    f'extern "C" {kn_bridge_func_info.return_ty_konan_name} {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.konan_params_only_ty});\n'
+                    f"static {kn_bridge_func_info.return_ty_name} {kn_bridge_func_info.konan_proj_name}_impl({kn_bridge_func_info.params_str}) {{\n"
                     f"  Kotlin_initRuntimeIfNeeded();\n"
                     f"  ScopedRunnableState stateGuard;\n"
                     f"  FrameOverlay* frame = getCurrentFrame();\n"
@@ -646,17 +741,24 @@ class KNBridgeCodeGenerator:
                             f"  KObjHolder {func.params[index].name}_holder;\n"
                         )
 
-                kn_bridge_pkg_target.write(f"  KObjHolder thiz_holder;\n")
                 # to be continued
                 kn_bridge_pkg_target.write(f"  try {{\n")
                 if func.return_ty_ref is None:
                     kn_bridge_pkg_target.write(
-                        f"{kn_bridge_func_info.konan_proj_name}(DerefStablePointer(thiz.pinned, thiz_holder.slot()), {kn_bridge_func_info.convert_params_str});\n"
+                        f"    {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
                     )
+                elif init_func_fin:
+                    kn_bridge_pkg_target.write(
+                        f"    KObjHolder result_holder;\n"
+                        f"    KObjHeader* result = AllocInstance((const KTypeInfo*){type_func_name}(), result_holder.slot());\n"
+                        f"    {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
+                        f"    return (({kn_bridge_func_info.return_ty_name}){{ .pinned = CreateStablePointer(result)}});\n"
+                    )
+                    init_func_fin = False
                 else:
                     kn_bridge_pkg_target.write(
                         f"    KObjHolder result_holder;\n"
-                        f"    auto result = {kn_bridge_func_info.konan_proj_name}(DerefStablePointer(thiz.pinned, thiz_holder.slot()), {kn_bridge_func_info.convert_params_str});\n"
+                        f"    auto result = {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
                         f"    return {kn_bridge_func_info.return_ty_str};\n"
                     )
                 kn_bridge_pkg_target.write(
@@ -689,7 +791,7 @@ class KNBridgeCodeGenerator:
             kn_bridge_pkg_target.write(f"  try {{\n")
             if func.return_ty_ref is None:
                 kn_bridge_pkg_target.write(
-                    f"{kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
+                    f"    {kn_bridge_func_info.konan_proj_name}({kn_bridge_func_info.convert_params_str});\n"
                 )
             else:
                 if kn_bridge_func_info.need_ret_holder:
