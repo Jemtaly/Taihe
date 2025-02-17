@@ -6,7 +6,10 @@ from taihe.codegen.abi_generator import (
 from taihe.codegen.cpp_proj_generator import PackageCppProjInfo
 from taihe.codegen.kn_bridge_generator import KNBridgePackageInfo
 from taihe.semantics.declarations import (
+    BaseFuncDecl,
     GlobFuncDecl,
+    IfaceDecl,
+    IfaceMethodDecl,
     Package,
     PackageGroup,
 )
@@ -14,10 +17,15 @@ from taihe.semantics.types import (
     BOOL,
     F32,
     F64,
+    I8,
+    I16,
     I32,
     I64,
     STRING,
+    U8,
+    U16,
     U32,
+    U64,
     Any,
     ScalarType,
     SpecialType,
@@ -50,18 +58,28 @@ class TypeNapiInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
             BOOL: "bool",
             F32: "double",
             F64: "double",
+            I8: "int32",
+            I16: "int32",
             I32: "int32",
             I64: "int64",
+            U8: "uint32",
+            U16: "uint32",
             U32: "uint32",
+            U64: "uint32",
         }.get(t)
 
         as_c = {
             BOOL: "bool",
             F32: "double",
             F64: "double",
+            I8: "int32_t",
+            I16: "int32_t",
             I32: "int32_t",
             I64: "int64_t",
+            U8: "uint32_t",
+            U16: "uint32_t",
             U32: "uint32_t",
+            U64: "uint32_t",
         }.get(t)
         self.as_c = as_c
         self.from_js_to_c_func = f"napi_get_value_{as_napi}"
@@ -127,9 +145,26 @@ class NapiCodeGenerator:
             pkg_napi_h_target.write(
                 f"napi_value init_{func.name}(napi_env env, napi_value exports);\n"
             )
-        pkg_napi_h_target.write(f"EXTERN_C_END\n")
 
+        iface_descs = []
+        iface_func_names = []
+        for iface in pkg.interfaces:
+            for func in iface.methods:
+                self.gen_kn_iface_func(
+                    func, pkg_napi_target, kn_bridge_prefix, iface.name
+                )
+                iface_func_names.append(func.name)
+                iface_descs.append(
+                    f'{{"{iface.name}_{func.name}", nullptr, {iface.name}_{func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
+                )
+                pkg_napi_h_target.write(
+                    f"napi_value init_{iface.name}_{func.name}(napi_env env, napi_value exports);\n"
+                )
+
+        descs = descs + iface_descs
+        func_names = func_names + iface_func_names
         self.gen_module_init(descs, func_names, pkg_napi_target)
+        pkg_napi_h_target.write(f"EXTERN_C_END\n")
         pkg_napi_h_target.write(f"#endif\n")
 
     def gen_package_file(self, pkg: Package):
@@ -181,14 +216,18 @@ class NapiCodeGenerator:
             self.gen_func_get_cb_info(func, pkg_napi_target)
         args = []
         for i, param in enumerate(func.params):
-            if param.ty_ref.resolved_ty == STRING:
+            value_ty = param.ty_ref.resolved_ty
+            if "ArkTsString" in func.attrs and value_ty == STRING:
                 args.append(f"args[{i}]")
                 continue
-            type_napi_param_info = TypeNapiInfo.get(self.am, param.ty_ref.resolved_ty)
-            pkg_napi_target.write(
-                f"    {type_napi_param_info.as_c} value{i};\n"
-                f"    {type_napi_param_info.from_js_to_c_func}(env, args[{i}], &value{i});\n"
-            )
+            if isinstance(value_ty, SpecialType):
+                self.gen_kn_iface_func_get_js_special_value(
+                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                )
+            if isinstance(value_ty, ScalarType):
+                self.gen_kn_iface_func_get_js_scalar_value(
+                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                )
             args.append(f"value{i}")
         if "ArkTsString" in func.attrs:
             args.insert(0, "env")
@@ -196,14 +235,22 @@ class NapiCodeGenerator:
         pkg_napi_target.write(
             f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
         )
-        if func.return_ty_ref and func.return_ty_ref.resolved_ty == STRING:
+        if (
+            func.return_ty_ref
+            and "ArkTsString" in func.attrs
+            and func.return_ty_ref.resolved_ty == STRING
+        ):
             pkg_napi_target.write(
                 f"    napi_value result = lib->kotlin.root.{func.name}({args_str});\n"
                 f"    return result;\n"
             )
         else:
-            self.gen_func_return_value(
-                func, pkg_napi_target, args_str, f"lib->kotlin.root.{func.name}"
+            self.gen_kn_iface_func_return_value(
+                func,
+                pkg_napi_target,
+                args_str,
+                f"lib->kotlin.root.{func.name}",
+                kn_bridge_prefix,
             )
         pkg_napi_target.write(f"}}\n")
 
@@ -224,7 +271,7 @@ class NapiCodeGenerator:
         self.gen_func_return_value(func, pkg_napi_target, args_str, full_func_name)
         pkg_napi_target.write(f"}}\n")
 
-    def gen_func_get_cb_info(self, func: GlobFuncDecl, pkg_napi_target: COutputBuffer):
+    def gen_func_get_cb_info(self, func: BaseFuncDecl, pkg_napi_target: COutputBuffer):
         pkg_napi_target.write(
             f"    size_t argc = {len(func.params)};\n"
             f"    napi_value args[{len(func.params)}] = {{nullptr}};\n"
@@ -276,3 +323,183 @@ class NapiCodeGenerator:
                 f"    napi_get_undefined(env, &result);\n"
                 f"    return result;\n"
             )
+
+    def gen_kn_iface_func(
+        self,
+        func: IfaceMethodDecl,
+        pkg_napi_target: COutputBuffer,
+        kn_bridge_prefix: str,
+        iface_name: str,
+    ):
+        pkg_napi_target.write(
+            f"static napi_value {iface_name}_{func.name}(napi_env env, napi_callback_info info)\n"
+            f"{{\n"
+        )
+        if len(func.params):
+            self.gen_func_get_cb_info(func, pkg_napi_target)
+        args_str = self.gen_kn_iface_func_get_value(
+            func, pkg_napi_target, f"{kn_bridge_prefix}_kref_{iface_name}"
+        )
+        pkg_napi_target.write(
+            f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
+        )
+
+        if (
+            func.return_ty_ref
+            and "ArkTsString" in func.attrs
+            and func.return_ty_ref.resolved_ty == STRING
+        ):
+            pkg_napi_target.write(
+                f"    napi_value result = lib->kotlin.root.{iface_name}.{func.name}({args_str});\n"
+                f"    return result;\n"
+                f"}}\n"
+            )
+            return
+
+        self.gen_kn_iface_func_return_value(
+            func,
+            pkg_napi_target,
+            args_str,
+            f"lib->kotlin.root.{iface_name}.{func.name}",
+            kn_bridge_prefix,
+        )
+        pkg_napi_target.write(f"}}\n")
+
+    def gen_kn_iface_func_get_value(
+        self, func: BaseFuncDecl, pkg_napi_target: COutputBuffer, iface_arg_type: str
+    ):
+        args = []
+        for i, param in enumerate(func.params):
+            value_ty = param.ty_ref.resolved_ty
+            if "ArkTsString" in func.attrs and value_ty == STRING:
+                args.append(f"args[{i}]")
+                continue
+            if isinstance(value_ty, ScalarType):
+                self.gen_kn_iface_func_get_js_scalar_value(
+                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                )
+            if isinstance(value_ty, SpecialType):
+                self.gen_kn_iface_func_get_js_special_value(
+                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                )
+            if isinstance(value_ty, IfaceDecl):
+                self.gen_kn_iface_func_get_js_iface_value(
+                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                )
+                pkg_napi_target.write(
+                    f"    {iface_arg_type} value{i} = {{.pinned = obj_value{i}}};\n"
+                )
+            args.append(f"value{i}")
+        if "ArkTsString" in func.attrs:
+            args.insert(0, "env")
+
+        return ", ".join(args)
+
+    def gen_kn_iface_func_get_js_scalar_value(
+        self,
+        value_ty: ScalarType,
+        pkg_napi_target: COutputBuffer,
+        value: str,
+        result: str,
+    ):
+        type_napi_param_info = TypeNapiInfo.get(self.am, value_ty)
+        pkg_napi_target.write(
+            f"    {type_napi_param_info.as_c} {result};\n"
+            f"    {type_napi_param_info.from_js_to_c_func}(env, {value}, &{result});\n"
+        )
+
+    def gen_kn_iface_func_get_js_special_value(
+        self,
+        value_ty: SpecialType,
+        pkg_napi_target: COutputBuffer,
+        value: str,
+        result: str,
+    ):
+        if value_ty == STRING:
+            pkg_napi_target.write(
+                f"    size_t length_{result} = 0;\n"
+                f"    napi_get_value_string_utf8(env, {value}, nullptr, 0, &length_{result});\n"
+                f"    char {result}[length_{result} + 1];\n"
+                f"    napi_get_value_string_utf8(env, {value}, {result}, length_{result} + 1, &length_{result});\n"
+            )
+        else:
+            raise ValueError(value_ty)
+
+    def gen_kn_iface_func_get_js_iface_value(
+        self,
+        value_ty: IfaceDecl,
+        pkg_napi_target: COutputBuffer,
+        value: str,
+        result: str,
+    ):
+        pkg_napi_target.write(
+            f"    dynamic_KNativePtr *obj_{result};\n"
+            f"    napi_get_value_external(env, {value}, (void**)&obj_{result});\n"
+        )
+
+    def gen_kn_iface_func_return_value(
+        self,
+        func: BaseFuncDecl,
+        pkg_napi_target: COutputBuffer,
+        args_str: str,
+        full_func_name: str,
+        kn_bridge_prefix: str = "",
+    ):
+        if func.return_ty_ref:
+            value_ty = func.return_ty_ref.resolved_ty
+            if isinstance(value_ty, ScalarType):
+                type_napi_return_info = TypeNapiInfo.get(self.am, value_ty)
+                pkg_napi_target.write(
+                    f"    {type_napi_return_info.as_c} value = {full_func_name}({args_str});\n"
+                )
+                self.gen_kn_iface_func_create_js_scalar_value(
+                    value_ty, pkg_napi_target, "value", "result"
+                )
+            if isinstance(value_ty, SpecialType):
+                pkg_napi_target.write(
+                    f"    const char *value = {full_func_name}({args_str});\n"
+                )
+                self.gen_kn_iface_func_create_js_special_value(
+                    value_ty, pkg_napi_target, "value", "result"
+                )
+            if isinstance(value_ty, IfaceDecl):
+                iface_arg_type = f"{kn_bridge_prefix}_kref_{value_ty.name}"
+                pkg_napi_target.write(
+                    f"    {iface_arg_type} kno = {full_func_name}({args_str});\n"
+                    f"    napi_value result;\n"
+                    f"    napi_create_external(env, (void *)kno.pinned, KNObject_Finalizer, NULL, &result);\n"
+                )
+        else:
+            pkg_napi_target.write(
+                f"    {full_func_name}({args_str});\n"
+                f"    napi_value result = nullptr;\n"
+                f"    napi_get_undefined(env, &result);\n"
+            )
+        pkg_napi_target.write(f"    return result;\n")
+
+    def gen_kn_iface_func_create_js_scalar_value(
+        self,
+        value_ty: ScalarType,
+        pkg_napi_target: COutputBuffer,
+        value: str,
+        result: str,
+    ):
+        type_napi_param_info = TypeNapiInfo.get(self.am, value_ty)
+        pkg_napi_target.write(
+            f"    napi_value {result} = nullptr;\n"
+            f"    {type_napi_param_info.from_c_to_js_func}(env, {value}, &{result});\n"
+        )
+
+    def gen_kn_iface_func_create_js_special_value(
+        self,
+        value_ty: SpecialType,
+        pkg_napi_target: COutputBuffer,
+        value: str,
+        result: str,
+    ):
+        type_napi_param_info = TypeNapiInfo.get(self.am, value_ty)
+        pkg_napi_target.write(
+            f"    napi_value {result} = nullptr;\n"
+            f"    {type_napi_param_info.from_c_to_js_func}(env, {value}, strlen({value}), &{result});\n"
+            f"    lib->DisposeString({value});\n"
+        )
