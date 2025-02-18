@@ -1,4 +1,3 @@
-import re
 from typing import Any, Optional
 
 from taihe.codegen.abi_generator import COutputBuffer
@@ -156,6 +155,10 @@ class IfaceDeclInfo(AbstractAnalysis[IfaceDecl]):
         self.as_retval = self.name
         self.as_konan_param = self.name
         self.as_konan_retval = self.name
+        temp = d.attrs["type_function"].value
+        assert isinstance(temp, list)
+        self.type_function = temp[0]
+        assert isinstance(self.type_function, str)
 
 
 class KNBridgeTypeInfo(AbstractAnalysis[Optional[Type]], TypeVisitor[None]):
@@ -637,6 +640,9 @@ class KNBridgeCodeGenerator:
 
         for iface in pkg.interfaces:
             kn_bridge_pkg_target.write(f"      struct {{\n")
+            kn_bridge_pkg_target.write(
+                f"        {kn_bridge_prefix}_KType* (*_type)(void);\n"
+            )
             for method in iface.methods:
                 kn_bridge_iface_method_info = KNBridgeFuncBaseDeclInfo.get(
                     self.am, method
@@ -675,6 +681,11 @@ class KNBridgeCodeGenerator:
         kn_bridge_pkg_target.write(f"  .kotlin = {{\n" f"    .root = {{\n")
         for iface in pkg.interfaces:
             kn_bridge_pkg_target.write(f"      .{iface.name} {{\n")
+            iface_info = IfaceDeclInfo.get(self.am, iface)
+            type_func_name = iface_info.type_function
+            kn_bridge_pkg_target.write(
+                f"        /* Type for {iface.name} = */ {type_func_name}, \n"
+            )
             for method in iface.methods:
                 temp = method.attrs["inner_name"].value
                 assert isinstance(temp, list)
@@ -706,26 +717,16 @@ class KNBridgeCodeGenerator:
         type_func_name = None
         for iface in pkg.interfaces:
             init_func_fin = False
+            iface_info = IfaceDeclInfo.get(self.am, iface)
+            type_func_name = iface_info.type_function
+            kn_bridge_pkg_target.write(
+                f'extern "C" {kn_bridge_prefix}_KType* {type_func_name}(void);\n'
+            )
             for func in iface.methods:
                 # to be continued
                 kn_bridge_func_info = KNBridgeFuncBaseDeclInfo.get(self.am, func)
                 if kn_bridge_func_info.name == "init":
                     init_func_fin = True
-                    type_func_name = (
-                        "_konan_function_"
-                        + str(
-                            int(
-                                re.findall(r"\d+", kn_bridge_func_info.konan_proj_name)[
-                                    0
-                                ]
-                            )
-                            - 1
-                        )
-                        + "_type"
-                    )
-                    kn_bridge_pkg_target.write(
-                        f'extern "C" {kn_bridge_prefix}_KType* {type_func_name}(void);\n'
-                    )
                     kn_bridge_func_info.return_ty_konan_name = "void"
 
                 kn_bridge_pkg_target.write(
