@@ -126,6 +126,11 @@ class NapiCodeGenerator:
         kn_bridge_prefix = temp[0]
         assert isinstance(kn_bridge_prefix, str)
 
+        for iface in pkg.interfaces:
+            pkg_napi_target.write(
+                f"void {iface.name}_Finalizer(napi_env env, void *data, void *hint);\n"
+            )
+
         descs = []
         for func in pkg.functions:
             self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix, [func.name])
