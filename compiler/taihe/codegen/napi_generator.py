@@ -9,7 +9,6 @@ from taihe.semantics.declarations import (
     BaseFuncDecl,
     GlobFuncDecl,
     IfaceDecl,
-    IfaceMethodDecl,
     Package,
     PackageGroup,
 )
@@ -138,7 +137,7 @@ class NapiCodeGenerator:
         func_names = []
         pkg_napi_h_target.write(f"EXTERN_C_START\n")
         for func in pkg.functions:
-            self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix)
+            self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix, [func.name])
             func_desc = f'{{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
             descs.append(func_desc)
             func_names.append(func.name)
@@ -150,17 +149,12 @@ class NapiCodeGenerator:
         iface_descs = []
         iface_func_names = []
         for iface in pkg.interfaces:
-            pkg_napi_target.write(
-                f"void {iface.name}_Finalizer(napi_env env, void *data, void *hint) {{\n"
-                f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
-                f"    lib->DisposeStablePointer(data);\n"
-                f"}}\n"
-            )
+            self.gen_iface_finalizer(iface.name, kn_bridge_prefix, pkg_napi_target)
             for func in iface.methods:
-                self.gen_kn_iface_func(
-                    func, pkg_napi_target, kn_bridge_prefix, iface.name
+                self.gen_kn_func(
+                    func, pkg_napi_target, kn_bridge_prefix, [iface.name, func.name]
                 )
-                iface_func_names.append(func.name)
+                iface_func_names.append(f"{iface.name}_{func.name}")
                 iface_descs.append(
                     f'{{"{iface.name}_{func.name}", nullptr, {iface.name}_{func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
                 )
@@ -173,6 +167,16 @@ class NapiCodeGenerator:
         self.gen_module_init(descs, func_names, pkg_napi_target)
         pkg_napi_h_target.write(f"EXTERN_C_END\n")
         pkg_napi_h_target.write(f"#endif\n")
+
+    def gen_iface_finalizer(
+        self, iface_name: str, kn_bridge_prefix: str, pkg_napi_target: COutputBuffer
+    ):
+        pkg_napi_target.write(
+            f"void {iface_name}_Finalizer(napi_env env, void *data, void *hint) {{\n"
+            f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
+            f"    lib->DisposeStablePointer(data);\n"
+            f"}}\n"
+        )
 
     def gen_package_file(self, pkg: Package):
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
@@ -211,34 +215,20 @@ class NapiCodeGenerator:
 
     def gen_kn_func(
         self,
-        func: GlobFuncDecl,
+        func: BaseFuncDecl,
         pkg_napi_target: COutputBuffer,
         kn_bridge_prefix: str,
+        func_name: list[str],
     ):
         pkg_napi_target.write(
-            f"static napi_value {func.name}(napi_env env, napi_callback_info info)\n"
+            f'static napi_value {"_".join(func_name)}(napi_env env, napi_callback_info info)\n'
             f"{{\n"
         )
         if len(func.params):
             self.gen_func_get_cb_info(func, pkg_napi_target)
-        args = []
-        for i, param in enumerate(func.params):
-            value_ty = param.ty_ref.resolved_ty
-            if "ArkTsString" in func.attrs and value_ty == STRING:
-                args.append(f"args[{i}]")
-                continue
-            if isinstance(value_ty, SpecialType):
-                self.gen_kn_iface_func_get_js_special_value(
-                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
-                )
-            if isinstance(value_ty, ScalarType):
-                self.gen_kn_iface_func_get_js_scalar_value(
-                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
-                )
-            args.append(f"value{i}")
-        if "ArkTsString" in func.attrs:
-            args.insert(0, "env")
-        args_str = ", ".join(args)
+        args_str = self.gen_kn_iface_func_get_value(
+            func, pkg_napi_target, kn_bridge_prefix
+        )
         pkg_napi_target.write(
             f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
         )
@@ -248,7 +238,7 @@ class NapiCodeGenerator:
             and func.return_ty_ref.resolved_ty == STRING
         ):
             pkg_napi_target.write(
-                f"    napi_value result = lib->kotlin.root.{func.name}({args_str});\n"
+                f'    napi_value result = lib->kotlin.root.{".".join(func_name)}({args_str});\n'
                 f"    return result;\n"
             )
         else:
@@ -256,7 +246,7 @@ class NapiCodeGenerator:
                 func,
                 pkg_napi_target,
                 args_str,
-                f"lib->kotlin.root.{func.name}",
+                f'lib->kotlin.root.{".".join(func_name)}',
                 kn_bridge_prefix,
             )
         pkg_napi_target.write(f"}}\n")
@@ -330,47 +320,6 @@ class NapiCodeGenerator:
                 f"    napi_get_undefined(env, &result);\n"
                 f"    return result;\n"
             )
-
-    def gen_kn_iface_func(
-        self,
-        func: IfaceMethodDecl,
-        pkg_napi_target: COutputBuffer,
-        kn_bridge_prefix: str,
-        iface_name: str,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value {iface_name}_{func.name}(napi_env env, napi_callback_info info)\n"
-            f"{{\n"
-        )
-        if len(func.params):
-            self.gen_func_get_cb_info(func, pkg_napi_target)
-        args_str = self.gen_kn_iface_func_get_value(
-            func, pkg_napi_target, kn_bridge_prefix
-        )
-        pkg_napi_target.write(
-            f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
-        )
-
-        if (
-            func.return_ty_ref
-            and "ArkTsString" in func.attrs
-            and func.return_ty_ref.resolved_ty == STRING
-        ):
-            pkg_napi_target.write(
-                f"    napi_value result = lib->kotlin.root.{iface_name}.{func.name}({args_str});\n"
-                f"    return result;\n"
-                f"}}\n"
-            )
-            return
-
-        self.gen_kn_iface_func_return_value(
-            func,
-            pkg_napi_target,
-            args_str,
-            f"lib->kotlin.root.{iface_name}.{func.name}",
-            kn_bridge_prefix,
-        )
-        pkg_napi_target.write(f"}}\n")
 
     def gen_kn_iface_func_get_value(
         self, func: BaseFuncDecl, pkg_napi_target: COutputBuffer, kn_bridge_prefix: str
