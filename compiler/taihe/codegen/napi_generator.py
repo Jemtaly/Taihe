@@ -124,6 +124,7 @@ class NapiCodeGenerator:
             self.tm, f"{pkg_napi_info.kn_header}", False
         )
         pkg_napi_h_target.include("napi/native_api.h")
+        pkg_napi_h_target.write("#include <string>\n")
         pkg_napi_h_target.write(
             f"#ifndef {pkg.name}_NAPI_H\n" f"#define {pkg.name}_NAPI_H\n"
         )
@@ -149,6 +150,12 @@ class NapiCodeGenerator:
         iface_descs = []
         iface_func_names = []
         for iface in pkg.interfaces:
+            pkg_napi_target.write(
+                f"void {iface.name}_Finalizer(napi_env env, void *data, void *hint) {{\n"
+                f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
+                f"    lib->DisposeStablePointer(data);\n"
+                f"}}\n"
+            )
             for func in iface.methods:
                 self.gen_kn_iface_func(
                     func, pkg_napi_target, kn_bridge_prefix, iface.name
@@ -338,7 +345,7 @@ class NapiCodeGenerator:
         if len(func.params):
             self.gen_func_get_cb_info(func, pkg_napi_target)
         args_str = self.gen_kn_iface_func_get_value(
-            func, pkg_napi_target, f"{kn_bridge_prefix}_kref_{iface_name}"
+            func, pkg_napi_target, kn_bridge_prefix
         )
         pkg_napi_target.write(
             f"    {kn_bridge_prefix}_ExportedSymbols *lib = {kn_bridge_prefix}_symbols();\n"
@@ -366,7 +373,7 @@ class NapiCodeGenerator:
         pkg_napi_target.write(f"}}\n")
 
     def gen_kn_iface_func_get_value(
-        self, func: BaseFuncDecl, pkg_napi_target: COutputBuffer, iface_arg_type: str
+        self, func: BaseFuncDecl, pkg_napi_target: COutputBuffer, kn_bridge_prefix: str
     ):
         args = []
         for i, param in enumerate(func.params):
@@ -384,10 +391,14 @@ class NapiCodeGenerator:
                 )
             if isinstance(value_ty, IfaceDecl):
                 self.gen_kn_iface_func_get_js_iface_value(
-                    value_ty, pkg_napi_target, f"args[{i}]", f"value{i}"
+                    value_ty,
+                    pkg_napi_target,
+                    f"args[{i}]",
+                    f"value{i}",
+                    kn_bridge_prefix,
                 )
                 pkg_napi_target.write(
-                    f"    {iface_arg_type} value{i} = {{.pinned = obj_value{i}}};\n"
+                    f"    {kn_bridge_prefix}_kref_{value_ty.name} value{i} = {{.pinned = obj_value{i}}};\n"
                 )
             args.append(f"value{i}")
         if "ArkTsString" in func.attrs:
@@ -431,9 +442,10 @@ class NapiCodeGenerator:
         pkg_napi_target: COutputBuffer,
         value: str,
         result: str,
+        kn_bridge_prefix: str,
     ):
         pkg_napi_target.write(
-            f"    dynamic_KNativePtr *obj_{result};\n"
+            f"    {kn_bridge_prefix}_KNativePtr *obj_{result};\n"
             f"    napi_get_value_external(env, {value}, (void**)&obj_{result});\n"
         )
 
@@ -463,11 +475,10 @@ class NapiCodeGenerator:
                     value_ty, pkg_napi_target, "value", "result"
                 )
             if isinstance(value_ty, IfaceDecl):
-                iface_arg_type = f"{kn_bridge_prefix}_kref_{value_ty.name}"
                 pkg_napi_target.write(
-                    f"    {iface_arg_type} kno = {full_func_name}({args_str});\n"
+                    f"    {kn_bridge_prefix}_kref_{value_ty.name} kno = {full_func_name}({args_str});\n"
                     f"    napi_value result;\n"
-                    f"    napi_create_external(env, (void *)kno.pinned, KNObject_Finalizer, NULL, &result);\n"
+                    f"    napi_create_external(env, (void *)kno.pinned, {value_ty.name}_Finalizer, NULL, &result);\n"
                 )
         else:
             pkg_napi_target.write(
