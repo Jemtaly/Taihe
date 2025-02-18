@@ -112,6 +112,8 @@ class NapiCodeGenerator:
 
     def gen_kn_package_file(self, pkg: Package):
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
+        self.gen_kn_napi_header_file(pkg_napi_info, pkg.name)
+
         pkg_kn_bridge_info = KNBridgePackageInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
             self.tm, f"{pkg_napi_info.kn_source}", False
@@ -119,54 +121,44 @@ class NapiCodeGenerator:
         pkg_napi_target.include(f"{pkg_kn_bridge_info.header}")
         pkg_napi_target.include(f"{pkg_napi_info.kn_header}")
 
-        pkg_napi_h_target = COutputBuffer.create(
-            self.tm, f"{pkg_napi_info.kn_header}", False
-        )
-        pkg_napi_h_target.include("napi/native_api.h")
-        pkg_napi_h_target.write("#include <string>\n")
-        pkg_napi_h_target.write(
-            f"#ifndef {pkg.name}_NAPI_H\n" f"#define {pkg.name}_NAPI_H\n"
-        )
-
         temp = pkg.attrs["prefix"].value
         assert isinstance(temp, list)
         kn_bridge_prefix = temp[0]
         assert isinstance(kn_bridge_prefix, str)
 
         descs = []
-        func_names = []
-        pkg_napi_h_target.write(f"EXTERN_C_START\n")
         for func in pkg.functions:
             self.gen_kn_func(func, pkg_napi_target, kn_bridge_prefix, [func.name])
-            func_desc = f'{{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
+            func_desc = f'        {{"{func.name}", nullptr, {func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
             descs.append(func_desc)
-            func_names.append(func.name)
 
-            pkg_napi_h_target.write(
-                f"napi_value init_{func.name}(napi_env env, napi_value exports);\n"
-            )
-
-        iface_descs = []
-        iface_func_names = []
         for iface in pkg.interfaces:
             self.gen_iface_finalizer(iface.name, kn_bridge_prefix, pkg_napi_target)
             for func in iface.methods:
                 self.gen_kn_func(
                     func, pkg_napi_target, kn_bridge_prefix, [iface.name, func.name]
                 )
-                iface_func_names.append(f"{iface.name}_{func.name}")
-                iface_descs.append(
-                    f'{{"{iface.name}_{func.name}", nullptr, {iface.name}_{func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
-                )
-                pkg_napi_h_target.write(
-                    f"napi_value init_{iface.name}_{func.name}(napi_env env, napi_value exports);\n"
+                descs.append(
+                    f'        {{"{iface.name}_{func.name}", nullptr, {iface.name}_{func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
                 )
 
-        descs = descs + iface_descs
-        func_names = func_names + iface_func_names
-        self.gen_module_init(descs, func_names, pkg_napi_target)
-        pkg_napi_h_target.write(f"EXTERN_C_END\n")
-        pkg_napi_h_target.write(f"#endif\n")
+        desc_str = ",\n".join(descs)
+        self.gen_module_init(desc_str, pkg.name, pkg_napi_target)
+
+    def gen_kn_napi_header_file(self, pkg_napi_info: PackageNapiInfo, pkg_name: str):
+        pkg_napi_h_target = COutputBuffer.create(
+            self.tm, f"{pkg_napi_info.kn_header}", False
+        )
+        pkg_napi_h_target.include("napi/native_api.h")
+        pkg_napi_h_target.write(
+            f"#include <string>\n"
+            f"#ifndef {pkg_name}_NAPI_H\n"
+            f"#define {pkg_name}_NAPI_H\n"
+            f"EXTERN_C_START\n"
+            f"napi_value init_{pkg_name}(napi_env env, napi_value exports);\n"
+            f"EXTERN_C_END\n"
+            f"#endif\n"
+        )
 
     def gen_iface_finalizer(
         self, iface_name: str, kn_bridge_prefix: str, pkg_napi_target: COutputBuffer
@@ -188,30 +180,28 @@ class NapiCodeGenerator:
         pkg_napi_target.include(pkg_cpp_proj_info.header)
 
         descs = []
-        func_names = []
         for func in pkg.functions:
             self.gen_func(func, pkg_napi_info, pkg_napi_target)
             func_desc = f'{{"{func.name}", nullptr, napi_{func.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
             descs.append(func_desc)
-            func_names.append(func.name)
 
-        self.gen_module_init(descs, func_names, pkg_napi_target)
+        desc_str = ",\n".join(descs)
+        self.gen_module_init(desc_str, "init", pkg_napi_target)
 
     def gen_module_init(
-        self, descs: list[str], func_names: list[str], pkg_napi_target: COutputBuffer
+        self, desc_str: str, pkg_name: str, pkg_napi_target: COutputBuffer
     ):
-        pkg_napi_target.write(f"EXTERN_C_START\n")
-        for func_name, desc in zip(func_names, descs, strict=False):
-            pkg_napi_target.write(
-                f"napi_value init_{func_name}(napi_env env, napi_value exports) {{\n"
-                f"    napi_property_descriptor desc[] = {{\n"
-                f"        {desc}\n"
-                f"    }};\n"
-                f"    napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);\n"
-                f"    return exports;\n"
-                f"}}\n"
-            )
-        pkg_napi_target.write(f"EXTERN_C_END\n")
+        pkg_napi_target.write(
+            f"EXTERN_C_START\n"
+            f"napi_value init_{pkg_name}(napi_env env, napi_value exports) {{\n"
+            f"    napi_property_descriptor desc[] = {{\n"
+            f"{desc_str}\n"
+            f"    }};\n"
+            f"    napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);\n"
+            f"    return exports;\n"
+            f"}}\n"
+            f"EXTERN_C_END\n"
+        )
 
     def gen_kn_func(
         self,
