@@ -352,9 +352,6 @@ class _CheckRecursiveInclusionPass(RecursiveDeclVisitor):
             last, *other = cycle[::-1]
             self.diag.emit(RecursiveReferenceError(last, other))
 
-    def visit_data_type_decl(self, d: TypeDecl) -> None:
-        raise NotImplementedError()
-
     def visit_iface_decl(self, d: IfaceDecl) -> None:
         parent_iface_list = self.type_table.setdefault(d, [])
         parent_iface_dict: dict[IfaceDecl, IfaceParentDecl] = {}
