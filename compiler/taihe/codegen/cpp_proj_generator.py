@@ -702,7 +702,7 @@ class CppProjCodeGenerator:
         )
         # copy assignment
         enum_cpp_proj_defn_target.write(
-            f"    {enum_cpp_proj_info.name} const& operator=({enum_cpp_proj_info.name} const& other) {{\n"
+            f"    {enum_cpp_proj_info.name}& operator=({enum_cpp_proj_info.name} const& other) {{\n"
             f"        if (this != &other) {{\n"
             f"            ::std::destroy_at(this);\n"
             f"            new (this) {enum_cpp_proj_info.name}(other);\n"
@@ -712,7 +712,7 @@ class CppProjCodeGenerator:
         )
         # move assignment
         enum_cpp_proj_defn_target.write(
-            f"    {enum_cpp_proj_info.name} const& operator=({enum_cpp_proj_info.name}&& other) {{\n"
+            f"    {enum_cpp_proj_info.name}& operator=({enum_cpp_proj_info.name}&& other) {{\n"
             f"        if (this != &other) {{\n"
             f"            ::std::destroy_at(this);\n"
             f"            new (this) {enum_cpp_proj_info.name}(::std::move(other));\n"
