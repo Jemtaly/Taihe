@@ -398,9 +398,9 @@ class ABICodeGenerator:
         )
         struct_abi_defn_target.include("taihe/common.h")
         struct_abi_defn_target.include(struct_abi_info.decl_header)
-        self.gen_struct_type_defn(struct, struct_abi_info, struct_abi_defn_target)
+        self.gen_struct_defn(struct, struct_abi_info, struct_abi_defn_target)
 
-    def gen_struct_type_defn(
+    def gen_struct_defn(
         self,
         struct: StructDecl,
         struct_abi_info: StructDeclABIInfo,
@@ -443,9 +443,9 @@ class ABICodeGenerator:
         )
         enum_abi_defn_target.include("taihe/common.h")
         enum_abi_defn_target.include(enum_abi_info.decl_header)
-        self.gen_enum_union_defn(enum, enum_abi_info, enum_abi_defn_target)
+        self.gen_enum_defn(enum, enum_abi_info, enum_abi_defn_target)
 
-    def gen_enum_union_defn(
+    def gen_enum_defn(
         self,
         enum: EnumDecl,
         enum_abi_info: EnumDeclABIInfo,
@@ -464,8 +464,8 @@ class ABICodeGenerator:
         enum_abi_defn_target.write(
             f"}};\n"
             f"struct {enum_abi_info.mangled_name} {{\n"
-            f"  {enum_abi_info.tag_type} tag;\n"
-            f"  union {enum_abi_info.union_name} data;\n"
+            f"  {enum_abi_info.tag_type} m_tag;\n"
+            f"  union {enum_abi_info.union_name} m_data;\n"
             f"}};\n"
         )
 
@@ -501,6 +501,20 @@ class ABICodeGenerator:
         )
         iface_abi_defn_target.include("taihe/object.abi.h")
         iface_abi_defn_target.include(iface_abi_info.decl_header)
+        self.gen_iface_defn(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_ftable(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_vtable(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_static_cast_funcs(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_dynamic_cast_func(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_copy_func(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_drop_func(iface, iface_abi_info, iface_abi_defn_target)
+
+    def gen_iface_defn(
+        self,
+        iface: IfaceDecl,
+        iface_abi_info: IfaceDeclABIInfo,
+        iface_abi_defn_target: COutputBuffer,
+    ):
         iface_abi_defn_target.write(
             f"struct {iface_abi_info.ftable};\n"
             f"struct {iface_abi_info.vtable};\n"
@@ -510,12 +524,6 @@ class ABICodeGenerator:
             f"}};\n"
             f"TH_EXPORT void const* const {iface_abi_info.iid};\n"
         )
-        self.gen_iface_ftable(iface, iface_abi_info, iface_abi_defn_target)
-        self.gen_iface_vtable(iface, iface_abi_info, iface_abi_defn_target)
-        self.gen_iface_static_cast_funcs(iface, iface_abi_info, iface_abi_defn_target)
-        self.gen_iface_dynamic_cast_func(iface, iface_abi_info, iface_abi_defn_target)
-        self.gen_iface_copy_func(iface, iface_abi_info, iface_abi_defn_target)
-        self.gen_iface_drop_func(iface, iface_abi_info, iface_abi_defn_target)
 
     def gen_iface_ftable(
         self,
