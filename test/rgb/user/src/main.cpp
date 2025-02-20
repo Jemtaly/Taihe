@@ -4,6 +4,7 @@
 
 #include <core/callback.hpp>
 
+#include <cstddef>
 #include <iostream>
 #include <cmath>
 #include <iomanip>
@@ -210,19 +211,12 @@ int main() {
     }
 
     {
-        std::cout << "-------- Testing Boxes --------" << std::endl;
+        std::cout << "-------- Testing Box --------" << std::endl;
 
-        auto dst = box<IBase>::make(make_holder<UserType, IBase>("s"));
-        auto src = box<IBase>::make(make_holder<UserType, IBase>("t"));
+        IBase obj = make_holder<UserType, IBase>("some");
 
-        std::cout << "dst = " << (*dst)->getId() << std::endl;
-        std::cout << "src = " << (*src)->getId() << std::endl;
-
-        auto res = exchangeBox(dst, src);
-
-        std::cout << "dst = " << (*dst)->getId() << std::endl;
-        std::cout << "src = " << (*src)->getId() << std::endl;
-        std::cout << "res = " << (*res)->getId() << std::endl;
+        testBox(&obj);
+        testBox(NULL);
     }
 
     {

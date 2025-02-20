@@ -232,8 +232,8 @@ class BoxTypeABIInfo(AbstractAnalysis[BoxType], AbstractTypeABIInfo):
     def __init__(self, am: AnalysisManager, t: BoxType) -> None:
         self.decl_headers = []
         self.defn_headers = []
-        self.as_field = "void*"
-        self.as_param = "void*"
+        self.as_field = "void const*"
+        self.as_param = "void const*"
 
 
 class CallbackTypeABIInfo(AbstractAnalysis[CallbackType], AbstractTypeABIInfo):
