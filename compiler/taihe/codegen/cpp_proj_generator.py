@@ -493,14 +493,13 @@ class CppProjCodeGenerator:
         struct_cpp_proj_info: StructDeclCppProjInfo,
         struct_cpp_proj_defn_target: COutputBuffer,
     ):
-        conds = []
+        result = "true"
         for field in struct.fields:
-            conds.append(f"same(lhs.{field.name}, rhs.{field.name})")
-        conds_fmt = " && ".join(conds)
+            result = f"{result} && same(lhs.{field.name}, rhs.{field.name})"
         struct_cpp_proj_defn_target.write(
             f"namespace taihe::core {{\n"
             f"inline bool same_impl(adl_helper_t, {struct_cpp_proj_info.as_param} lhs, {struct_cpp_proj_info.as_param} rhs) {{\n"
-            f"    return {conds_fmt};\n"
+            f"    return {result};\n"
             f"}}\n"
             f"}}\n"
         )
@@ -746,7 +745,6 @@ class CppProjCodeGenerator:
             f"    template<tag_t tag, typename... Args>\n"
             f"    {enum_cpp_proj_info.name} const& emplace(Args&&... args) {{\n"
             f"        ::std::destroy_at(this);\n"
-            f"        m_tag = tag;\n"
             f"        new (this) {enum_cpp_proj_info.name}(::taihe::core::static_tag<tag>, ::std::forward<Args>(args)...);\n"
             f"        return *this;\n"
             f"    }}\n"
@@ -893,19 +891,16 @@ class CppProjCodeGenerator:
         enum_cpp_proj_info: EnumDeclCppProjInfo,
         enum_cpp_proj_defn_target: COutputBuffer,
     ):
-        conds = []
+        result = "false"
         for item in enum.items:
             cond = f"lhs.holds_{item.name}() && rhs.holds_{item.name}()"
-            conds.append(
-                f"{cond} && same(lhs.get_{item.name}_ref(), rhs.get_{item.name}_ref())"
-                if item.ty_ref
-                else cond
-            )
-        conds_fmt = " || ".join(conds)
+            if item.ty_ref:
+                cond = f"{cond} && same(lhs.get_{item.name}_ref(), rhs.get_{item.name}_ref())"
+            result = f"{result} || {cond}"
         enum_cpp_proj_defn_target.write(
             f"namespace taihe::core {{\n"
             f"inline bool same_impl(adl_helper_t, {enum_cpp_proj_info.as_param} lhs, {enum_cpp_proj_info.as_param} rhs) {{\n"
-            f"    return {conds_fmt};\n"
+            f"    return {result};\n"
             f"}}\n"
             f"}}\n"
         )

@@ -29,7 +29,7 @@ specField
       LEFT_BRACE (StructFieldLst_fields += structField)* RIGHT_BRACE # struct
     | (LEFT_BRACKET (AttrItemLst_attrs += attrItem (COMMA AttrItemLst_attrs += attrItem)*)? RIGHT_BRACKET)?
       KW_ENUM token_name = ID
-      LEFT_BRACE (EnumFieldLst_fields += enumField)+ RIGHT_BRACE # enum
+      LEFT_BRACE (EnumFieldLst_fields += enumField)* RIGHT_BRACE # enum
     | (LEFT_BRACKET (AttrItemLst_attrs += attrItem (COMMA AttrItemLst_attrs += attrItem)*)? RIGHT_BRACKET)?
       KW_INTERFACE token_name = ID
       (COLON InterfaceParentLst_extends += interfaceParent (COMMA InterfaceParentLst_extends += interfaceParent)*)?
