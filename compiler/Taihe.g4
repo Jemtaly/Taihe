@@ -12,7 +12,7 @@ spec
 
 use
     : KW_USE PkgName_pkg_name = pkgName (KW_AS tokenOpt_pkg_alias = ID)? SEMICOLON # usePackage
-    | KW_FROM PkgName_pkg_name = pkgName KW_USE (DeclAliasPairLst_decl_alias_pairs += declAliasPair COMMA)* DeclAliasPairLst_decl_alias_pairs += declAliasPair SEMICOLON # useSymbol
+    | KW_FROM PkgName_pkg_name = pkgName KW_USE DeclAliasPairLst_decl_alias_pairs += declAliasPair (COMMA DeclAliasPairLst_decl_alias_pairs += declAliasPair)* SEMICOLON # useSymbol
     ;
 
 pkgName
@@ -72,7 +72,9 @@ parameter
 ///////////////
 
 attrItem
-    : token_name = ID (ASSIGN_TO AttrValOpt_val = attrVal)?
+    : token_name = ID # emptyAttrItem
+    | token_name = ID ASSIGN_TO AttrVal_val = attrVal # simpleAttrItem
+    | token_name = ID LEFT_PARENTHESIS (AttrValLst_vals = attrVal (COMMA AttrValLst_vals = attrVal)*)? RIGHT_PARENTHESIS # tupleAttrItem
     ;
 
 attrVal

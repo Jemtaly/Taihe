@@ -159,11 +159,19 @@ class AstConverter(ExprEvaluator):
         return SourceLocation(self.source, *t._beg, *t._end)
 
     @override
-    def visit_AttrItem(self, node: ast.AttrItem) -> AttrItemDecl:
-        if val := node.val:
-            d = AttrItemDecl(self.loc(node.name), str(node.name), self.visit(val.expr))
-        else:
-            d = AttrItemDecl(self.loc(node.name), str(node.name))
+    def visit_EmptyAttrItem(self, node: ast.EmptyAttrItem) -> AttrItemDecl:
+        d = AttrItemDecl(self.loc(node.name), str(node.name))
+        return d
+
+    @override
+    def visit_SimpleAttrItem(self, node: ast.SimpleAttrItem) -> AttrItemDecl:
+        d = AttrItemDecl(self.loc(node.name), str(node.name), self.visit(node.val.expr))
+        return d
+
+    @override
+    def visit_TupleAttrItem(self, node: ast.TupleAttrItem) -> AttrItemDecl:
+        value = tuple(self.visit(val.expr) for val in node.vals)
+        d = AttrItemDecl(self.loc(node.name), str(node.name), value)
         return d
 
     @override

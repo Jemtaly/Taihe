@@ -74,14 +74,14 @@ class NamedDecl(Decl, metaclass=ABCMeta):
 
 
 class AttrItemDecl(NamedDecl):
-    value: bool | int | str | None
+    value: bool | int | str | tuple[bool | int | str, ...] | None
     node_parent: Optional[Decl]
 
     def __init__(
         self,
         loc: Optional[SourceLocation],
         name: str,
-        value: bool | int | str | None = None,
+        value: bool | int | str | tuple[bool | int | str, ...] | None = None,
     ):
         super().__init__(loc, name)
         self.value = value
