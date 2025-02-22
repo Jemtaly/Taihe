@@ -114,9 +114,9 @@ class CompilerInstance:
                 self.package_group
             )
 
-        KNBridgeCodeGenerator(self.target_manager, self.analysis_manager).generate(
-            self.package_group
-        )
+        # KNBridgeCodeGenerator(self.target_manager, self.analysis_manager).generate(
+        #     self.package_group
+        # )
 
         self.target_manager.output_to(self.invocation.out_dir)
 
