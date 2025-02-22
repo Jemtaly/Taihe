@@ -140,7 +140,7 @@ class TypeRefDecl(Decl, metaclass=ABCMeta):
         return f"type reference {self.unresolved_repr}"
 
 
-class SimpleTypeRefDecl(TypeRefDecl):
+class ShortTypeRefDecl(TypeRefDecl):
     symbol: str
 
     def __init__(
@@ -154,12 +154,37 @@ class SimpleTypeRefDecl(TypeRefDecl):
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
-        return v.visit_simple_type_ref_decl(self)
+        return v.visit_short_type_ref_decl(self)
 
     @property
     @override
     def unresolved_repr(self):
         return self.symbol
+
+
+class LongTypeRefDecl(TypeRefDecl):
+    pkname: str
+    symbol: str
+
+    def __init__(
+        self,
+        loc: Optional[SourceLocation],
+        pkname: str,
+        symbol: str,
+        resolved_ty: Optional[Type] = None,
+    ):
+        super().__init__(loc, resolved_ty)
+        self.pkname = pkname
+        self.symbol = symbol
+
+    @override
+    def _accept(self, v: "DeclVisitor") -> Any:
+        return v.visit_long_type_ref_decl(self)
+
+    @property
+    @override
+    def unresolved_repr(self):
+        return f"{self.pkname}.{self.symbol}"
 
 
 class GenericTypeRefDecl(TypeRefDecl):
@@ -640,12 +665,11 @@ class Package(NamedDecl):
     """A collection of named identities sharing the same scope."""
 
     # Symbols
-    imports: dict[str, ImportDecl]
     decls: dict[str, PackageLevelDecl]
 
     # Imports
-    pkg_imports: list[PackageImportDecl]
-    decl_imports: list[DeclarationImportDecl]
+    pkg_imports: dict[str, PackageImportDecl]
+    decl_imports: dict[str, DeclarationImportDecl]
 
     # Things that the package contains.
     functions: list[GlobFuncDecl]
@@ -656,12 +680,10 @@ class Package(NamedDecl):
     def __init__(self, name: str, loc: Optional[SourceLocation]):
         super().__init__(loc, name)
 
-        self.imports = {}
         self.decls = {}
 
-        self.pkg_imports = []
-        self.decl_imports = []
-
+        self.pkg_imports = {}
+        self.decl_imports = {}
         self.functions = []
         self.structs = []
         self.enums = []
@@ -673,8 +695,8 @@ class Package(NamedDecl):
 
     @property
     def children(self) -> Iterable[NamedDecl]:
-        yield from self.pkg_imports
-        yield from self.decl_imports
+        yield from self.pkg_imports.values()
+        yield from self.decl_imports.values()
 
         yield from self.functions
         yield from self.structs
@@ -722,20 +744,17 @@ class Package(NamedDecl):
         else:
             raise NotImplementedError(f"unexpected declaration {d.description}")
 
-    def _register_to_import(self, i: ImportDecl):
-        if prev := self.imports.get(i.name, None):
-            raise DeclRedefError(prev, i)
-        self.imports[i.name] = i
-
     def add_decl_import(self, i: DeclarationImportDecl):
         i.node_parent = self
-        self.decl_imports.append(i)
-        self._register_to_import(i)
+        if prev := self.decl_imports.get(i.name, None):
+            raise DeclRedefError(prev, i)
+        self.decl_imports[i.name] = i
 
     def add_pkg_import(self, i: PackageImportDecl):
         i.node_parent = self
-        self.pkg_imports.append(i)
-        self._register_to_import(i)
+        if prev := self.pkg_imports.get(i.name, None):
+            raise DeclRedefError(prev, i)
+        self.pkg_imports[i.name] = i
 
     def add_import(self, i: ImportDecl):
         if isinstance(i, DeclarationImportDecl):

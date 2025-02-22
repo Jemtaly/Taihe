@@ -17,11 +17,12 @@ from taihe.semantics.declarations import (
     IfaceDecl,
     IfaceMethodDecl,
     IfaceParentDecl,
+    LongTypeRefDecl,
     Package,
     PackageImportDecl,
     PackageRefDecl,
     ParamDecl,
-    SimpleTypeRefDecl,
+    ShortTypeRefDecl,
     StructDecl,
     StructFieldDecl,
 )
@@ -158,6 +159,8 @@ class AstConverter(ExprEvaluator):
         # Remember, token.column is 0-based.
         return SourceLocation(self.source, *t._beg, *t._end)
 
+    # Attributes
+
     @override
     def visit_EmptyAttrItem(self, node: ast.EmptyAttrItem) -> AttrItemDecl:
         d = AttrItemDecl(self.loc(node.name), str(node.name))
@@ -174,26 +177,27 @@ class AstConverter(ExprEvaluator):
         d = AttrItemDecl(self.loc(node.name), str(node.name), value)
         return d
 
+    # Type References
+
     @override
-    def visit_UserType(self, node: ast.UserType) -> SimpleTypeRefDecl:
+    def visit_LongType(self, node: ast.LongType) -> LongTypeRefDecl:
         loc = self.loc(node)
-        if node.pkg_name:
-            symbol = pkg2str(node.pkg_name) + "." + str(node.decl_name)
-        else:
-            symbol = str(node.decl_name)
-        ty_ref = SimpleTypeRefDecl(loc, symbol)
-        return ty_ref
+        pkname = pkg2str(node.pkg_name)
+        symbol = str(node.decl_name)
+        return LongTypeRefDecl(loc, pkname, symbol)
+
+    @override
+    def visit_ShortType(self, node: ast.ShortType) -> ShortTypeRefDecl:
+        loc = self.loc(node)
+        symbol = str(node.decl_name)
+        return ShortTypeRefDecl(loc, symbol)
 
     @override
     def visit_GenericType(self, node: ast.GenericType) -> GenericTypeRefDecl:
         loc = self.loc(node)
-        if node.pkg_name:
-            symbol = pkg2str(node.pkg_name) + "." + str(node.decl_name)
-        else:
-            symbol = str(node.decl_name)
+        symbol = str(node.decl_name)
         args = [self.visit(arg) for arg in node.args]
-        ty_ref = GenericTypeRefDecl(loc, symbol, args)
-        return ty_ref
+        return GenericTypeRefDecl(loc, symbol, args)
 
     @override
     def visit_CallbackType(self, node: ast.CallbackType) -> CallbackTypeRefDecl:
@@ -203,6 +207,8 @@ class AstConverter(ExprEvaluator):
             d = CallbackTypeRefDecl(self.loc(node))
         self.diag.for_each(node.parameters, lambda p: d.add_param(self.visit(p)))
         return d
+
+    # Uses
 
     @override
     def visit_UsePackage(self, node: ast.UsePackage) -> Iterable[PackageImportDecl]:
@@ -235,6 +241,8 @@ class AstConverter(ExprEvaluator):
                     d_ref,
                 )
             yield d
+
+    # Declarations
 
     @override
     def visit_StructProperty(self, node: ast.StructProperty) -> StructFieldDecl:
@@ -305,6 +313,8 @@ class AstConverter(ExprEvaluator):
         self.diag.for_each(node.parameters, lambda p: d.add_param(self.visit(p)))
         self.diag.for_each(node.attrs, lambda a: d.add_attr(self.visit(a)))
         return d
+
+    # Package
 
     @override
     def visit_Spec(self, node: ast.Spec) -> Package:

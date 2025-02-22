@@ -228,9 +228,9 @@ class _PrettyPrinter(RecursiveDeclVisitor):
     def visit_package(self, p: Package):
         self.buffer.write(self.indent * 2 * " ")
         self.buffer.write(f"// {self.with_attr(p, p.name)}\n")
-        for d in p.pkg_imports:
+        for d in p.pkg_imports.values():
             self.handle_decl(d)
-        for d in p.decl_imports:
+        for d in p.decl_imports.values():
             self.handle_decl(d)
         for d in p.structs:
             self.handle_decl(d)
