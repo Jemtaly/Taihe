@@ -244,7 +244,8 @@ class KNBridgeCodeGenerator:
         # assert isinstance(temp, list)
         # kn_bridge_prefix = temp[0]
         # assert isinstance(kn_bridge_prefix, str)
-        kn_bridge_prefix = temp
+        assert isinstance(temp, str)
+        kn_bridge_prefix: str = temp
 
         kn_bridge_pkg_target.include("core/string.hpp")
         kn_bridge_pkg_target.include(kn_bridge_pkg_info.include_header)
