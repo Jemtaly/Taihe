@@ -693,13 +693,6 @@ class Package(NamedDecl):
     def segments(self) -> list[str]:
         return self.name.split(".")
 
-    @property
-    def declarations(self) -> Iterable[NamedDecl]:
-        yield from self.functions
-        yield from self.structs
-        yield from self.enums
-        yield from self.interfaces
-
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
         return v.visit_package(self)
