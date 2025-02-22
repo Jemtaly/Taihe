@@ -694,10 +694,7 @@ class Package(NamedDecl):
         return self.name.split(".")
 
     @property
-    def children(self) -> Iterable[NamedDecl]:
-        yield from self.pkg_imports.values()
-        yield from self.decl_imports.values()
-
+    def declarations(self) -> Iterable[NamedDecl]:
         yield from self.functions
         yield from self.structs
         yield from self.enums

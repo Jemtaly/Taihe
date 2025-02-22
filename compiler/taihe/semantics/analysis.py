@@ -335,7 +335,7 @@ class _CheckFieldNameCollisionErrorPass(RecursiveDeclVisitor):
 
     @override
     def visit_package(self, p: Package) -> None:
-        self.check_collision_helper(p.children)
+        self.check_collision_helper(p.declarations)
         return super().visit_package(p)
 
     def check_collision_helper(self, children: Iterable[NamedDecl]):
