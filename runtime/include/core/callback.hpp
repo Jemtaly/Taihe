@@ -11,7 +11,7 @@ struct callback_data_impl : TCallbackData, Impl {
     template<typename... Args>
     callback_data_impl(Args&&... args)
         : Impl(std::forward<Args>(args)...) {
-        tcb_init(this, &free_impl);
+        tcallback_init(this, &free_impl);
     }
 
     static void free_impl(TCallbackData* data) {
@@ -82,13 +82,13 @@ struct callback<Return(Params...)> : callback_view<Return(Params...)> {
     }
 
     callback(callback<Return(Params...)> const& other)
-        : callback{tcb_dup(other.m_data), other.m_func} {}
+        : callback{tcallback_dup(other.m_data), other.m_func} {}
 
     callback(callback_view<Return(Params...)> const& other)
-        : callback{tcb_dup(other.m_data), other.m_func} {}
+        : callback{tcallback_dup(other.m_data), other.m_func} {}
 
     ~callback() {
-        tcb_drop(this->m_data);
+        tcallback_drop(this->m_data);
     }
 
     callback& operator=(callback other) {
