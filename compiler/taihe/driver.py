@@ -9,7 +9,8 @@ from taihe.codegen.abi_generator import ABICodeGenerator
 from taihe.codegen.c_impl_generator import CImplCodeGenerator
 from taihe.codegen.cpp_impl_generator import CppImplCodeGenerator
 from taihe.codegen.cpp_proj_generator import CppProjCodeGenerator
-from taihe.codegen.kn_bridge_generator import KNBridgeCodeGenerator
+
+# from taihe.codegen.kn_bridge_generator import KNBridgeCodeGenerator
 from taihe.parse.convert import AstConverter
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
