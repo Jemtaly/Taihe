@@ -501,29 +501,16 @@ class ABICodeGenerator:
         )
         iface_abi_defn_target.include("taihe/object.abi.h")
         iface_abi_defn_target.include(iface_abi_info.decl_header)
-        self.gen_iface_defn(iface, iface_abi_info, iface_abi_defn_target)
+        iface_abi_defn_target.write(
+            f"TH_EXPORT void const* const {iface_abi_info.iid};\n"
+        )
         self.gen_iface_ftable(iface, iface_abi_info, iface_abi_defn_target)
         self.gen_iface_vtable(iface, iface_abi_info, iface_abi_defn_target)
+        self.gen_iface_defn(iface, iface_abi_info, iface_abi_defn_target)
         self.gen_iface_static_cast_funcs(iface, iface_abi_info, iface_abi_defn_target)
         self.gen_iface_dynamic_cast_func(iface, iface_abi_info, iface_abi_defn_target)
         self.gen_iface_copy_func(iface, iface_abi_info, iface_abi_defn_target)
         self.gen_iface_drop_func(iface, iface_abi_info, iface_abi_defn_target)
-
-    def gen_iface_defn(
-        self,
-        iface: IfaceDecl,
-        iface_abi_info: IfaceDeclABIInfo,
-        iface_abi_defn_target: COutputBuffer,
-    ):
-        iface_abi_defn_target.write(
-            f"struct {iface_abi_info.ftable};\n"
-            f"struct {iface_abi_info.vtable};\n"
-            f"struct {iface_abi_info.mangled_name} {{\n"
-            f"  struct {iface_abi_info.vtable} const* vtbl_ptr;\n"
-            f"  struct DataBlockHead* data_ptr;\n"
-            f"}};\n"
-            f"TH_EXPORT void const* const {iface_abi_info.iid};\n"
-        )
 
     def gen_iface_ftable(
         self,
@@ -563,6 +550,19 @@ class ABICodeGenerator:
                 f"  struct {ancestor_abi_info.ftable} const* {ancestor_item_info.ftbl_ptr};\n"
             )
         iface_abi_defn_target.write("};\n")
+
+    def gen_iface_defn(
+        self,
+        iface: IfaceDecl,
+        iface_abi_info: IfaceDeclABIInfo,
+        iface_abi_defn_target: COutputBuffer,
+    ):
+        iface_abi_defn_target.write(
+            f"struct {iface_abi_info.mangled_name} {{\n"
+            f"  struct {iface_abi_info.vtable} const* vtbl_ptr;\n"
+            f"  struct DataBlockHead* data_ptr;\n"
+            f"}};\n"
+        )
 
     def gen_iface_static_cast_funcs(
         self,
