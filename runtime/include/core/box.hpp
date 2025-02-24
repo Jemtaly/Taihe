@@ -7,6 +7,7 @@
 #include <cstddef>
 
 #include <taihe/common.hpp>
+#include <taihe/box.abi.h>
 
 namespace taihe::core {
 template<typename cpp_owner_t>
@@ -75,11 +76,11 @@ struct box : public box_view<cpp_owner_t> {
 
 template<typename cpp_owner_t>
 struct cpp_type_traits<box_view<cpp_owner_t>> {
-    using abi_t = void const*;
+    using abi_t = struct TBox;
 };
 
 template<typename cpp_owner_t>
 struct cpp_type_traits<box<cpp_owner_t>> {
-    using abi_t = void const*;
+    using abi_t = struct TBox;
 };
 }

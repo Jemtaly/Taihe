@@ -230,18 +230,18 @@ class ArrayTypeABIInfo(AbstractAnalysis[ArrayType], AbstractTypeABIInfo):
 
 class BoxTypeABIInfo(AbstractAnalysis[BoxType], AbstractTypeABIInfo):
     def __init__(self, am: AnalysisManager, t: BoxType) -> None:
-        self.decl_headers = []
-        self.defn_headers = []
-        self.as_field = "void const*"
-        self.as_param = "void const*"
+        self.decl_headers = ["taihe/box.abi.h"]
+        self.defn_headers = ["taihe/box.abi.h"]
+        self.as_field = "struct TBox"
+        self.as_param = "struct TBox"
 
 
 class CallbackTypeABIInfo(AbstractAnalysis[CallbackType], AbstractTypeABIInfo):
     def __init__(self, am: AnalysisManager, t: CallbackType) -> None:
-        self.decl_headers = ["taihe/callback.abi.h"]
-        self.defn_headers = ["taihe/callback.abi.h"]
-        self.as_field = "struct TCallback"
-        self.as_param = "struct TCallback"
+        self.decl_headers = []
+        self.defn_headers = []
+        self.as_field = "void*"
+        self.as_param = "void*"
 
 
 class VectorTypeABIInfo(AbstractAnalysis[VectorType], AbstractTypeABIInfo):
