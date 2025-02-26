@@ -9,6 +9,8 @@ from taihe.codegen.abi_generator import ABICodeGenerator
 from taihe.codegen.c_impl_generator import CImplCodeGenerator
 from taihe.codegen.cpp_generator import CppCodeGenerator
 from taihe.codegen.cpp_impl_generator import CppImplCodeGenerator
+from taihe.codegen.kn_bridge_generator import KNBridgeCodeGenerator
+from taihe.codegen.napi_generator import NapiCodeGenerator
 from taihe.parse.convert import AstConverter
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.declarations import PackageGroup
@@ -39,6 +41,8 @@ class CompilerInvocation:
 
     gen_author: bool = False
     gen_user: bool = False
+    gen_knbridge: bool = False
+    gen_napi: bool = False
 
     quiet: bool = False
 
@@ -109,6 +113,14 @@ class CompilerInstance:
                 self.package_group
             )
             CppImplCodeGenerator(self.target_manager, self.analysis_manager).generate(
+                self.package_group
+            )
+        if self.invocation.gen_napi:
+            NapiCodeGenerator(self.target_manager, self.analysis_manager).generate(
+                self.package_group
+            )
+        if self.invocation.gen_knbridge:
+            KNBridgeCodeGenerator(self.target_manager, self.analysis_manager).generate(
                 self.package_group
             )
 

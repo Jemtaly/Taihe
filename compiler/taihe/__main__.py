@@ -31,12 +31,26 @@ def main():
         action="store_true",
         help="generate files for interface user",
     )
+    parser.add_argument(
+        "--knbridge",
+        "-k",
+        action="store_true",
+        help="generate files for kn bridge",
+    )
+    parser.add_argument(
+        "--napi",
+        "-n",
+        action="store_true",
+        help="generate files for napi cpp",
+    )
     args = parser.parse_args()
     invocation = CompilerInvocation(
         src_dirs=[Path(d) for d in args.src_dirs],
         out_dir=Path(args.dst_dir),
         gen_author=args.author,
         gen_user=args.user,
+        gen_knbridge=args.knbridge,
+        gen_napi=args.napi,
     )
     instance = CompilerInstance(invocation)
     instance.run()
