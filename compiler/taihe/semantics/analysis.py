@@ -13,7 +13,7 @@ from taihe.semantics.declarations import (
     IfaceMethodDecl,
     LongTypeRefDecl,
     NamedDecl,
-    Package,
+    PackageDecl,
     PackageGroup,
     PackageRefDecl,
     ShortTypeRefDecl,
@@ -91,7 +91,7 @@ class _ResolveImportsPass(RecursiveDeclVisitor):
         self.diag = diag
 
     @property
-    def pkg(self) -> Package:
+    def pkg(self) -> PackageDecl:
         assert self._current_pkg
         return self._current_pkg
 
@@ -101,9 +101,9 @@ class _ResolveImportsPass(RecursiveDeclVisitor):
         return self._current_pkg_group
 
     @override
-    def visit_package(self, p: Package) -> None:
+    def visit_package_decl(self, p: PackageDecl) -> None:
         self._current_pkg = p
-        super().visit_package(p)
+        super().visit_package_decl(p)
         self._current_pkg = None
 
     @override
@@ -334,9 +334,9 @@ class _CheckFieldNameCollisionErrorPass(RecursiveDeclVisitor):
         return super().visit_iface_decl(d)
 
     @override
-    def visit_package(self, p: Package) -> None:
+    def visit_package_decl(self, p: PackageDecl) -> None:
         self.check_collision_helper(p.decls.values())
-        return super().visit_package(p)
+        return super().visit_package_decl(p)
 
     def check_collision_helper(self, children: Iterable[NamedDecl]):
         names = {}

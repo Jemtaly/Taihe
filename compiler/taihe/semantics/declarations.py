@@ -275,7 +275,7 @@ class PackageRefDecl(Decl):
     symbol: str
 
     is_resolved: bool
-    resolved_pkg: Optional["Package"]
+    resolved_pkg: Optional["PackageDecl"]
 
     def __init__(
         self,
@@ -357,7 +357,7 @@ class ImportDecl(NamedDecl, metaclass=ABCMeta):
     ```
     """
 
-    node_parent: Optional["Package"] = None
+    node_parent: Optional["PackageDecl"] = None
 
 
 class PackageImportDecl(ImportDecl):
@@ -531,7 +531,7 @@ class IfaceMethodDecl(NamedDecl):
 
 
 class PackageLevelDecl(NamedDecl, metaclass=ABCMeta):
-    node_parent: Optional["Package"] = None
+    node_parent: Optional["PackageDecl"] = None
 
     @property
     def full_name(self):
@@ -661,7 +661,7 @@ class IfaceDecl(TypeDecl):
 ######################
 
 
-class Package(NamedDecl):
+class PackageDecl(NamedDecl):
     """A collection of named identities sharing the same scope."""
 
     # Symbols
@@ -695,7 +695,7 @@ class Package(NamedDecl):
 
     @override
     def _accept(self, v: "DeclVisitor") -> Any:
-        return v.visit_package(self)
+        return v.visit_package_decl(self)
 
     def _register_to_decl(self, d: PackageLevelDecl):
         if prev := self.decls.get(d.name, None):
@@ -763,7 +763,7 @@ class Package(NamedDecl):
 class PackageGroup:
     """Stores all known packages for a compilation instance."""
 
-    package_dict: dict[str, Package]
+    package_dict: dict[str, PackageDecl]
 
     def __init__(self):
         super().__init__()
@@ -772,15 +772,15 @@ class PackageGroup:
     def _accept(self, v: "DeclVisitor"):
         return v.visit_package_group(self)
 
-    def lookup(self, name: str) -> Optional["Package"]:
+    def lookup(self, name: str) -> Optional["PackageDecl"]:
         return self.package_dict.get(name, None)
 
-    def add(self, pkg: Package):
+    def add(self, pkg: PackageDecl):
         assert pkg.name not in self.package_dict
         self.package_dict[pkg.name] = pkg
 
     @property
-    def packages(self) -> Iterable[Package]:
+    def packages(self) -> Iterable[PackageDecl]:
         return self.package_dict.values()
 
     def __repr__(self) -> str:

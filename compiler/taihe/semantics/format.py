@@ -17,7 +17,7 @@ from taihe.semantics.declarations import (
     IfaceDecl,
     IfaceMethodDecl,
     IfaceParentDecl,
-    Package,
+    PackageDecl,
     PackageGroup,
     PackageImportDecl,
     PackageRefDecl,
@@ -225,7 +225,7 @@ class _PrettyPrinter(RecursiveDeclVisitor):
         self.buffer.write("}\n")
 
     @override
-    def visit_package(self, p: Package):
+    def visit_package_decl(self, p: PackageDecl):
         self.buffer.write(self.indent * 2 * " ")
         self.buffer.write(f"// {self.with_attr(p, p.name)}\n")
         for d in p.pkg_imports.values():

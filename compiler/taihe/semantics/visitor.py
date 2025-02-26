@@ -32,7 +32,7 @@ from taihe.semantics.declarations import (
     IfaceParentDecl,
     ImportDecl,
     LongTypeRefDecl,
-    Package,
+    PackageDecl,
     PackageGroup,
     PackageImportDecl,
     PackageRefDecl,
@@ -259,7 +259,7 @@ class DeclVisitor(Generic[T]):
 
     ### Package ###
 
-    def visit_package(self, p: Package) -> T:
+    def visit_package_decl(self, p: PackageDecl) -> T:
         return self.visit_decl(p)
 
     def visit_package_group(self, g: PackageGroup) -> T:
@@ -428,7 +428,7 @@ class RecursiveDeclVisitor(DeclVisitor[None]):
     ### Package ###
 
     @override
-    def visit_package(self, p: Package) -> None:
+    def visit_package_decl(self, p: PackageDecl) -> None:
         for i in p.pkg_imports.values():
             self.handle_decl(i)
         for i in p.decl_imports.values():

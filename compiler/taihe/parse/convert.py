@@ -18,7 +18,7 @@ from taihe.semantics.declarations import (
     IfaceMethodDecl,
     IfaceParentDecl,
     LongTypeRefDecl,
-    Package,
+    PackageDecl,
     PackageImportDecl,
     PackageRefDecl,
     ParamDecl,
@@ -317,15 +317,15 @@ class AstConverter(ExprEvaluator):
     # Package
 
     @override
-    def visit_Spec(self, node: ast.Spec) -> Package:
-        pkg = Package(self.source.pkg_name, SourceLocation(self.source))
+    def visit_Spec(self, node: ast.Spec) -> PackageDecl:
+        pkg = PackageDecl(self.source.pkg_name, SourceLocation(self.source))
         for u in node.uses:
             self.diag.for_each(self.visit(u), pkg.add_import)
         self.diag.for_each(node.fields, lambda n: pkg.add_declaration(self.visit(n)))
         self.diag.for_each(node.attrs, lambda a: pkg.add_attr(self.visit(a)))
         return pkg
 
-    def convert(self) -> Package:
+    def convert(self) -> PackageDecl:
         """Converts the whole source code buffer to a package."""
         ast = generate_ast(self.source, self.diag)
 
