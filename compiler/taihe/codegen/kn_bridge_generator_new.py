@@ -93,8 +93,8 @@ class IfaceDeclKnBridgeInfo(AbstractAnalysis[IfaceDecl]):
         self.pkgname = "::".join(p.segments)
         self.name = d.name
         self.as_owner = self.name
-        self.as_param = f"Kref_{self.name}"
-        self.as_field = f"Kref_{self.name}"
+        self.as_param = f"::{self.pkgname}::{self.name}"
+        self.as_field = f"::{self.pkgname}::{self.name}"
         self.as_konan_param = "KObjHeader*"
         self.as_konan_field = "KObjHeader*"
         temp = d.attrs["type_function"].value
@@ -364,7 +364,10 @@ class KNBridgeCodeGenerator:
                 str1, str2, str3 = self.gen_class_init_func_impl(
                     func, kn_bridge_pkg_target, True
                 )
-                iface_temp = func.return_ty_ref.resolved_ty
+                func_ret_ref = func.return_ty_ref
+                assert func_ret_ref is not None
+                assert hasattr(func_ret_ref, "resolved_ty")
+                iface_temp = func_ret_ref.resolved_ty
                 assert isinstance(iface_temp, IfaceType)
                 self.dict_params[iface_temp.ty_decl.name] = str1
                 self.dict_params_only_var[iface_temp.ty_decl.name] = str2
@@ -393,6 +396,8 @@ class KNBridgeCodeGenerator:
         params_only_var: str,
     ):
         return_ty_ref = func.return_ty_ref
+        assert return_ty_ref is not None
+        assert hasattr(return_ty_ref, "resolved_ty")
         type_knbridge_info = TypeKnBridgeInfo.get(self.am, return_ty_ref.resolved_ty)
         return_ty_name = type_knbridge_info.as_owner
         kn_bridge_pkg_target.write(
@@ -420,7 +425,7 @@ class KNBridgeCodeGenerator:
         kn_bridge_pkg_target: COutputBuffer,
     ):
         konan_proj_name = func.attrs["inner_name"].value
-        isinstance(konan_proj_name, str)
+        assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
         konan_params_only_ty = []
@@ -474,7 +479,7 @@ class KNBridgeCodeGenerator:
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
         konan_proj_name = func.attrs["inner_name"].value
-        isinstance(konan_proj_name, str)
+        assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
         konan_params_only_ty = []
@@ -525,6 +530,8 @@ class KNBridgeCodeGenerator:
             return "void", "", "void", False
 
         return_ty_ref = func.return_ty_ref
+        assert return_ty_ref is not None
+        assert hasattr(return_ty_ref, "resolved_ty")
         type_knbridge_info = TypeKnBridgeInfo.get(self.am, return_ty_ref.resolved_ty)
         need_ret_holder = type_knbridge_info.need_holder
         return_ty_name = type_knbridge_info.as_field
@@ -615,7 +622,10 @@ class KNBridgeCodeGenerator:
         params_holder: list,
         need_ret_holder: bool,
     ):
-        iface_temp = func.return_ty_ref.resolved_ty
+        return_ty_ref = func.return_ty_ref
+        assert return_ty_ref is not None
+        assert hasattr(return_ty_ref, "resolved_ty")
+        iface_temp = return_ty_ref.resolved_ty
         assert isinstance(iface_temp, IfaceType)
         type_func = IfaceDeclKnBridgeInfo.get(self.am, iface_temp.ty_decl).type_func
 
@@ -661,7 +671,7 @@ class KNBridgeCodeGenerator:
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
     ):
         konan_proj_name = func.attrs["inner_name"].value
-        isinstance(konan_proj_name, str)
+        assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
         params_only_var = []
