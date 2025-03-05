@@ -344,7 +344,7 @@ class KNBridgeCodeGenerator:
             f"  ScopedRunnableState& operator=(ScopedRunnableState&&) = delete;\n"
             f"}};\n"
             f"\n"
-            f"KObjHeader* thobj_tokotlin(void*& thiface, KObjHeader** kobj_slot) {{\n"
+            f"KObjHeader* thobj_tokotlin(void* thiface, KObjHeader** kobj_slot) {{\n"
             f"  void* data_ptr = *(void**)((char*)thiface + 8);\n"
             f"  void* kn_obj = *(void**)((char*)data_ptr + 16);\n"
             f"  KObjHeader* result = DerefStablePointer(kn_obj, kobj_slot);\n"
@@ -355,7 +355,7 @@ class KNBridgeCodeGenerator:
 
     def def_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
-            f"#define THOBJ_toKotlin(obj, obj_slot) thobj_tokotlin((void*&)obj, obj_slot)\n"
+            f"#define THOBJ_toKotlin(obj, obj_slot) thobj_tokotlin((void*)&obj, obj_slot)\n"
             f"\n"
         )
 
@@ -371,7 +371,7 @@ class KNBridgeCodeGenerator:
             for func in iface.methods:
                 self.gen_iface_method_decl(iface_name, func, kn_bridge_pkg_target)
         for func in pkg.functions:
-            if "init_class" not in func.attrs:
+            if "init_class" not in func.attrs and "get_obj" not in func.attrs:
                 self.gen_toplevel_method_decl(func, kn_bridge_pkg_target)
 
     def gen_class_impl(
@@ -381,9 +381,9 @@ class KNBridgeCodeGenerator:
         kn_bridge_prefix: str,
     ):
         for iface in pkg.interfaces:
-            if (
-                "object_kind" in iface.attrs
-                and iface.attrs["object_kind"].value == "class"
+            if "object_kind" in iface.attrs and (
+                iface.attrs["object_kind"].value == "class"
+                or iface.attrs["object_kind"].value == "object"
             ):
                 self.gen_class(iface, kn_bridge_pkg_target)
 
@@ -403,10 +403,29 @@ class KNBridgeCodeGenerator:
             for func in iface.methods:
                 self.gen_iface_method_impl(iface_name, func, kn_bridge_pkg_target)
         for func in pkg.functions:
-            if "init_class" not in func.attrs:
+            if "init_class" not in func.attrs and "get_obj" not in func.attrs:
                 self.gen_toplevel_func_impl(func, kn_bridge_pkg_target)
-            else:
+            elif "init_class" in func.attrs:
                 str1, str2, str3 = self.gen_class_init_func_impl(
+                    func, kn_bridge_pkg_target, True
+                )
+                func_ret_ref = func.return_ty_ref
+                assert func_ret_ref is not None
+                assert hasattr(func_ret_ref, "resolved_ty")
+                iface_temp = func_ret_ref.resolved_ty
+                assert isinstance(iface_temp, IfaceType)
+                ##################
+                # need to delete #
+                ##################
+                self.dict_params[iface_temp.ty_decl.name] = str1
+                self.dict_params_only_var[iface_temp.ty_decl.name] = str2
+                self.dict_konan_func[iface_temp.ty_decl.name] = str3
+                ##################
+                #  need to add   #
+                ##################
+                # self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
+            elif "get_obj" in func.attrs:
+                str1, str2, str3 = self.gen_obj_init_func_impl(
                     func, kn_bridge_pkg_target, True
                 )
                 func_ret_ref = func.return_ty_ref
@@ -431,6 +450,66 @@ class KNBridgeCodeGenerator:
                     func, kn_bridge_pkg_target, False
                 )
                 self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
+            elif "get_obj" in func.attrs:
+                str1, str2, str3 = self.gen_obj_init_func_impl(
+                    func, kn_bridge_pkg_target, False
+                )
+                self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
+
+    def gen_obj_init_func_impl(
+        self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
+    ):
+        konan_proj_name = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name, str)
+        params_holder = []
+        params = []
+        konan_params_only_ty = []
+        convert_params = []
+        params_only_var = []
+        need_ret_holder = False
+
+        for param in func.params:
+            type_knbridge_info = TypeKnBridgeInfo.get(self.am, param.ty_ref.resolved_ty)
+            params.append(f"{type_knbridge_info.as_param} {param.name}")
+            params_holder.append(type_knbridge_info.need_holder)
+            konan_params_only_ty.append(f"{type_knbridge_info.as_konan_param}")
+            params_only_var.append(f"{param.name}")
+
+            convert_params.append(
+                f"{type_knbridge_info.param_covert_func}({param.name}, {param.name}_holder.slot())"
+                if type_knbridge_info.need_holder
+                else f"{param.name}"
+            )
+
+        return_ty_name, return_ty_str, return_ty_konan_name, need_ret_holder = (
+            self._process_return_type(func)
+        )
+
+        if need_ret_holder:
+            konan_params_only_ty.append("KObjHeader**")
+            convert_params.append("result_holder.slot()")
+
+        params_str = ", ".join(params)
+        konan_params_only_ty_str = ", ".join(konan_params_only_ty)
+        convert_params_str = ", ".join(convert_params)
+        params_only_var_str = ", ".join(params_only_var)
+
+        if gen:
+            self._generate_objinit_function_body(
+                kn_bridge_pkg_target,
+                func,
+                konan_proj_name,
+                return_ty_konan_name,
+                return_ty_name,
+                params_str,
+                konan_params_only_ty_str,
+                convert_params_str,
+                return_ty_str,
+                params_holder,
+                need_ret_holder,
+                False,
+            )
+        return params_str, params_only_var_str, konan_proj_name
 
     def gen_iface_method_decl(
         self,
@@ -454,7 +533,7 @@ class KNBridgeCodeGenerator:
         )
 
     def gen_toplevel_method_decl(
-        self, func: IfaceMethodDecl, kn_bridge_pkg_target: COutputBuffer
+        self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
         konan_proj_name = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name, str)
@@ -631,6 +710,68 @@ class KNBridgeCodeGenerator:
             else "result"
         )
         return return_ty_name, return_ty_str, return_ty_konan_name, need_ret_holder
+
+    def _generate_objinit_function_body(
+        self,
+        kn_bridge_pkg_target: COutputBuffer,
+        func: GlobFuncDecl | IfaceMethodDecl,
+        konan_proj_name: str,
+        return_ty_konan_name: str,
+        return_ty_name: str,
+        params_str: str,
+        konan_params_only_ty_str: str,
+        convert_params_str: str,
+        return_ty_str: str,
+        params_holder: list,
+        need_ret_holder: bool,
+        need_thiz_holder: bool,
+    ):
+        kn_bridge_pkg_target.write(
+            f'extern "C" {return_ty_konan_name} {konan_proj_name} ({konan_params_only_ty_str});\n'
+        )
+        if need_thiz_holder:
+            kn_bridge_pkg_target.write(
+                f"static {return_ty_name} {konan_proj_name}_impl({params_str}) {{\n"
+            )
+        else:
+            kn_bridge_pkg_target.write(
+                f"static {return_ty_name} {konan_proj_name}_impl({params_str}) {{\n"
+            )
+        kn_bridge_pkg_target.write(
+            f"  Kotlin_initRuntimeIfNeeded();\n" f"  ScopedRunnableState stateGuard;\n"
+        )
+
+        for index, need_holder in enumerate(params_holder):
+            if need_holder:
+                kn_bridge_pkg_target.write(
+                    f"  KObjHolder {func.params[index].name}_holder;\n"
+                )
+
+        if need_thiz_holder:
+            kn_bridge_pkg_target.write(f"  KObjHolder thiz_holder;\n")
+
+        # kn_bridge_pkg_target.write(f"  try {{\n")
+
+        if return_ty_name == "void":
+            kn_bridge_pkg_target.write(
+                f"    {konan_proj_name}({convert_params_str});\n"
+            )
+        else:
+            if need_ret_holder:
+                kn_bridge_pkg_target.write(f"  KObjHolder result_holder;\n")
+            kn_bridge_pkg_target.write(
+                f"  auto result = {konan_proj_name}({convert_params_str});\n"
+                f"  return {return_ty_str};\n"
+            )
+
+        kn_bridge_pkg_target.write(
+            # f"  }} catch (...) {{\n"
+            # f"    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
+            # f"    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
+            # f"  }} \n"
+            f"}}\n"
+            f"\n"
+        )
 
     def _generate_function_body(
         self,
@@ -887,7 +1028,7 @@ class KNBridgeCodeGenerator:
 
     def gen_func_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         for func in pkg.functions:
-            if "init_class" in func.attrs:
+            if "init_class" in func.attrs or "get_obj" in func.attrs:
                 kn_bridge_pkg_target.write(
                     f"TH_EXPORT_CPP_API_{func.name}({func.name}_author)\n"
                 )

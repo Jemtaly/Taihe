@@ -280,7 +280,7 @@ class TypeNapiInfo(TypeVisitor[AbstractTypeNapiInfo]):
     @override
     def visit_special_type(self, t: SpecialType) -> AbstractTypeNapiInfo:
         return SpecialTypeNapiInfo.get(self.am, t)
-    
+
     @override
     def visit_enum_type(self, t: EnumType) -> AbstractTypeNapiInfo:
         return EnumTypeNapiInfo.get(self.am, t)
@@ -621,7 +621,9 @@ class NapiCodeGenerator:
         pkg_napi_target.write(f"    {struct_cpp_info.as_field} c_obj = {{\n")
         for field in struct.fields:
             cpp_result_name = f"{field.name}_c"
-            pkg_napi_target.write(f"        .{field.name} = std::move({cpp_result_name}),\n")
+            pkg_napi_target.write(
+                f"        .{field.name} = std::move({cpp_result_name}),\n"
+            )
         pkg_napi_target.write(f"    }};\n" f"    return c_obj;\n" f"}}\n")
 
         pkg_napi_target.write(
@@ -672,16 +674,18 @@ class NapiCodeGenerator:
             f"    switch (c_tag) {{\n"
         )
         for item in enum.items:
-            if item.ty_ref is None:
+            if (type_ref := item.ty_ref) is None:
                 continue
             pkg_napi_target.write(
                 f"    case static_cast<int>({enum_cpp_info.full_name}::tag_t::{item.name}): {{\n"
                 f'        napi_get_named_property(env, js_obj, "value", &js_value);'
             )
-            self.gen_func_get_value_from_js(item.ty_ref.resolved_ty, pkg_napi_target, "js_value", "c_value", 8)
+            self.gen_func_get_value_from_js(
+                type_ref.resolved_ty, pkg_napi_target, "js_value", "c_value", 8
+            )
             pkg_napi_target.write(
                 f"        return {enum_cpp_info.full_name}::make_{item.name}(std::move(c_value));\n"
-                f'    }}\n'
+                f"    }}\n"
             )
         pkg_napi_target.write(
             f"    default:\n"
@@ -700,16 +704,22 @@ class NapiCodeGenerator:
             f"    switch (c_obj.get_tag()) {{\n"
         )
         for item in enum.items:
-            if item.ty_ref is None:
+            if (ty_ref := item.ty_ref) is None:
                 continue
             pkg_napi_target.write(
                 f"    case {enum_cpp_info.full_name}::tag_t::{item.name}: {{\n"
             )
-            self.gen_func_create_value_as_js(item.ty_ref.resolved_ty, pkg_napi_target, f"c_obj.get_{item.name}_ref()", "js_value", 8)
+            self.gen_func_create_value_as_js(
+                ty_ref.resolved_ty,
+                pkg_napi_target,
+                f"c_obj.get_{item.name}_ref()",
+                "js_value",
+                8,
+            )
             pkg_napi_target.write(
                 f'        napi_set_named_property(env, js_obj, "value", js_value);\n'
                 f"        break;\n"
-                f'    }}\n'
+                f"    }}\n"
             )
         pkg_napi_target.write(
             f"    default:\n"
