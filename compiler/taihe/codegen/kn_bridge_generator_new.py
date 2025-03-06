@@ -9,6 +9,7 @@ from taihe.semantics.declarations import (
     IfaceMethodDecl,
     PackageDecl,
     PackageGroup,
+    StructDecl,
 )
 from taihe.semantics.types import (
     BOOL,
@@ -32,7 +33,7 @@ from taihe.semantics.types import (
     ScalarType,
     # SetType,
     SpecialType,
-    # StructType,
+    StructType,
     Type,
     # VectorType,
 )
@@ -87,6 +88,41 @@ class AbstractTypeKnBridgeInfo(metaclass=ABCMeta):
     #     return f"::taihe::core::into_abi<{self.as_param}>({val})"
 
 
+class StructKnBridgeInfo(AbstractAnalysis[StructDecl]):
+    def __init__(self, am: AnalysisManager, d: StructDecl) -> None:
+        p = d.node_parent
+        assert p
+        self.pkgname = "::".join(p.segments)
+        self.name = d.name
+        self.as_owner = self.name
+        self.as_param = f"::{self.pkgname}::{self.name}"
+        self.as_field = f"::{self.pkgname}::{self.name}"
+        self.as_konan_param = "KObjHeader*"
+        self.as_konan_field = "KObjHeader*"
+        self.type_func = None
+
+
+class StructTypeKnBridgeInfo(AbstractAnalysis[StructType], AbstractTypeKnBridgeInfo):
+    def __init__(self, am: AnalysisManager, t: StructType):
+        iface_knbridge_info = StructKnBridgeInfo.get(am, t.ty_decl)
+        #  need to do
+        self.decl_headers = []
+        self.defn_headers = []
+        self.pkgname = iface_knbridge_info.pkgname
+        self.as_owner = iface_knbridge_info.as_owner
+        self.as_field = iface_knbridge_info.as_field
+        self.as_param = iface_knbridge_info.as_param
+        self.as_konan_param = iface_knbridge_info.as_konan_param
+        self.as_konan_field = iface_knbridge_info.as_konan_field
+        self.param_covert_func: str = "THCont_toKotlin"
+        self.retval_convert_func_left: str = (
+            f"{self.as_field}{{(uint64_t)CreateStablePointer("
+        )
+        self.retval_convert_func_right: str = f")}}"
+        self.need_holder = True
+        self.type_func = iface_knbridge_info.type_func
+
+
 class IfaceDeclKnBridgeInfo(AbstractAnalysis[IfaceDecl]):
     def __init__(self, am: AnalysisManager, d: IfaceDecl) -> None:
         p = d.node_parent
@@ -119,7 +155,6 @@ class IfaceTypeKnBridgeInfo(AbstractAnalysis[IfaceType], AbstractTypeKnBridgeInf
         self.as_konan_param = iface_knbridge_info.as_konan_param
         self.as_konan_field = iface_knbridge_info.as_konan_field
         self.param_covert_func: str = "THOBJ_toKotlin"
-        self.retval_convert_func: str = f"(Kref_{t.ty_decl.name})CreateStablePointer"
         self.retval_convert_func_left: str = (
             f"taihe::core::make_holder<{t.ty_decl.name}_impl, {self.pkgname}::{t.ty_decl.name}>(CreateStablePointer("
         )
@@ -197,6 +232,10 @@ class TypeKnBridgeInfo(TypeVisitor[AbstractTypeKnBridgeInfo]):
     @override
     def visit_special_type(self, t: SpecialType) -> AbstractTypeKnBridgeInfo:
         return SpecialTypeKnBridgeInfo.get(self.am, t)
+
+    @override
+    def visit_struct_type(self, t: StructType) -> AbstractTypeKnBridgeInfo:
+        return StructTypeKnBridgeInfo.get(self.am, t)
 
     # @override
     # def visit_array_type(self, t: ArrayType) -> AbstractTypeKnBridgeInfo:
@@ -356,6 +395,7 @@ class KNBridgeCodeGenerator:
     def def_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
             f"#define THOBJ_toKotlin(obj, obj_slot) thobj_tokotlin((void*)&obj, obj_slot)\n"
+            f"#define THCont_toKotlin(container, container_slot) DerefStablePointer((void*)container.ptr, container_slot)"
             f"\n"
         )
 
@@ -1041,5 +1081,10 @@ class KNBridgeCodeGenerator:
 
     def undef_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
-            f"#ifdef THOBJ_toKotlin\n" f"#undef THOBJ_toKotlin\n" f"#endif\n"
+            f"#ifdef THOBJ_toKotlin\n"
+            f"#undef THOBJ_toKotlin\n"
+            f"#endif\n"
+            f"#ifdef THCont_toKotlin\n"
+            f"#undef THCont_toKotlin\n"
+            f"#endif\n"
         )
