@@ -31,6 +31,7 @@ from taihe.semantics.types import (
     I64,
     STRING,
     U32,
+    U64,
     EnumType,
     IfaceType,
     ScalarType,
@@ -88,6 +89,7 @@ class ScalarTypeNapiInfo(AbstractAnalysis[ScalarType], AbstractTypeNapiInfo):
             I32: "int32_t",
             I64: "int64_t",
             U32: "uint32_t",
+            U64: "uint64_t",
         }[self.type]
         from_js_to_c_func = {
             BOOL: "napi_get_value_bool",
@@ -96,13 +98,22 @@ class ScalarTypeNapiInfo(AbstractAnalysis[ScalarType], AbstractTypeNapiInfo):
             I32: "napi_get_value_int32",
             I64: "napi_get_value_int64",
             U32: "napi_get_value_uint32",
+            U64: "napi_get_value_bigint_uint64",
         }[self.type]
         scalar_cpp_info = ScalarTypeCppInfo.get(self.am, self.type)
-        pkg_napi_target.write(
-            f"{space_num * ' '}{as_napi_c} {result}_tmp;\n"
-            f"{space_num * ' '}{from_js_to_c_func}(env, {value}, &{result}_tmp);\n"
-            f"{space_num * ' '}{scalar_cpp_info.as_field} {result} = {result}_tmp;\n"
-        )
+        if self.type == U64:
+            pkg_napi_target.write(
+                f"{space_num * ' '}{as_napi_c} {result}_tmp;\n"
+                f"bool {result}_lossLess = false;\n"
+                f"{space_num * ' '}{from_js_to_c_func}(env, {value}, &{result}_tmp, &{result}_lossLess);\n"
+                f"{space_num * ' '}{scalar_cpp_info.as_field} {result} = {result}_tmp;\n"
+            )
+        else:
+            pkg_napi_target.write(
+                f"{space_num * ' '}{as_napi_c} {result}_tmp;\n"
+                f"{space_num * ' '}{from_js_to_c_func}(env, {value}, &{result}_tmp);\n"
+                f"{space_num * ' '}{scalar_cpp_info.as_field} {result} = {result}_tmp;\n"
+            )
 
     def create_value_as_js(
         self,
@@ -118,7 +129,9 @@ class ScalarTypeNapiInfo(AbstractAnalysis[ScalarType], AbstractTypeNapiInfo):
             I32: "napi_create_int32",
             I64: "napi_create_int64",
             U32: "napi_create_uint32",
+            U64: "napi_create_bigint_uint64",
         }[self.type]
+
         pkg_napi_target.write(
             f"{space_num * ' '}napi_value {result} = nullptr;\n"
             f"{space_num * ' '}{from_c_to_js_func}(env, {value}, &{result});\n"
