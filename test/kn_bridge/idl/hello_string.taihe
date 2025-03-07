@@ -1,10 +1,37 @@
-[actual_type = "class"]
-interface Base {
-    [konan_name = "_konan_function_1"]
-    foo(s1: String) : String;
-}
+[inner_name="_konan_function_0"]
+function kn_all_params(a: i32, b: i64, c: f64, d: bool, e: String): void;
 
-[konan_name = "_konan_function_0"]
-function foo1(s1: String, s2: String) : String;
+[inner_name="_konan_function_1"]
+function kn_boolean_params(a: bool): void;
 
-[pkg_name = "try_lib"]
+[inner_name="_konan_function_2"]
+function kn_boolean_result(): bool;
+
+[inner_name="_konan_function_3"]
+function kn_double_params(a: f64): void;
+
+[inner_name="_konan_function_4"]
+function kn_double_result(): f64;
+
+[inner_name="_konan_function_5"]
+function kn_empty_func(): void;
+
+[inner_name="_konan_function_6"]
+function kn_int_params(a: i32): void;
+
+[inner_name="_konan_function_7"]
+function kn_int_result(): i32;
+
+[inner_name="_konan_function_8"]
+function kn_long_params(a: i64): void;
+
+[inner_name="_konan_function_9"]
+function kn_long_result(): i64;
+
+[inner_name="_konan_function_10"]
+function kn_string_params(a: String): void;
+
+[inner_name="_konan_function_11"]
+function kn_string_result(): String;
+
+[prefix="Types"]
