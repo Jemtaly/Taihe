@@ -119,10 +119,6 @@ class CompilerInstance:
             NapiCodeGenerator(self.target_manager, self.analysis_manager).generate(
                 self.package_group
             )
-        # if self.invocation.gen_knbridge:
-        #     KNBridgeCodeGenerator(self.target_manager, self.analysis_manager).generate(
-        #         self.package_group
-        #     )
         if self.invocation.gen_knbridge:
             KNBridgeCodeGenerator(self.target_manager, self.analysis_manager).generate(
                 self.package_group

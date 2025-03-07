@@ -135,11 +135,11 @@ class IfaceDeclKnBridgeInfo(AbstractAnalysis[IfaceDecl]):
         self.as_konan_param = "KObjHeader*"
         self.as_konan_field = "KObjHeader*"
         temp = d.attrs["type_function"].value
-        # assert isinstance(temp, list)
-        # self.type_function = temp[0]
-        # assert isinstance(self.type_function, str)
-        assert isinstance(temp, str)
-        self.type_func: str = temp
+        assert isinstance(temp, tuple)
+        type_function = temp[0]
+        assert isinstance(type_function, str)
+        # assert isinstance(temp, str)
+        self.type_func: str = type_function
 
 
 class IfaceTypeKnBridgeInfo(AbstractAnalysis[IfaceType], AbstractTypeKnBridgeInfo):
@@ -273,15 +273,15 @@ class KNBridgeCodeGenerator:
     def gen_package_source_file(self, pkg: PackageDecl):
         kn_bridge_pkg_info = KNBridgePackageInfo.get(self.am, pkg)
         kn_bridge_pkg_target = COutputBuffer.create(
-            self.tm, f"{kn_bridge_pkg_info.source}", False
+            self.tm, f"src/{kn_bridge_pkg_info.source}", False
         )
 
         temp = pkg.attrs["prefix"].value
-        # assert isinstance(temp, list)
-        # kn_bridge_prefix = temp[0]
-        # assert isinstance(kn_bridge_prefix, str)
-        assert isinstance(temp, str)
-        kn_bridge_prefix: str = temp
+        assert isinstance(temp, tuple)
+        kn_bridge_prefix_ = temp[0]
+        assert isinstance(kn_bridge_prefix_, str)
+        # assert isinstance(temp, str)
+        kn_bridge_prefix: str = kn_bridge_prefix_
 
         kn_bridge_pkg_target.include("core/string.hpp")
         kn_bridge_pkg_target.include(kn_bridge_pkg_info.include_impl_header)
@@ -421,11 +421,15 @@ class KNBridgeCodeGenerator:
         kn_bridge_prefix: str,
     ):
         for iface in pkg.interfaces:
-            if "object_kind" in iface.attrs and (
-                iface.attrs["object_kind"].value == "class"
-                or iface.attrs["object_kind"].value == "object"
-            ):
-                self.gen_class(iface, kn_bridge_pkg_target)
+            if "object_kind" in iface.attrs:
+                attrslist = iface.attrs["object_kind"].value
+                assert isinstance(attrslist, tuple)
+                if attrslist[0] == "class" or attrslist[0] == "object":
+                    # if "object_kind" in iface.attrs and (
+                    #     iface.attrs["object_kind"].value[0] == "class"
+                    #     or iface.attrs["object_kind"][0].value[0] == "object"
+                    # ):
+                    self.gen_class(iface, kn_bridge_pkg_target)
 
     def gen_func_impl(
         self,
@@ -499,7 +503,9 @@ class KNBridgeCodeGenerator:
     def gen_obj_init_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
@@ -557,7 +563,9 @@ class KNBridgeCodeGenerator:
         func: IfaceMethodDecl,
         kn_bridge_pkg_target: COutputBuffer,
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params = []
 
@@ -575,7 +583,9 @@ class KNBridgeCodeGenerator:
     def gen_toplevel_method_decl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params = []
 
@@ -631,7 +641,9 @@ class KNBridgeCodeGenerator:
         func: IfaceMethodDecl,
         kn_bridge_pkg_target: COutputBuffer,
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
@@ -685,7 +697,9 @@ class KNBridgeCodeGenerator:
     def gen_toplevel_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
@@ -939,7 +953,9 @@ class KNBridgeCodeGenerator:
     def gen_class_init_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
     ):
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
         assert isinstance(konan_proj_name, str)
         params_holder = []
         params = []
@@ -1042,7 +1058,10 @@ class KNBridgeCodeGenerator:
             func_impl_params_only_var.append(f"{param.name}")
         class_member_func_params_str = ", ".join(class_member_func_params)
         func_impl_params_only_var_str = ", ".join(func_impl_params_only_var)
-        konan_proj_name = func.attrs["inner_name"].value
+        konan_proj_name_list = func.attrs["inner_name"].value
+        assert isinstance(konan_proj_name_list, tuple)
+        konan_proj_name = konan_proj_name_list[0]
+        assert isinstance(konan_proj_name, str)
         isinstance(konan_proj_name, str)
         if func.return_ty_ref is None:
             kn_bridge_pkg_target.write(
@@ -1073,8 +1092,10 @@ class KNBridgeCodeGenerator:
                     f"TH_EXPORT_CPP_API_{func.name}({func.name}_author)\n"
                 )
             else:
-                konan_proj_name = func.attrs["inner_name"].value
-                isinstance(konan_proj_name, str)
+                konan_proj_name_list = func.attrs["inner_name"].value
+                assert isinstance(konan_proj_name_list, tuple)
+                konan_proj_name = konan_proj_name_list[0]
+                assert isinstance(konan_proj_name, str)
                 kn_bridge_pkg_target.write(
                     f"TH_EXPORT_CPP_API_{func.name}({konan_proj_name}_impl)\n"
                 )

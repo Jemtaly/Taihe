@@ -315,7 +315,7 @@ class NapiCodeGenerator:
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
         pkg_cpp_info = PackageCppInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
-            self.tm, f"{pkg_napi_info.header}", False
+            self.tm, f"src/{pkg_napi_info.header}", False
         )
         pkg_napi_target.include("node/node_api.h")
         pkg_napi_target.include(pkg_cpp_info.header)
