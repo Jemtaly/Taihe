@@ -127,33 +127,6 @@ def main(
             src_dirs=[idl_dir],
             out_dir=author_test_dir,
             gen_author=True,
-            quiet=True,
-        )
-    ).run()
-    print("Done.")
-
-    print("Generating user codes...")
-    clean_directory(user_test_dir)
-    create_directory(user_test_src_dir)
-    create_directory(user_test_include_dir)
-    CompilerInstance(
-        CompilerInvocation(
-            src_dirs=[idl_dir],
-            out_dir=user_test_dir,
-            gen_user=True,
-            quiet=True,
-        )
-    ).run()
-    print("Done.")
-
-    print("Generating napi codes...")
-    clean_directory(napi_test_dir)
-    create_directory(napi_test_src_dir)
-    create_directory(napi_test_include_dir)
-    CompilerInstance(
-        CompilerInvocation(
-            src_dirs=[idl_dir],
-            out_dir=napi_test_dir,
             gen_napi=True,
             quiet=True,
         )
@@ -185,13 +158,6 @@ def main(
             author_test_src_dir,
             runtime_include_dir,
             author_test_include_dir,
-            opt_level=opt_level,
-        ),
-        *compile(
-            build_napi_dir,
-            napi_test_src_dir,
-            runtime_include_dir,
-            napi_test_include_dir,
             opt_level=opt_level,
         ),
         shared=True,
