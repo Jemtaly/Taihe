@@ -1,0 +1,29 @@
+[object_kind("interface"), type_function("_konan_function_0_type")]
+interface IKmpTestArktsService  {
+  [inner_name("_konan_function_1")]
+  funFromArkts(v: i32): String;
+  [inner_name("_konan_function_2")]
+  funFromArkts2(v: f32): f32;
+}
+
+[object_kind("interface"), type_function("_konan_function_3_type")]
+interface IKmpTestKotlinService  {
+  [inner_name("_konan_function_4")]
+  funFromKotlin(): String;
+}
+
+[object_kind("class"), type_function("_konan_function_5_type")]
+interface KmpTestKotlinService : IKmpTestKotlinService {
+}
+
+[object_kind("class"), type_function("_konan_function_8_type")]
+interface KmpTestArktsService : IKmpTestArktsService {
+}
+
+[init_class, inner_name("_konan_function_6")]
+function makeKmpTestKotlinService(): KmpTestKotlinService;
+
+[init_class, inner_name("_konan_function_9")]
+function makeKmpTestArktsService(): KmpTestArktsService;
+
+[prefix("TestService")]

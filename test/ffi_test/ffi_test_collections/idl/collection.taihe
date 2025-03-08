@@ -1,0 +1,104 @@
+struct KList {
+    ptr: u64;
+}
+
+struct KArray {
+    ptr: u64;
+}
+
+struct KMap {
+    ptr: u64;
+}
+
+[object_kind("interface"), type_function("_konan_function_10_type")]
+interface CollectionParam1  {
+  [inner_name("_konan_function_11")]
+  names(): KList;
+}
+
+[object_kind("interface"), type_function("_konan_function_12_type")]
+interface CollectionParam3  {
+  [inner_name("_konan_function_13")]
+  name(): String;
+}
+
+[object_kind("class"), type_function("_konan_function_14_type")]
+interface CollectionParam2  {
+  [inner_name("_konan_function_16")]
+  get_name(): String;
+  [inner_name("_konan_function_17")]
+  name(): String;
+}
+
+[object_kind("class"), type_function("_konan_function_18_type")]
+interface CollectionResult  {
+  [inner_name("_konan_function_20")]
+  get_name(): String;
+  [inner_name("_konan_function_21")]
+  name(): String;
+}
+
+[object_kind("class"), type_function("_konan_function_22_type")]
+interface KotlinClass  {
+  [inner_name("_konan_function_24")]
+  test1(a: KList, b: KList): KList;
+  [inner_name("_konan_function_25")]
+  test2(a: KArray, b: KArray): KArray;
+  [inner_name("_konan_function_26")]
+  test3(a: KMap, b: KMap): KMap;
+}
+
+[object_kind("class"), type_function("_konan_function_27_type")]
+interface CollectionParam1Impl : CollectionParam1 {
+}
+
+[object_kind("class"), type_function("_konan_function_30_type")]
+interface CollectionParam3Impl : CollectionParam3 {
+}
+
+[init_class, inner_name("_konan_function_15")]
+function makeCollectionParam2(name: String): CollectionParam2;
+
+[init_class, inner_name("_konan_function_19")]
+function makeCollectionResult(name: String): CollectionResult;
+
+[init_class, inner_name("_konan_function_23")]
+function makeKotlinClass(): KotlinClass;
+
+[init_class, inner_name("_konan_function_28")]
+function makeCollectionParam1Impl(namesList: KList): CollectionParam1Impl;
+
+[init_class, inner_name("_konan_function_31")]
+function makeCollectionParam3Impl(nameValue: String): CollectionParam3Impl;
+
+[inner_name("_konan_function_0")]
+function get_globalCollectionParam1Array(): KArray;
+
+[inner_name("_konan_function_1")]
+function get_globalCollectionParam1List(): KList;
+
+[inner_name("_konan_function_2")]
+function get_globalCollectionParam1Map(): KMap;
+
+[inner_name("_konan_function_3")]
+function get_globalCollectionParam2Array(): KArray;
+
+[inner_name("_konan_function_4")]
+function get_globalCollectionParam2List(): KList;
+
+[inner_name("_konan_function_5")]
+function get_globalCollectionParam2Map(): KMap;
+
+[inner_name("_konan_function_6")]
+function printCollectionParam3(result: CollectionParam3): void;
+
+[inner_name("_konan_function_7")]
+function printTest1Result(result: KList): void;
+
+[inner_name("_konan_function_8")]
+function printTest2Result(result: KArray): void;
+
+[inner_name("_konan_function_9")]
+function printTest3Result(result: KMap): void;
+
+[prefix("collection")]

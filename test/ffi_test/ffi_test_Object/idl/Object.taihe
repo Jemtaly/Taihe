@@ -1,0 +1,35 @@
+[object_kind("class"), type_function("_konan_function_1_type")]
+interface KNObject  {
+  [inner_name("_konan_function_3")]
+  kn_all_params(a: i32, b: i64, c: f64, d: bool, e: String): void;
+  [inner_name("_konan_function_4")]
+  kn_boolean_params(a: bool): void;
+  [inner_name("_konan_function_5")]
+  kn_boolean_result(): bool;
+  [inner_name("_konan_function_6")]
+  kn_double_params(a: f64): void;
+  [inner_name("_konan_function_7")]
+  kn_double_result(): f64;
+  [inner_name("_konan_function_8")]
+  kn_empty_func(): void;
+  [inner_name("_konan_function_9")]
+  kn_int_params(a: i32): void;
+  [inner_name("_konan_function_10")]
+  kn_int_result(): i32;
+  [inner_name("_konan_function_11")]
+  kn_long_params(a: i64): void;
+  [inner_name("_konan_function_12")]
+  kn_long_result(): i64;
+  [inner_name("_konan_function_13")]
+  kn_string_params(a: String): void;
+  [inner_name("_konan_function_14")]
+  kn_string_result(): String;
+}
+
+[inner_name("_konan_function_0")]
+function getKNObject(): KNObject;
+
+[init_class, inner_name("_konan_function_2")]
+function makeKNObject(): KNObject;
+
+[prefix("Object")]

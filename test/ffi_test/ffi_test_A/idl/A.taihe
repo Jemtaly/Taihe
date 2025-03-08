@@ -1,0 +1,39 @@
+struct KList {
+    ptr: u64;
+}
+
+[object_kind("class"), type_function("_konan_function_2_type")]
+interface ACrash  {
+  [inner_name("_konan_function_4")]
+  get_list(): KList;
+}
+
+[object_kind("class"), type_function("_konan_function_5_type")]
+interface BCrash  {
+  [inner_name("_konan_function_7")]
+  get_strList(): KList;
+}
+
+[object_kind("class"), type_function("_konan_function_8_type")]
+interface CCrash  {
+  [inner_name("_konan_function_10")]
+  get_name(): String;
+}
+
+[inner_name("_konan_function_0")]
+function get_bCrashList(): KList;
+
+[inner_name("_konan_function_1")]
+function get_stringList(): KList;
+
+[init_class, inner_name("_konan_function_3")]
+function makeACrash(list: KList): ACrash;
+
+[init_class, inner_name("_konan_function_6")]
+function makeBCrash(list: KList): BCrash;
+
+[init_class, inner_name("_konan_function_9")]
+function makeCCrash(list: String): CCrash;
+
+[prefix("A")]
+
