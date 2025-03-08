@@ -1,4 +1,4 @@
-import { KList } from "./KContainer";
+// import { KList } from "./KContainer";
 import {makeACrash, makeBCrash, makeCCrash, get_bCrashList, get_stringList} from './libtest'
 
 function main() {
