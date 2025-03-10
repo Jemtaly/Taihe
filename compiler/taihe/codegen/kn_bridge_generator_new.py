@@ -134,6 +134,8 @@ class IfaceDeclKnBridgeInfo(AbstractAnalysis[IfaceDecl]):
         self.as_field = f"::{self.pkgname}::{self.name}"
         self.as_konan_param = "KObjHeader*"
         self.as_konan_field = "KObjHeader*"
+        if "type_function" not in d.attrs:
+            raise KeyError("'type_function' key not found. Exiting program.")
         temp = d.attrs["type_function"].value
         assert isinstance(temp, tuple)
         type_function = temp[0]
@@ -276,6 +278,8 @@ class KNBridgeCodeGenerator:
             self.tm, f"src/{kn_bridge_pkg_info.source}", False
         )
 
+        if "prefix" not in pkg.attrs:
+            raise KeyError("'prefix' key not found. Exiting program.")
         temp = pkg.attrs["prefix"].value
         assert isinstance(temp, tuple)
         kn_bridge_prefix_ = temp[0]
@@ -421,10 +425,16 @@ class KNBridgeCodeGenerator:
         kn_bridge_prefix: str,
     ):
         for iface in pkg.interfaces:
+            if "object_kind" not in iface.attrs:
+                raise KeyError("'object_kind' key not found. Exiting program.")
             if "object_kind" in iface.attrs:
                 attrslist = iface.attrs["object_kind"].value
                 assert isinstance(attrslist, tuple)
-                if attrslist[0] == "class" or attrslist[0] == "object":
+                if (
+                    attrslist[0] == "class"
+                    or attrslist[0] == "object"
+                    or attrslist[0] == "interface"
+                ):
                     # if "object_kind" in iface.attrs and (
                     #     iface.attrs["object_kind"].value[0] == "class"
                     #     or iface.attrs["object_kind"][0].value[0] == "object"
@@ -503,6 +513,8 @@ class KNBridgeCodeGenerator:
     def gen_obj_init_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -563,6 +575,8 @@ class KNBridgeCodeGenerator:
         func: IfaceMethodDecl,
         kn_bridge_pkg_target: COutputBuffer,
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -583,6 +597,8 @@ class KNBridgeCodeGenerator:
     def gen_toplevel_method_decl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -641,6 +657,8 @@ class KNBridgeCodeGenerator:
         func: IfaceMethodDecl,
         kn_bridge_pkg_target: COutputBuffer,
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -697,6 +715,8 @@ class KNBridgeCodeGenerator:
     def gen_toplevel_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -953,6 +973,8 @@ class KNBridgeCodeGenerator:
     def gen_class_init_func_impl(
         self, func: GlobFuncDecl, kn_bridge_pkg_target: COutputBuffer, gen: bool
     ):
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
@@ -1058,6 +1080,8 @@ class KNBridgeCodeGenerator:
             func_impl_params_only_var.append(f"{param.name}")
         class_member_func_params_str = ", ".join(class_member_func_params)
         func_impl_params_only_var_str = ", ".join(func_impl_params_only_var)
+        if "inner_name" not in func.attrs:
+            raise KeyError("'inner_name' key not found. Exiting program.")
         konan_proj_name_list = func.attrs["inner_name"].value
         assert isinstance(konan_proj_name_list, tuple)
         konan_proj_name = konan_proj_name_list[0]
