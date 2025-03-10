@@ -319,18 +319,9 @@ class NapiCodeGenerator:
         )
         pkg_napi_target.include("node/node_api.h")
         pkg_napi_target.include(pkg_cpp_info.header)
+        self.gen_func_decl(pkg_napi_target, pkg)
 
         desc = []
-        for struct in pkg.structs:
-            self.gen_struct_constructor_decl(struct, pkg_napi_target)
-            self.gen_struct_convert_func_decl(struct, pkg_napi_target)
-        for iface in pkg.interfaces:
-            self.gen_iface_decl(pkg_napi_target, iface)
-        for enum in pkg.enums:
-            self.gen_enum_convert_func_decl(enum, pkg_napi_target)
-        for func in pkg.functions:
-            self.gen_func_decl(func, pkg_napi_info, pkg_napi_target)
-
         for struct in pkg.structs:
             self.gen_struct_constructor(struct, pkg_napi_target)
             func_desc = f'        {{"make{struct.name}", nullptr, construct_js_{struct.name}, nullptr, nullptr, nullptr, napi_default, nullptr}}'
@@ -352,80 +343,27 @@ class NapiCodeGenerator:
         desc_str = ", \n".join(desc)
         self.gen_module_init(desc_str, pkg_napi_target)
 
-    def gen_iface_decl(
-        self,
-        pkg_napi_target: COutputBuffer,
-        iface: IfaceDecl,
-    ):
-        iface_cpp_info = IfaceCppInfo.get(self.am, iface)
-        for func in iface.methods:
-            self.gen_iface_method_decl(
-                func, pkg_napi_target, iface.name, iface_cpp_info.as_field
+    def gen_func_decl(self, pkg_napi_target: COutputBuffer, pkg: PackageDecl):
+        for iface in pkg.interfaces:
+            iface_cpp_info = IfaceCppInfo.get(self.am, iface)
+            pkg_napi_target.write(
+                f"inline {iface_cpp_info.as_field} get_{iface.name}(napi_env env, napi_value js_obj);\n"
+                f"inline napi_value create_{iface.name}(napi_env env, {iface_cpp_info.as_field} const& c_obj);\n"
+                f"static napi_value as_{iface.name}(napi_env env, napi_callback_info info);\n"
+                f"static napi_value impl_{iface.name}(napi_env env, napi_callback_info info);\n"
             )
-        iface_abi_info = IfaceABIInfo.get(self.am, iface)
-        for ancestor in iface_abi_info.ancestor_dict:
-            if ancestor == iface:
-                continue
-            self.gen_iface_up_cast_func_decl(
-                pkg_napi_target, iface.name, iface_cpp_info.as_field, ancestor.name
+        for struct in pkg.structs:
+            struct_cpp_info = StructCppInfo.get(self.am, struct)
+            pkg_napi_target.write(
+                f"inline {struct_cpp_info.as_field} get_{struct.name}(napi_env env, napi_value js_obj);\n"
+                f"inline napi_value create_{struct.name}(napi_env env, {struct_cpp_info.as_field} const& c_obj);\n"
             )
-        self.gen_iface_convert_func_decl(pkg_napi_target, iface)
-
-    def gen_iface_convert_func_decl(
-        self,
-        pkg_napi_target: COutputBuffer,
-        iface: IfaceDecl,
-    ):
-        iface_cpp_info = IfaceCppInfo.get(self.am, iface)
-        pkg_napi_target.write(
-            f"{iface_cpp_info.as_field} get_{iface.name}(napi_env env, napi_value js_obj);\n"
-        )
-        pkg_napi_target.write(
-            f"napi_value create_{iface.name}(napi_env env, {iface_cpp_info.as_field} c_obj);\n"
-        )
-
-        self.gen_iface_down_cast_func_decl(pkg_napi_target, iface)
-        self.gen_iface_impl_func_decl(pkg_napi_target, iface)
-
-    def gen_iface_up_cast_func_decl(
-        self,
-        pkg_napi_target: COutputBuffer,
-        iface_name: str,
-        iface_cpp_type: str,
-        base_iface_name: str,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value napi_hidden_{iface_name}_as_{base_iface_name}(napi_env env, napi_callback_info info);\n"
-        )
-
-    def gen_iface_down_cast_func_decl(
-        self,
-        pkg_napi_target: COutputBuffer,
-        iface: IfaceDecl,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value as_{iface.name}(napi_env env, napi_callback_info info);\n"
-        )
-
-    def gen_iface_impl_func_decl(
-        self,
-        pkg_napi_target: COutputBuffer,
-        iface: IfaceDecl,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value impl_{iface.name}(napi_env env, napi_callback_info info);\n"
-        )
-
-    def gen_iface_method_decl(
-        self,
-        func: IfaceMethodDecl,
-        pkg_napi_target: COutputBuffer,
-        iface_name: str,
-        iface_cpp_type: str,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value napi_hidden_{iface_name}_{func.name}(napi_env env, napi_callback_info info);\n"
-        )
+        for enum in pkg.enums:
+            enum_cpp_info = EnumCppInfo.get(self.am, enum)
+            pkg_napi_target.write(
+                f"inline {enum_cpp_info.as_field} get_{enum.name}(napi_env env, napi_value js_obj);\n"
+                f"inline napi_value create_{enum.name}(napi_env env, {enum_cpp_info.as_field} const& c_obj);\n"
+            )
 
     def gen_iface(
         self,
@@ -472,7 +410,7 @@ class NapiCodeGenerator:
         )
 
         pkg_napi_target.write(
-            f"inline napi_value create_{iface.name}(napi_env env, {iface_cpp_info.as_field} c_obj) {{\n"
+            f"inline napi_value create_{iface.name}(napi_env env, {iface_cpp_info.as_field} const& c_obj) {{\n"
             f"    {iface_cpp_info.as_field}* value_ptr = new {iface_cpp_info.as_field}(std::move(c_obj));\n"
             f"    napi_value js_obj = nullptr;\n"
             f"    napi_create_object(env, &js_obj);\n"
@@ -526,7 +464,7 @@ class NapiCodeGenerator:
             f"    napi_unwrap(env, args[0], reinterpret_cast<void**>(&buffer));\n"
             f"    napi_value result = nullptr;\n"
             f"    if ({iface_cpp_info.as_param} c_obj = {iface_cpp_info.as_param}(buffer->holder)) {{\n"
-            f"        result = create_{iface.name}(env, c_obj);\n"
+            f"        result = create_{iface.name}(env, std::move(c_obj));\n"
             f"        return result;\n"
             f"    }} else {{\n"
             f"        napi_get_undefined(env, &result);\n"
@@ -675,43 +613,6 @@ class NapiCodeGenerator:
             f"}}\n"
         )
 
-    def gen_struct_constructor_decl(
-        self,
-        struct: StructDecl,
-        pkg_napi_target: COutputBuffer,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value construct_js_{struct.name}(napi_env env, napi_callback_info info);\n"
-        )
-
-    def gen_struct_convert_func_decl(
-        self,
-        struct: StructDecl,
-        pkg_napi_target: COutputBuffer,
-    ):
-        struct_cpp_info = StructCppInfo.get(self.am, struct)
-        pkg_napi_target.write(
-            f"{struct_cpp_info.as_field} get_{struct.name}(napi_env env, napi_value js_obj);\n"
-        )
-
-    def gen_enum_convert_func_decl(
-        self, enum: EnumDecl, pkg_napi_target: COutputBuffer
-    ):
-        enum_cpp_info = EnumCppInfo.get(self.am, enum)
-        pkg_napi_target.write(
-            f"{enum_cpp_info.as_field} get_{enum.name}(napi_env env, napi_value js_obj);\n"
-        )
-
-    def gen_func_decl(
-        self,
-        func: GlobFuncDecl,
-        pkg_napi_info: PackageNapiInfo,
-        pkg_napi_target: COutputBuffer,
-    ):
-        pkg_napi_target.write(
-            f"static napi_value napi_{func.name}(napi_env env, napi_callback_info info);\n"
-        )
-
     def gen_struct_constructor(
         self,
         struct: StructDecl,
@@ -830,7 +731,7 @@ class NapiCodeGenerator:
         )
 
         pkg_napi_target.write(
-            f"inline napi_value create_{enum.name}(napi_env env, {enum_cpp_info.as_field} c_obj) {{\n"
+            f"inline napi_value create_{enum.name}(napi_env env, {enum_cpp_info.as_field} const& c_obj) {{\n"
             f"    napi_value js_obj;\n"
             f"    napi_create_object(env, &js_obj);\n"
             f"    napi_value js_tag;\n"
