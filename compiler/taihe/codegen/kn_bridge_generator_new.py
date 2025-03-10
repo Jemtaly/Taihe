@@ -1054,11 +1054,14 @@ class KNBridgeCodeGenerator:
         self, iface: IfaceDecl, kn_bridge_pkg_target: COutputBuffer
     ):
         perantsList = IfaceABIInfo.get(self.am, iface).ancestor_dict
+        class_func_list = []
         if not perantsList:
             return
         for ifaceperant in perantsList:
             for func in ifaceperant.methods:
-                self._gen_class_func_bind(func, kn_bridge_pkg_target)
+                if func.name not in class_func_list:
+                    class_func_list.append(func.name)
+                    self._gen_class_func_bind(func, kn_bridge_pkg_target)
 
     def _gen_ctor(self, iface: IfaceDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
