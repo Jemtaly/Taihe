@@ -10,11 +10,10 @@ from taihe.driver import CompilerInstance, CompilerInvocation
 CXX = os.getenv("CXX", "clang++")
 C = os.getenv("C", "clang")
 
-# CXX = "path/to/clang++"
+# CXX = "/path/to/clang++"
 # C = "/path/to/clang"
 
-BASEDIR = Path(__file__).resolve().parent
-
+TH_HOME = Path(os.environ.get('TH_HOME', ''))
 
 def run_command(command):
     print(f"+ {command}")
@@ -95,7 +94,8 @@ def main(
     napi_test_include_dir = napi_test_dir / "include"
     napi_test_src_dir = napi_test_dir / "src"
 
-    runtime_dir = BASEDIR / ".." / "runtime"
+    # runtime_dir = BASEDIR / ".." / "runtime"
+    runtime_dir = TH_HOME / "runtime"
     runtime_include_dir = runtime_dir / "include"
     runtime_src_dir = runtime_dir / "src"
 
