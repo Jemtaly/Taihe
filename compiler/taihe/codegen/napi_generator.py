@@ -317,6 +317,8 @@ class NapiCodeGenerator:
         pkg_napi_target = COutputBuffer.create(
             self.tm, f"src/{pkg_napi_info.header}", False
         )
+        # if developer need to test in linux,
+        # please change the following header file to "node/node_api.h"
         pkg_napi_target.include("napi/native_api.h")
         pkg_napi_target.include(pkg_cpp_info.header)
         self.gen_func_decl(pkg_napi_target, pkg)
