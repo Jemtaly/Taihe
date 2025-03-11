@@ -10,6 +10,9 @@ from taihe.driver import CompilerInstance, CompilerInvocation
 CXX = os.getenv("CXX", "clang++")
 C = os.getenv("C", "clang")
 
+# CXX = "path/to/clang++"
+# C = "/path/to/clang"
+
 BASEDIR = Path(__file__).resolve().parent
 
 
@@ -96,7 +99,7 @@ def main(
     runtime_include_dir = runtime_dir / "include"
     runtime_src_dir = runtime_dir / "src"
 
-    build_dir = target_path / "build"
+    build_dir = target_path / "build1"
     build_runtime_dir = build_dir / "runtime"
     build_author_dir = build_dir / "author"
     build_user_dir = build_dir / "user"
@@ -144,7 +147,7 @@ def main(
 
     print("Compiling to dynamic link library...")
     copy_directory(author_dir, author_test_dir)
-    node_file = target_path / "libtest.node"
+    node_file = target_path / "libtest.so"
     link(
         node_file,
         *compile(
