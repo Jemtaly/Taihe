@@ -7,11 +7,9 @@ from pathlib import Path
 import argparse
 from taihe.driver import CompilerInstance, CompilerInvocation
 
-CXX = os.getenv("CXX", "clang++")
-C = os.getenv("C", "clang")
-
-# CXX = "/path/to/clang++"
-# C = "/path/to/clang"
+ohos_sdk_home = os.environ.get('OHOS_SDK_HOME')
+CXX = ohos_sdk_home + "/sdk/default/openharmony/native/llvm/bin/clang++"
+C = ohos_sdk_home + "/sdk/default/openharmony/native/llvm/bin/clang"
 
 TH_HOME = Path(os.environ.get('TH_HOME', ''))
 
