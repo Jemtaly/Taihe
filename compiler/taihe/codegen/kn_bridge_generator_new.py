@@ -25,7 +25,7 @@ from taihe.semantics.types import (
     U32,
     U64,
     # ArrayType,
-    # BoxType,
+    BoxType,
     # CallbackType,
     # EnumType,
     IfaceType,
@@ -213,6 +213,20 @@ class SpecialTypeKnBridgeInfo(AbstractAnalysis[SpecialType], AbstractTypeKnBridg
         self.need_holder = True
         self.type_func = None
 
+class BoxTypeKnBridgeInfo(AbstractAnalysis[BoxType], AbstractTypeKnBridgeInfo):
+    def __init__(self, am: AnalysisManager, t: BoxType):
+        self.decl_headers = ["taihe/box.abi.h"]
+        self.defn_headers = ["taihe/box.abi.h"]
+        self.as_owner = "struct TBox"
+        self.as_field = "struct TBox"
+        self.as_param = "struct TBox"
+        self.as_konan_param = "KObjHeader*"
+        self.as_konan_field = "KObjHeader*"
+        self.param_covert_func = "thbox_tokotlin"
+        self.retval_convert_func_left = "struct TBox{CreateStablePointer("
+        self.retval_convert_func_right = ")}"
+        self.need_holder = True
+        self.type_func = None
 
 class TypeKnBridgeInfo(TypeVisitor[AbstractTypeKnBridgeInfo]):
     def __init__(self, am: AnalysisManager):
@@ -394,6 +408,12 @@ class KNBridgeCodeGenerator:
             f"  return result;\n"
             f"}}\n"
             f"\n"
+            # f"KObjHeader* thbox_tokotlin(struct TBox box, KObjHeader** kobj_slot) {{\n"
+            # f"  void* data_ptr = (void*)box;\n"
+            # f"  KObjHeader* result = DerefStablePointer(data_ptr, kobj_slot);\n"
+            # f"  return result;\n"
+            # f"}}\n"
+            # f"\n"
         )
 
     def def_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
@@ -415,7 +435,7 @@ class KNBridgeCodeGenerator:
             for func in iface.methods:
                 self.gen_iface_method_decl(iface_name, func, kn_bridge_pkg_target)
         for func in pkg.functions:
-            if "init_class" not in func.attrs and "get_obj" not in func.attrs:
+            if "constructor" not in func.attrs and "singleton" not in func.attrs:
                 self.gen_toplevel_method_decl(func, kn_bridge_pkg_target)
 
     def gen_class_impl(
@@ -457,9 +477,9 @@ class KNBridgeCodeGenerator:
             for func in iface.methods:
                 self.gen_iface_method_impl(iface_name, func, kn_bridge_pkg_target)
         for func in pkg.functions:
-            if "init_class" not in func.attrs and "get_obj" not in func.attrs:
+            if "constructor" not in func.attrs and "singleton" not in func.attrs:
                 self.gen_toplevel_func_impl(func, kn_bridge_pkg_target)
-            elif "init_class" in func.attrs:
+            elif "constructor" in func.attrs:
                 str1, str2, str3 = self.gen_class_init_func_impl(
                     func, kn_bridge_pkg_target, True
                 )
@@ -478,7 +498,7 @@ class KNBridgeCodeGenerator:
                 #  need to add   #
                 ##################
                 # self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
-            elif "get_obj" in func.attrs:
+            elif "singleton" in func.attrs:
                 str1, str2, str3 = self.gen_obj_init_func_impl(
                     func, kn_bridge_pkg_target, True
                 )
@@ -499,12 +519,12 @@ class KNBridgeCodeGenerator:
                 # self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
 
         for func in pkg.functions:
-            if "init_class" in func.attrs:
+            if "constructor" in func.attrs:
                 str1, str2, str3 = self.gen_class_init_func_impl(
                     func, kn_bridge_pkg_target, False
                 )
                 self.gen_makeclass(func, kn_bridge_pkg_target, str1, str2, str3)
-            elif "get_obj" in func.attrs:
+            elif "singleton" in func.attrs:
                 str1, str2, str3 = self.gen_obj_init_func_impl(
                     func, kn_bridge_pkg_target, False
                 )
@@ -1114,7 +1134,7 @@ class KNBridgeCodeGenerator:
 
     def gen_func_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         for func in pkg.functions:
-            if "init_class" in func.attrs or "get_obj" in func.attrs:
+            if "constructor" in func.attrs or "singleton" in func.attrs:
                 kn_bridge_pkg_target.write(
                     f"TH_EXPORT_CPP_API_{func.name}({func.name}_author)\n"
                 )
