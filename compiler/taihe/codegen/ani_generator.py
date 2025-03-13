@@ -728,9 +728,8 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
                 )
                 target.write(
                     f"{' ' * offset}        {ani_result_value} = {ani_result_spec};\n"
-                    f"{' ' * offset}        break;\n"
                 )
-            target.write(f"{' ' * offset}    }}\n")
+            target.write(f"{' ' * offset}        break;\n" f"{' ' * offset}    }}\n")
         target.write(f"{' ' * offset}    }}\n")
 
     @override
