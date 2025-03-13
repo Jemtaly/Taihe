@@ -274,8 +274,8 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         cpp_result: str,
     ):
         cpp_moved_partial_results = []
-        for i, field in enumerate(self.t.ty_decl.fields):
-            cpp_partial_result = f"{cpp_result}_field_{i}"
+        for field in self.t.ty_decl.fields:
+            cpp_partial_result = f"{cpp_result}_{field.name}"
             type_ani_info = TypeANIInfo.get(self.am, field.ty_ref.resolved_ty)
             type_ani_info.from_ani_split(
                 target,
@@ -342,7 +342,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_results: list[str],
     ):
-        for i, field in enumerate(self.t.ty_decl.fields):
+        for field in self.t.ty_decl.fields:
             type_ani_info = TypeANIInfo.get(self.am, field.ty_ref.resolved_ty)
             type_ani_info.into_ani_split(
                 target, offset, env, f"{cpp_value}.{field.name}", ani_results
@@ -359,7 +359,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
     ):
         ani_results = []
         ani_args = []
-        for i, ani_type in enumerate(self.ani_split_type):
+        for i in range(len(self.ani_split_type)):
             ani_arg = f"{ani_result}_{i}"
             ani_results.append(ani_arg)
             ani_args.append(ani_arg)
@@ -407,7 +407,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
     ):
         prx_results = []
         prx_parts = []
-        for i, prx_type in enumerate(self.prx_split_type):
+        for i in range(len(self.prx_split_type)):
             prx_part = f"{prx_result}_{i}"
             prx_results.append(prx_part)
             prx_parts.append(prx_part)
@@ -447,7 +447,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         sts_result: str,
     ):
         prx_values = []
-        for i, field_name in enumerate(self.flat_field_names):
+        for field_name in self.flat_field_names:
             prx_values.append(f"{prx_value}.{field_name}")
         self.from_prx_split(target, offset, prx_values, sts_result)
 
@@ -519,9 +519,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_result: str,
     ):
-        ani_temp = f"{ani_result}_temp"
-        self.into_ani_whole(target, offset, env, cpp_value, ani_temp)
-        target.write(f"{' ' * offset}ani_object {ani_result} = {ani_temp};\n")
+        self.into_ani_whole(target, offset, env, cpp_value, ani_result)
 
     @override
     def from_ani_boxed(
@@ -532,11 +530,13 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         ani_value: str,
         cpp_result: str,
     ):
-        ani_temp = f"{cpp_result}_temp"
-        target.write(
-            f"{' ' * offset}{self.ani_whole_type} {ani_temp} = static_cast<{self.ani_whole_type}>({ani_value});\n"
+        self.from_ani_whole(
+            target,
+            offset,
+            env,
+            f"static_cast<{self.ani_whole_type}>({ani_value})",
+            cpp_result,
         )
-        self.from_ani_whole(target, offset, env, ani_temp, cpp_result)
 
 
 class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
@@ -581,7 +581,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
             f"{' ' * offset}    {enum_cpp_info.full_name}::tag_t {cpp_tag} = ({enum_cpp_info.full_name}::tag_t){ani_tag};\n"
             f"{' ' * offset}    switch ({cpp_tag}) {{\n"
         )
-        for i, item in enumerate(self.t.ty_decl.items):
+        for item in self.t.ty_decl.items:
             target.write(
                 f"{' ' * offset}    case {enum_cpp_info.full_name}::tag_t::{item.name}: {{\n"
             )
@@ -590,17 +590,17 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
                     f"{' ' * offset}        return {enum_cpp_info.full_name}::make_{item.name}();\n"
                 )
             else:
-                case_result = f"{cpp_result}_{i}"
+                cpp_result_spec = f"{cpp_result}_{item.name}"
                 type_ani_info = TypeANIInfo.get(self.am, item.ty_ref.resolved_ty)
                 type_ani_info.from_ani_boxed(
                     target,
                     offset + 8,
                     env,
                     ani_value,
-                    case_result,
+                    cpp_result_spec,
                 )
                 target.write(
-                    f"{' ' * offset}        return {enum_cpp_info.full_name}::make_{item.name}(std::move({case_result}));\n"
+                    f"{' ' * offset}        return {enum_cpp_info.full_name}::make_{item.name}(std::move({cpp_result_spec}));\n"
                 )
             target.write(f"{' ' * offset}    }}\n")
         target.write(f"{' ' * offset}    }}\n" f"{' ' * offset}}}();\n")
@@ -662,7 +662,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
             f"{' ' * offset}ani_ref {ani_result_value};\n"
             f"{' ' * offset}switch ({cpp_value}.get_tag()) {{\n"
         )
-        for i, item in enumerate(self.t.ty_decl.items):
+        for item in self.t.ty_decl.items:
             target.write(
                 f"{' ' * offset}    case {enum_cpp_info.full_name}::tag_t::{item.name}: {{\n"
             )
@@ -671,17 +671,17 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
                     f"{' ' * offset}        {env}->GetUndefined(&{ani_result_value});\n"
                 )
             else:
-                ani_result_temp = f"{ani_result_value}_temp"
+                ani_result_spec = f"{ani_result_value}_{item.name}"
                 type_ani_info = TypeANIInfo.get(self.am, item.ty_ref.resolved_ty)
                 type_ani_info.into_ani_boxed(
                     target,
                     offset + 8,
                     env,
                     f"{cpp_value}.get_{item.name}_ref()",
-                    ani_result_temp,
+                    ani_result_spec,
                 )
                 target.write(
-                    f"{' ' * offset}        {ani_result_value} = {ani_result_temp};\n"
+                    f"{' ' * offset}        {ani_result_value} = {ani_result_spec};\n"
                 )
             target.write(f"{' ' * offset}    }}\n")
         target.write(f"{' ' * offset}    }}\n")
@@ -733,14 +733,14 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
             f"{' ' * offset}let {prx_result_val}: {self.prx_split_type[1]};\n"
             f"{' ' * offset}switch ({sts_value}.tag) {{\n"
         )
-        for i, item in enumerate(self.t.ty_decl.items):
+        for item in self.t.ty_decl.items:
             target.write(f"{' ' * offset}case {item.value}: {{\n")
             if item.ty_ref is None:
                 target.write(f"{' ' * offset}    {prx_result_val} = undefined;\n")
             else:
                 type_ani_info = TypeANIInfo.get(self.am, item.ty_ref.resolved_ty)
-                sts_item_val = f"{prx_result_val}_sts_{i}"
-                prx_item_val = f"{prx_result_val}_prx_{i}"
+                sts_item_val = f"{prx_result_val}_{item.name}_sts"
+                prx_item_val = f"{prx_result_val}_{item.name}_prx"
                 target.write(
                     f"{' ' * offset}    let {sts_item_val}: {type_ani_info.sts_type} = {sts_value}.value as {type_ani_info.sts_type};\n"
                 )
@@ -786,15 +786,15 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
             f"{' ' * offset}let {sts_result}: {self.sts_type};\n"
             f"{' ' * offset}switch ({prx_value_tag}) {{\n"
         )
-        for i, item in enumerate(self.t.ty_decl.items):
+        for item in self.t.ty_decl.items:
             target.write(f"{' ' * offset}case {item.value}: {{\n")
             if item.ty_ref is None:
                 target.write(
                     f"{' ' * offset}    {sts_result} = new {enum_ani_info.sts_ctor}({prx_value_tag}, undefined);\n"
                 )
             else:
-                prx_item_val = f"{sts_result}_prx_{i}"
-                sts_item_val = f"{sts_result}_sts_{i}"
+                prx_item_val = f"{sts_result}_{item.name}_prx"
+                sts_item_val = f"{sts_result}_{item.name}_sts"
                 type_ani_info = TypeANIInfo.get(self.am, item.ty_ref.resolved_ty)
                 target.write(
                     f"{' ' * offset}    let {prx_item_val}: {type_ani_info.prx_whole_type} = {prx_value_val} as {type_ani_info.prx_whole_type};\n"
@@ -892,9 +892,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_result: str,
     ):
-        ani_temp = f"{ani_result}_temp"
-        self.into_ani_whole(target, offset, env, cpp_value, ani_temp)
-        target.write(f"{' ' * offset}ani_object {ani_result} = {ani_temp};\n")
+        self.into_ani_whole(target, offset, env, cpp_value, ani_result)
 
     @override
     def from_ani_boxed(
@@ -905,11 +903,13 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
         ani_value: str,
         cpp_result: str,
     ):
-        ani_temp = f"{cpp_result}_temp"
-        target.write(
-            f"{' ' * offset}{self.ani_whole_type} {ani_temp} = static_cast<{self.ani_whole_type}>({ani_value});\n"
+        self.from_ani_whole(
+            target,
+            offset,
+            env,
+            f"static_cast<{self.ani_whole_type}>({ani_value})",
+            cpp_result,
         )
-        self.from_ani_whole(target, offset, env, ani_temp, cpp_result)
 
 
 class IfaceTypeANIInfo(AbstractAnalysis[IfaceType], AbstractTypeANIInfo):
@@ -1324,9 +1324,7 @@ class StringTypeANIInfo(AbstractAnalysis[StringType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_result: str,
     ):
-        ani_temp = f"{ani_result}_temp"
-        self.into_ani_whole(target, offset, env, cpp_value, ani_temp)
-        target.write(f"{' ' * offset}ani_object {ani_result} = {ani_temp};\n")
+        self.into_ani_whole(target, offset, env, cpp_value, ani_result)
 
     @override
     def from_ani_boxed(
@@ -1337,11 +1335,13 @@ class StringTypeANIInfo(AbstractAnalysis[StringType], AbstractTypeANIInfo):
         ani_value: str,
         cpp_result: str,
     ):
-        ani_temp = f"{cpp_result}_temp"
-        target.write(
-            f"{' ' * offset}{self.ani_whole_type} {ani_temp} = static_cast<{self.ani_whole_type}>({ani_value});\n"
+        self.from_ani_whole(
+            target,
+            offset,
+            env,
+            f"static_cast<{self.ani_whole_type}>({ani_value})",
+            cpp_result,
         )
-        self.from_ani_whole(target, offset, env, ani_temp, cpp_result)
 
 
 class ArrayTypeANIInfo(AbstractAnalysis[ArrayType], AbstractTypeANIInfo):
@@ -1507,9 +1507,7 @@ class ArrayTypeANIInfo(AbstractAnalysis[ArrayType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_result: str,
     ):
-        ani_temp = f"{ani_result}_temp"
-        self.into_ani_whole(target, offset, env, cpp_value, ani_temp)
-        target.write(f"{' ' * offset}ani_object {ani_result} = {ani_temp};\n")
+        self.into_ani_whole(target, offset, env, cpp_value, ani_result)
 
     @override
     def from_ani_boxed(
@@ -1520,11 +1518,13 @@ class ArrayTypeANIInfo(AbstractAnalysis[ArrayType], AbstractTypeANIInfo):
         ani_value: str,
         cpp_result: str,
     ):
-        ani_temp = f"{cpp_result}_temp"
-        target.write(
-            f"{' ' * offset}{self.ani_whole_type} {ani_temp} = static_cast<{self.ani_whole_type}>({ani_value});\n"
+        self.from_ani_whole(
+            target,
+            offset,
+            env,
+            f"static_cast<{self.ani_whole_type}>({ani_value})",
+            cpp_result,
         )
-        self.from_ani_whole(target, offset, env, ani_temp, cpp_result)
 
 
 class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
@@ -1554,7 +1554,7 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
     ):
         ani_is_undefined = f"{cpp_result}_flag"
         cpp_pointer = f"{cpp_result}_ptr"
-        cpp_inner = f"{cpp_result}_inner"
+        cpp_spec = f"{cpp_result}_spec"
         cpp_info = TypeCppInfo.get(self.am, self.t)
         item_ty_cpp_info = TypeCppInfo.get(self.am, self.t.item_ty)
         target.write(
@@ -1564,9 +1564,9 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
             f"{' ' * offset}if (!{ani_is_undefined}) {{\n"
         )
         item_ty_ani_info = TypeANIInfo.get(self.am, self.t.item_ty)
-        item_ty_ani_info.from_ani_boxed(target, offset + 4, env, ani_value, cpp_inner)
+        item_ty_ani_info.from_ani_boxed(target, offset + 4, env, ani_value, cpp_spec)
         target.write(
-            f"{' ' * offset}    *{cpp_pointer} = std::move({cpp_inner});\n"
+            f"{' ' * offset}    *{cpp_pointer} = std::move({cpp_spec});\n"
             f"{' ' * offset}}};\n"
             f"{' ' * offset}{cpp_info.as_owner} {cpp_result}({cpp_pointer});\n"
         )
@@ -1592,7 +1592,7 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
         cpp_value: str,
         ani_result: str,
     ):
-        ani_result_real = f"{ani_result}_real"
+        ani_result_spec = f"{ani_result}_spec"
         target.write(
             f"{' ' * offset}ani_ref {ani_result};\n"
             f"{' ' * offset}if (!{cpp_value}) {{\n"
@@ -1601,10 +1601,10 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
         )
         item_ty_ani_info = TypeANIInfo.get(self.am, self.t.item_ty)
         item_ty_ani_info.into_ani_boxed(
-            target, offset + 4, env, f"(*{cpp_value})", ani_result_real
+            target, offset + 4, env, f"(*{cpp_value})", ani_result_spec
         )
         target.write(
-            f"{' ' * offset}    {ani_result} = {ani_result_real};\n"
+            f"{' ' * offset}    {ani_result} = {ani_result_spec};\n"
             f"{' ' * offset}}}\n"
         )
 
