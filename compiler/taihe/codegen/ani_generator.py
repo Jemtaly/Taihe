@@ -150,7 +150,6 @@ class StructANIInfo(AbstractAnalysis[StructDecl]):
         p = d.node_parent
         assert p
         self.sts_name = d.name
-        self.sts_ctor = f"{d.name}_inner"
         self.prx_name = f"{d.name}_proxy"
         pkg_ani_info = PackageANIInfo.get(am, p)
         self.cls_name = f"L{pkg_ani_info.lib_name}/{self.prx_name};"
@@ -161,7 +160,6 @@ class EnumANIInfo(AbstractAnalysis[EnumDecl]):
         p = d.node_parent
         assert p
         self.sts_name = d.name
-        self.sts_ctor = f"{d.name}_inner"
         self.prx_name = f"{d.name}_proxy"
         pkg_ani_info = PackageANIInfo.get(am, p)
         self.cls_name = f"L{pkg_ani_info.lib_name}/{self.prx_name};"
@@ -484,11 +482,10 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
             sts_field = f"{sts_result}_{field.name}"
             type_ani_info = TypeANIInfo.get(self.am, field.ty_ref.resolved_ty)
             type_ani_info.from_prx_split(target, offset, prx_values, sts_field)
-            sts_fields.append(sts_field)
+            sts_fields.append(f"{field.name}: {sts_field}")
         sts_fields_str = ", ".join(sts_fields)
-        struct_ani_info = StructANIInfo.get(self.am, self.t.ty_decl)
         target.write(
-            f"{' ' * offset}let {sts_result}: {self.sts_type} = new {struct_ani_info.sts_ctor}({sts_fields_str});\n"
+            f"{' ' * offset}let {sts_result}: {self.sts_type} = {{{sts_fields_str}}};\n"
         )
 
     @override
@@ -838,7 +835,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
             target.write(f"{' ' * offset}case {item.value}: {{\n")
             if item.ty_ref is None:
                 target.write(
-                    f"{' ' * offset}    {sts_result} = new {enum_ani_info.sts_ctor}({prx_value_tag}, undefined);\n"
+                    f"{' ' * offset}    {sts_result} = {{tag: {prx_value_tag}, value: undefined}};\n"
                 )
             else:
                 prx_item_val = f"{sts_result}_{item.name}_prx"
@@ -851,7 +848,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
                     target, offset + 4, prx_item_val, sts_item_val
                 )
                 target.write(
-                    f"{' ' * offset}    {sts_result} = new {enum_ani_info.sts_ctor}({prx_value_tag}, {sts_item_val});\n"
+                    f"{' ' * offset}    {sts_result} = {{tag: {prx_value_tag}, value: {sts_item_val}}};\n"
                 )
             target.write(f"{' ' * offset}    break;\n" f"{' ' * offset}}}\n")
         target.write(
@@ -1592,8 +1589,8 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
         item_ty_ani_info = TypeANIInfo.get(self.am, self.t.item_ty)
         item_ty_ani_info.from_ani_boxed(target, offset + 4, env, ani_value, cpp_spec)
         target.write(
-            f"{' ' * offset}    *{cpp_pointer} = std::move({cpp_spec});\n"
-            f"{' ' * offset}}};\n"
+            f"{' ' * offset}    {cpp_pointer} = new {item_ty_cpp_info.as_owner}(std::move({cpp_spec}));\n"
+            f"{' ' * offset}}}\n"
             f"{' ' * offset}{cpp_info.as_owner} {cpp_result}({cpp_pointer});\n"
         )
 
@@ -1828,11 +1825,6 @@ class STSCodeGenerator:
             self.gen_func_proxy(func, pkg_sts_target)
 
         for struct in pkg.structs:
-            self.gen_struct_inner(struct, pkg_sts_target)
-        for enum in pkg.enums:
-            self.gen_enum_inner(enum, pkg_sts_target)
-
-        for struct in pkg.structs:
             self.gen_struct_interface(struct, pkg_sts_target)
         for enum in pkg.enums:
             self.gen_enum_interface(enum, pkg_sts_target)
@@ -1943,27 +1935,6 @@ class STSCodeGenerator:
             )
         pkg_sts_target.write("    }\n" "}\n")
 
-    def gen_struct_inner(
-        self,
-        struct: StructDecl,
-        pkg_sts_target: OutputBuffer,
-    ):
-        struct_ani_info = StructANIInfo.get(self.am, struct)
-        pkg_sts_target.write(
-            f"class {struct_ani_info.sts_ctor} implements {struct_ani_info.sts_name} {{\n"
-        )
-        for field in struct.fields:
-            ty_ani_info = TypeANIInfo.get(self.am, field.ty_ref.resolved_ty)
-            pkg_sts_target.write(f"    {field.name}: {ty_ani_info.sts_type};\n")
-        pkg_sts_target.write("    constructor(\n")
-        for field in struct.fields:
-            ty_ani_info = TypeANIInfo.get(self.am, field.ty_ref.resolved_ty)
-            pkg_sts_target.write(f"        {field.name}: {ty_ani_info.sts_type},\n")
-        pkg_sts_target.write("    ) {\n")
-        for field in struct.fields:
-            pkg_sts_target.write(f"        this.{field.name} = {field.name};\n")
-        pkg_sts_target.write("    }\n" "}\n")
-
     def gen_enum_interface(
         self,
         enum: EnumDecl,
@@ -1997,31 +1968,6 @@ class STSCodeGenerator:
             f"    tag: {type_ani_info.prx_split_type[0]};\n"
             f"    value: {type_ani_info.prx_split_type[1]};\n"
             f"    constructor(tag: {type_ani_info.prx_split_type[0]}, value: {type_ani_info.prx_split_type[1]}) {{\n"
-            f"        this.tag = tag;\n"
-            f"        this.value = value;\n"
-            f"    }}\n"
-            f"}}\n"
-        )
-
-    def gen_enum_inner(
-        self,
-        enum: EnumDecl,
-        pkg_sts_target: OutputBuffer,
-    ):
-        enum_ani_info = EnumANIInfo.get(self.am, enum)
-        sts_value_types = []
-        for item in enum.items:
-            if item.ty_ref is None:
-                sts_value_types.append("undefined")
-                continue
-            ty_ani_info = TypeANIInfo.get(self.am, item.ty_ref.resolved_ty)
-            sts_value_types.append(f"{ty_ani_info.sts_type}")
-        sts_value_types_str = " | ".join(sts_value_types)
-        pkg_sts_target.write(
-            f"class {enum_ani_info.sts_ctor} implements {enum_ani_info.sts_name} {{\n"
-            f"    tag: int;\n"
-            f"    value: {sts_value_types_str};\n"
-            f"    constructor(tag: int, value: {sts_value_types_str}) {{\n"
             f"        this.tag = tag;\n"
             f"        this.value = value;\n"
             f"    }}\n"
