@@ -15,7 +15,7 @@ function main() {
     ani_test.testUnion({tag: 0, value: undefined})
     ani_test.testUnion({tag: 1, value: 1 as int})
     ani_test.testUnion({tag: 2, value: 2 as float})
-    ani_test.testUnion({tag: 3, value: "Hello from sts!"})
+    ani_test.testUnion({tag: 3, value: "Hello from STS!"})
 
     console.log(ani_test.getUnion(0))
     console.log(ani_test.getUnion(1))

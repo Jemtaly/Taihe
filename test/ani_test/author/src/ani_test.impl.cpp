@@ -66,7 +66,7 @@ static Union getUnion(int32_t v) {
     case 2:
       return Union::make_fValue(0.5);
     case 3:
-      return Union::make_fValue(0.2);
+      return Union::make_sValue("Hello from C++!");
     default:
       return Union::make_empty();
   }
