@@ -45,6 +45,75 @@ from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
 from taihe.utils.outputs import COutputBuffer, OutputBuffer, OutputManager
 
 
+class ANIType:
+    hint: str
+    base: "ANIBaseType"
+
+    def __init__(self, hint: str, base: "ANIBaseType"):
+        self.hint = hint
+        self.base = base
+
+    def __repr__(self) -> str:
+        return f"ani_{self.hint}"
+
+    @property
+    def suffix(self) -> str:
+        return self.base.hint[0].upper() + self.base.hint[1:]
+
+    @property
+    def array(self) -> "ANIArrayType":
+        assert self.base.inner_array
+        return self.base.inner_array
+
+
+class ANIArrayType(ANIType):
+    pass
+
+
+class ANIBaseType(ANIType):
+    inner_array: "ANIArrayType | None"
+
+    def __init__(self, hint: str):
+        super().__init__(hint, self)
+        self.inner_array = None
+
+
+ANI_REF = ANIBaseType(hint="ref")
+ANI_ARRAY_REF = ANIArrayType(hint="array_ref", base=ANI_REF)
+ANI_REF.inner_array = ANI_ARRAY_REF
+
+ANI_BOOLEAN = ANIBaseType(hint="boolean")
+ANI_ARRAY_BOOLEAN = ANIArrayType(hint="array_boolean", base=ANI_REF)
+ANI_BOOLEAN.inner_array = ANI_ARRAY_BOOLEAN
+
+ANI_FLOAT = ANIBaseType(hint="float")
+ANI_ARRAY_FLOAT = ANIArrayType(hint="array_float", base=ANI_REF)
+ANI_FLOAT.inner_array = ANI_ARRAY_FLOAT
+
+ANI_DOUBLE = ANIBaseType(hint="double")
+ANI_ARRAY_DOUBLE = ANIArrayType(hint="array_double", base=ANI_REF)
+ANI_DOUBLE.inner_array = ANI_ARRAY_DOUBLE
+
+ANI_BYTE = ANIBaseType(hint="byte")
+ANI_ARRAY_BYTE = ANIArrayType(hint="array_byte", base=ANI_REF)
+ANI_BYTE.inner_array = ANI_ARRAY_BYTE
+
+ANI_SHORT = ANIBaseType(hint="short")
+ANI_ARRAY_SHORT = ANIArrayType(hint="array_short", base=ANI_REF)
+ANI_SHORT.inner_array = ANI_ARRAY_SHORT
+
+ANI_INT = ANIBaseType(hint="int")
+ANI_ARRAY_INT = ANIArrayType(hint="array_int", base=ANI_REF)
+ANI_INT.inner_array = ANI_ARRAY_INT
+
+ANI_LONG = ANIBaseType(hint="long")
+ANI_ARRAY_LONG = ANIArrayType(hint="array_long", base=ANI_REF)
+ANI_LONG.inner_array = ANI_ARRAY_LONG
+
+ANI_OBJECT = ANIType(hint="object", base=ANI_REF)
+ANI_STRING = ANIType(hint="string", base=ANI_REF)
+
+
 class PackageANIInfo(AbstractAnalysis[PackageDecl]):
     def __init__(self, am: AnalysisManager, p: PackageDecl) -> None:
         self.src = f"{p.name}.ani.cpp"
@@ -109,12 +178,11 @@ class IfaceANIInfo(AbstractAnalysis[IfaceDecl]):
 
 
 class AbstractTypeANIInfo(metaclass=ABCMeta):
-    ani_split_suff: list[str]
-    ani_split_base: list[str]
-    ani_split_type: list[str]
-    ani_whole_suff: str
-    ani_whole_base: str
-    ani_whole_type: str
+    sts_type: str
+    prx_split_type: list[str]
+    prx_whole_type: str
+    ani_split_type: list[ANIType]
+    ani_whole_type: ANIType
 
     def from_ani_whole(
         self,
@@ -156,10 +224,6 @@ class AbstractTypeANIInfo(metaclass=ABCMeta):
     ):
         raise NotImplementedError(f"from class {self.__class__.__name__}")
 
-    sts_type: str
-    prx_split_type: list[str]
-    prx_whole_type: str
-
     def into_prx_whole(
         self,
         target: OutputBuffer,
@@ -195,8 +259,6 @@ class AbstractTypeANIInfo(metaclass=ABCMeta):
         sts_result: str,
     ):
         raise NotImplementedError(f"from class {self.__class__.__name__}")
-
-    ani_array_type: str
 
     def into_ani_array(
         self,
@@ -249,19 +311,12 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
         self.sts_type = struct_ani_info.sts_name
         self.prx_split_type = []
         self.ani_split_type = []
-        self.ani_split_suff = []
-        self.ani_split_base = []
         for field in t.ty_decl.fields:
             type_ani_info = TypeANIInfo.get(am, field.ty_ref.resolved_ty)
             self.prx_split_type.extend(type_ani_info.prx_split_type)
             self.ani_split_type.extend(type_ani_info.ani_split_type)
-            self.ani_split_base.extend(type_ani_info.ani_split_base)
-            self.ani_split_suff.extend(type_ani_info.ani_split_suff)
         self.prx_whole_type = struct_ani_info.prx_name
-        self.ani_whole_type = "ani_object"
-        self.ani_whole_base = "ani_ref"
-        self.ani_whole_suff = "Ref"
-        self.ani_array_type = "ani_array_ref"
+        self.ani_whole_type = ANI_OBJECT
         self.flat_field_names = [f"_{i}" for i in range(len(self.prx_split_type))]
 
     @override
@@ -310,13 +365,11 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
             f"{' ' * offset}}}();\n"
         )
         ani_values = []
-        for i, (ani_type, ani_base, ani_suff, field_name) in enumerate(
+        for i, (ani_type, field_name) in enumerate(
             zip(
                 self.ani_split_type,
-                self.ani_split_base,
-                self.ani_split_suff,
                 self.flat_field_names,
-                strict=False,
+                strict=True,
             )
         ):
             ani_item = f"{cpp_result}_item_{i}"
@@ -328,7 +381,7 @@ class StructTypeANIInfo(AbstractAnalysis[StructType], AbstractTypeANIInfo):
                 f"{' ' * offset}    return {ani_field};\n"
                 f"{' ' * offset}}}();\n"
                 f"{' ' * offset}{ani_type} {ani_item};\n"
-                f"{' ' * offset}{env}->Object_GetField_{ani_suff}({ani_value}, {ani_field}, reinterpret_cast<{ani_base}*>(&{ani_item}));\n"
+                f"{' ' * offset}{env}->Object_GetField_{ani_type.suffix}({ani_value}, {ani_field}, reinterpret_cast<{ani_type.base}*>(&{ani_item}));\n"
             )
             ani_values.append(ani_item)
         self.from_ani_split(target, offset, env, ani_values, cpp_result)
@@ -553,14 +606,9 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
         enum_ani_info = EnumANIInfo.get(am, t.ty_decl)
         self.sts_type = enum_ani_info.sts_name
         self.prx_split_type = ["int", f"({items_prx_type_str})"]
-        self.ani_split_type = ["ani_int", "ani_ref"]
-        self.ani_split_base = ["ani_int", "ani_ref"]
-        self.ani_split_suff = ["Int", "Ref"]
+        self.ani_split_type = [ANI_INT, ANI_REF]
         self.prx_whole_type = enum_ani_info.prx_name
-        self.ani_whole_type = "ani_object"
-        self.ani_whole_base = "ani_ref"
-        self.ani_whole_suff = "Ref"
-        self.ani_array_type = "ani_array_ref"
+        self.ani_whole_type = ANI_OBJECT
 
     @override
     def from_ani_split(
@@ -919,27 +967,20 @@ class IfaceTypeANIInfo(AbstractAnalysis[IfaceType], AbstractTypeANIInfo):
 
 class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
     def __init__(self, am: AnalysisManager, t: ScalarType):
-        sts_type = {
-            BOOL: "boolean",
-            F32: "float",
-            F64: "double",
-            I8: "byte",
-            I16: "short",
-            I32: "int",
-            I64: "long",
-        }.get(t)
-        if sts_type is None:
-            raise ValueError
+        sts_type, ani_type = {
+            BOOL: ("boolean", ANI_BOOLEAN),
+            F32: ("float", ANI_FLOAT),
+            F64: ("double", ANI_DOUBLE),
+            I8: ("byte", ANI_BYTE),
+            I16: ("short", ANI_SHORT),
+            I32: ("int", ANI_INT),
+            I64: ("long", ANI_LONG),
+        }[t]
         self.sts_type = sts_type
         self.prx_split_type = [sts_type]
-        self.ani_split_type = [f"ani_{sts_type}"]
-        self.ani_split_base = [f"ani_{sts_type}"]
-        self.ani_split_suff = [sts_type[0].upper() + sts_type[1:]]
+        self.ani_split_type = [ani_type]
         self.prx_whole_type = sts_type
-        self.ani_whole_type = f"ani_{sts_type}"
-        self.ani_whole_base = f"ani_{sts_type}"
-        self.ani_whole_suff = sts_type[0].upper() + sts_type[1:]
-        self.ani_array_type = f"ani_array_{sts_type}"
+        self.ani_whole_type = ani_type
         self.cpp_info = TypeCppInfo.get(am, t)
 
     @override
@@ -1057,7 +1098,7 @@ class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
         cpp_array_buffer: str,
     ):
         target.write(
-            f"{' ' * offset}{env}->Array_GetRegion_{self.ani_whole_suff}({ani_array_value}, 0, {size}, {cpp_array_buffer});\n"
+            f"{' ' * offset}{env}->Array_GetRegion_{self.ani_whole_type.suffix}({ani_array_value}, 0, {size}, {cpp_array_buffer});\n"
         )
 
     @override
@@ -1071,9 +1112,9 @@ class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
         ani_array_result: str,
     ):
         target.write(
-            f"{' ' * offset}{self.ani_array_type} {ani_array_result};\n"
-            f"{' ' * offset}{env}->Array_New_{self.ani_whole_suff}({size}, &{ani_array_result});\n"
-            f"{' ' * offset}{env}->Array_SetRegion_{self.ani_whole_suff}({ani_array_result}, 0, {size}, {cpp_array_value});\n"
+            f"{' ' * offset}{self.ani_whole_type.array} {ani_array_result};\n"
+            f"{' ' * offset}{env}->Array_New_{self.ani_whole_type.suffix}({size}, &{ani_array_result});\n"
+            f"{' ' * offset}{env}->Array_SetRegion_{self.ani_whole_type.suffix}({ani_array_result}, 0, {size}, {cpp_array_value});\n"
         )
 
     @override
@@ -1091,7 +1132,7 @@ class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
         target.write(
             f"{' ' * offset}static ani_class {ani_class} = [=] {{\n"
             f"{' ' * offset}    ani_class {ani_class};\n"
-            f"{' ' * offset}    {env}->FindClass(\"Lstd/core/{self.ani_whole_suff};\", &{ani_class});\n"
+            f"{' ' * offset}    {env}->FindClass(\"Lstd/core/{self.ani_whole_type.suffix};\", &{ani_class});\n"
             f"{' ' * offset}    return {ani_class};\n"
             f"{' ' * offset}}}();\n"
             f"{' ' * offset}static ani_method {ani_ctor} = [=] {{\n"
@@ -1121,7 +1162,7 @@ class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
         target.write(
             f"{' ' * offset}static ani_class {ani_class} = [=] {{\n"
             f"{' ' * offset}    ani_class {ani_class};\n"
-            f"{' ' * offset}    {env}->FindClass(\"Lstd/core/{self.ani_whole_suff};\", &{ani_class});\n"
+            f"{' ' * offset}    {env}->FindClass(\"Lstd/core/{self.ani_whole_type.suffix};\", &{ani_class});\n"
             f"{' ' * offset}    return {ani_class};\n"
             f"{' ' * offset}}}();\n"
             f"{' ' * offset}static ani_method {ani_getter} = [=] {{\n"
@@ -1130,7 +1171,7 @@ class ScalarTypeANIInfo(AbstractAnalysis[ScalarType], AbstractTypeANIInfo):
             f"{' ' * offset}    return {ani_getter};\n"
             f"{' ' * offset}}}();\n"
             f"{' ' * offset}{self.ani_whole_type} {ani_result};\n"
-            f"{' ' * offset}{env}->Object_CallMethod_{self.ani_whole_suff}((ani_object){ani_value}, {ani_getter}, &{ani_result});\n"
+            f"{' ' * offset}{env}->Object_CallMethod_{self.ani_whole_type.suffix}((ani_object){ani_value}, {ani_getter}, &{ani_result});\n"
         )
         self.from_ani_whole(target, offset, env, ani_result, cpp_result)
 
@@ -1141,14 +1182,9 @@ class StringTypeANIInfo(AbstractAnalysis[StringType], AbstractTypeANIInfo):
             raise ValueError
         self.sts_type = "string"
         self.prx_split_type = ["string"]
-        self.ani_split_type = ["ani_string"]
-        self.ani_split_base = ["ani_ref"]
-        self.ani_split_suff = ["Ref"]
+        self.ani_split_type = [ANI_STRING]
         self.prx_whole_type = "string"
-        self.ani_whole_type = "ani_string"
-        self.ani_whole_base = "ani_ref"
-        self.ani_whole_suff = "Ref"
-        self.ani_array_type = "ani_array_ref"
+        self.ani_whole_type = ANI_STRING
         self.cpp_info = TypeCppInfo.get(am, t)
 
     @override
@@ -1349,14 +1385,9 @@ class ArrayTypeANIInfo(AbstractAnalysis[ArrayType], AbstractTypeANIInfo):
         item_ty_ani_info = TypeANIInfo.get(am, t.item_ty)
         self.sts_type = f"({item_ty_ani_info.sts_type}[])"
         self.prx_split_type = [f"({item_ty_ani_info.prx_whole_type}[])"]
-        self.ani_split_type = [item_ty_ani_info.ani_array_type]
-        self.ani_split_base = ["ani_ref"]
-        self.ani_split_suff = ["Ref"]
+        self.ani_split_type = [item_ty_ani_info.ani_whole_type.array]
         self.prx_whole_type = f"({item_ty_ani_info.prx_whole_type}[])"
-        self.ani_whole_type = item_ty_ani_info.ani_array_type
-        self.ani_whole_base = "ani_ref"
-        self.ani_whole_suff = "Ref"
-        self.ani_array_type = "ani_array_ref"
+        self.ani_whole_type = item_ty_ani_info.ani_whole_type.array
         self.am = am
         self.t = t
 
@@ -1532,14 +1563,9 @@ class OptionalTypeANIInfo(AbstractAnalysis[OptionalType], AbstractTypeANIInfo):
         item_ty_ani_info = TypeANIInfo.get(am, t.item_ty)
         self.sts_type = f"({item_ty_ani_info.sts_type} | undefined)"
         self.prx_split_type = [f"({item_ty_ani_info.prx_whole_type} | undefined)"]
-        self.ani_split_type = ["ani_ref"]
-        self.ani_split_base = ["ani_ref"]
-        self.ani_split_suff = ["Ref"]
+        self.ani_split_type = [ANI_REF]
         self.prx_whole_type = f"({item_ty_ani_info.prx_whole_type} | undefined)"
-        self.ani_whole_type = "ani_ref"
-        self.ani_whole_base = "ani_ref"
-        self.ani_whole_suff = "Ref"
-        self.ani_array_type = "ani_array_ref"
+        self.ani_whole_type = ANI_REF
         self.am = am
         self.t = t
 
