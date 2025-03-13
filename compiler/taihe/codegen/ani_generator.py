@@ -727,6 +727,7 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
                 )
                 target.write(
                     f"{' ' * offset}        {ani_result_value} = {ani_result_spec};\n"
+                    f"{' ' * offset}        break;\n"
                 )
             target.write(f"{' ' * offset}    }}\n")
         target.write(f"{' ' * offset}    }}\n")
@@ -826,7 +827,6 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
     ):
         prx_value_tag = prx_values.pop(0)
         prx_value_val = prx_values.pop(0)
-        enum_ani_info = EnumANIInfo.get(self.am, self.t.ty_decl)
         target.write(
             f"{' ' * offset}let {sts_result}: {self.sts_type};\n"
             f"{' ' * offset}switch ({prx_value_tag}) {{\n"
@@ -867,6 +867,10 @@ class EnumTypeANIInfo(AbstractAnalysis[EnumType], AbstractTypeANIInfo):
     ):
         prx_value_tag = f"{sts_result}_tag"
         prx_value_val = f"{sts_result}_val"
+        target.write(
+            f"{' ' * offset}let {prx_value_tag}: {self.prx_split_type[0]} = {prx_value}.tag\n"
+            f"{' ' * offset}let {prx_value_val}: {self.prx_split_type[1]} = {prx_value}.value\n"
+        )
         self.from_prx_split(target, offset, [prx_value_tag, prx_value_val], sts_result)
 
     @override
