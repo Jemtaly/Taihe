@@ -1929,12 +1929,12 @@ class STSCodeGenerator:
         type_ani_info = StructTypeANIInfo.get(self.am, struct.as_type())
         pkg_sts_target.write(f"class {struct_ani_info.prx_name} {{\n")
         for flat_field_name, prx_type in zip(
-            type_ani_info.flat_field_names, type_ani_info.prx_split_type, strict=False
+            type_ani_info.flat_field_names, type_ani_info.prx_split_type, strict=True
         ):
             pkg_sts_target.write(f"    {flat_field_name}: {prx_type};\n")
         pkg_sts_target.write("    constructor(\n")
         for flat_field_name, prx_type in zip(
-            type_ani_info.flat_field_names, type_ani_info.prx_split_type, strict=False
+            type_ani_info.flat_field_names, type_ani_info.prx_split_type, strict=True
         ):
             pkg_sts_target.write(f"        {flat_field_name}: {prx_type},\n")
         pkg_sts_target.write("    ) {\n")
@@ -2064,7 +2064,7 @@ class ANICodeGenerator:
         )
         args_cpp = []
         for param, param_ani_values in zip(
-            func.params, params_values_list, strict=False
+            func.params, params_values_list, strict=True
         ):
             type_ani_info = TypeANIInfo.get(self.am, param.ty_ref.resolved_ty)
             type_ani_info.from_ani_split(
