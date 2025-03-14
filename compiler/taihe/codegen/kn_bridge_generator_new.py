@@ -70,10 +70,10 @@ class AbstractTypeKnBridgeInfo(metaclass=ABCMeta):
     as_konan_param: str
     as_konan_field: str
     need_holder: bool
-    param_covert_func: str
-    retval_convert_func_left: str
-    retval_convert_func_right: str
-    type_func: str
+    param_covert_func: str | None
+    retval_convert_func_left: str | None
+    retval_convert_func_right: str | None
+    type_func: str | None
 
     # def return_from_abi(self, val):
     #     return f"::taihe::core::from_abi<{self.as_field}>({val})"
@@ -114,11 +114,11 @@ class StructTypeKnBridgeInfo(AbstractAnalysis[StructType], AbstractTypeKnBridgeI
         self.as_param = iface_knbridge_info.as_param
         self.as_konan_param = iface_knbridge_info.as_konan_param
         self.as_konan_field = iface_knbridge_info.as_konan_field
-        self.param_covert_func: str = "THCont_toKotlin"
-        self.retval_convert_func_left: str = (
+        self.param_covert_func = "THCont_toKotlin"
+        self.retval_convert_func_left = (
             f"{self.as_field}{{(uint64_t)CreateStablePointer("
         )
-        self.retval_convert_func_right: str = f")}}"
+        self.retval_convert_func_right = f")}}"
         self.need_holder = True
         self.type_func = iface_knbridge_info.type_func
 
@@ -156,11 +156,9 @@ class IfaceTypeKnBridgeInfo(AbstractAnalysis[IfaceType], AbstractTypeKnBridgeInf
         self.as_param = iface_knbridge_info.as_param
         self.as_konan_param = iface_knbridge_info.as_konan_param
         self.as_konan_field = iface_knbridge_info.as_konan_field
-        self.param_covert_func: str = "THOBJ_toKotlin"
-        self.retval_convert_func_left: str = (
-            f"taihe::core::make_holder<{t.ty_decl.name}_impl, {self.pkgname}::{t.ty_decl.name}>(CreateStablePointer("
-        )
-        self.retval_convert_func_right: str = f"))"
+        self.param_covert_func = "THOBJ_toKotlin"
+        self.retval_convert_func_left = f"taihe::core::make_holder<{t.ty_decl.name}_impl, {self.pkgname}::{t.ty_decl.name}>(CreateStablePointer("
+        self.retval_convert_func_right = f"))"
         self.need_holder = True
         self.type_func = iface_knbridge_info.type_func
 
