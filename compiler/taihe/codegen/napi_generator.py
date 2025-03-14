@@ -46,7 +46,8 @@ from taihe.utils.outputs import OutputManager
 
 class PackageNapiInfo(AbstractAnalysis[PackageDecl]):
     def __init__(self, am: AnalysisManager, p: PackageDecl) -> None:
-        self.header = f"{p.name}.napi.cpp"
+        self.source = f"{p.name}.napi.cpp"
+        self.header = f"{p.name}.napi.h"
         self.full_name = "::".join(p.segments)
 
 
@@ -315,7 +316,7 @@ class NapiCodeGenerator:
         pkg_napi_info = PackageNapiInfo.get(self.am, pkg)
         pkg_cpp_info = PackageCppInfo.get(self.am, pkg)
         pkg_napi_target = COutputBuffer.create(
-            self.tm, f"src/{pkg_napi_info.header}", False
+            self.tm, f"src/{pkg_napi_info.source}", False
         )
         # if developer need to test in linux,
         # please change the following header file to "node/node_api.h"
@@ -343,7 +344,42 @@ class NapiCodeGenerator:
             desc.append(func_desc)
 
         desc_str = ", \n".join(desc)
-        self.gen_module_init(desc_str, pkg_napi_target)
+        # if developer need to test in linux, please use
+        # self.gen_module_init_linux(desc_str, pkg_napi_target)
+        # if developer need to test in DevEco, please use
+        self.gen_module_init_deveco(desc_str, pkg.name, pkg_napi_target)
+        pkg_napi_target.include(pkg_napi_info.header)
+        self.gen_napi_header_file(pkg_napi_info, pkg.name)
+
+    def gen_napi_header_file(self, pkg_napi_info: PackageNapiInfo, pkg_name: str):
+        pkg_napi_h_target = COutputBuffer.create(
+            self.tm, f"{pkg_napi_info.header}", False
+        )
+        pkg_napi_h_target.include("napi/native_api.h")
+        pkg_napi_h_target.write(
+            f"#include <string>\n"
+            f"#ifndef {pkg_name}_NAPI_H\n"
+            f"#define {pkg_name}_NAPI_H\n"
+            f"EXTERN_C_START\n"
+            f"napi_value init_{pkg_name}(napi_env env, napi_value exports);\n"
+            f"EXTERN_C_END\n"
+            f"#endif\n"
+        )
+
+    def gen_module_init_deveco(
+        self, desc_str: str, pkg_name: str, pkg_napi_target: COutputBuffer
+    ):
+        pkg_napi_target.write(
+            f"EXTERN_C_START\n"
+            f"napi_value init_{pkg_name}(napi_env env, napi_value exports) {{\n"
+            f"    napi_property_descriptor desc[] = {{\n"
+            f"{desc_str}\n"
+            f"    }};\n"
+            f"    napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);\n"
+            f"    return exports;\n"
+            f"}}\n"
+            f"EXTERN_C_END\n"
+        )
 
     def gen_func_decl(self, pkg_napi_target: COutputBuffer, pkg: PackageDecl):
         for iface in pkg.interfaces:
@@ -585,7 +621,7 @@ class NapiCodeGenerator:
         self.gen_func_content(func, pkg_napi_target, f"(*value_ptr)->{func.name}", 4)
         pkg_napi_target.write(f"}}\n")
 
-    def gen_module_init(
+    def gen_module_init_linux(
         self,
         desc_str: str,
         pkg_napi_target: COutputBuffer,

@@ -213,6 +213,7 @@ class SpecialTypeKnBridgeInfo(AbstractAnalysis[SpecialType], AbstractTypeKnBridg
         self.need_holder = True
         self.type_func = None
 
+
 class BoxTypeKnBridgeInfo(AbstractAnalysis[BoxType], AbstractTypeKnBridgeInfo):
     def __init__(self, am: AnalysisManager, t: BoxType):
         self.decl_headers = ["taihe/box.abi.h"]
@@ -227,6 +228,7 @@ class BoxTypeKnBridgeInfo(AbstractAnalysis[BoxType], AbstractTypeKnBridgeInfo):
         self.retval_convert_func_right = ")}"
         self.need_holder = True
         self.type_func = None
+
 
 class TypeKnBridgeInfo(TypeVisitor[AbstractTypeKnBridgeInfo]):
     def __init__(self, am: AnalysisManager):
