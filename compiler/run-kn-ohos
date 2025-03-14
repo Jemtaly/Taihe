@@ -158,6 +158,7 @@ def main(
             build_author_dir,
             author_test_src_dir,
             runtime_include_dir,
+            author_test_dir,
             author_test_include_dir,
             opt_level=opt_level,
         ),
