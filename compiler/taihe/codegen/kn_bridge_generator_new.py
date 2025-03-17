@@ -118,7 +118,7 @@ class StructTypeKnBridgeInfo(AbstractAnalysis[StructType], AbstractTypeKnBridgeI
         self.retval_convert_func_left = (
             f"{self.as_field}{{(uint64_t)CreateStablePointer("
         )
-        self.retval_convert_func_right = f")}}"
+        self.retval_convert_func_right = ")}"
         self.need_holder = True
         self.type_func = iface_knbridge_info.type_func
 
@@ -304,13 +304,13 @@ class KNBridgeCodeGenerator:
         kn_bridge_pkg_target.include("core/string.hpp")
         kn_bridge_pkg_target.include(kn_bridge_pkg_info.include_impl_header)
         kn_bridge_pkg_target.include(kn_bridge_pkg_info.include_proj_header)
-        kn_bridge_pkg_target.write(f"#include <stdint.h>\n")
+        kn_bridge_pkg_target.write("#include <stdint.h>\n")
 
         self.gen_need_decl(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
         self.def_macro(pkg, kn_bridge_pkg_target)
         self.gen_package_th_tydef(pkg, kn_bridge_pkg_target)
         self.gen_funcdecl(pkg, kn_bridge_pkg_target)
-        self.gen_class_impl(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
+        self.gen_class_impl(pkg, kn_bridge_pkg_target)
         self.gen_func_impl(pkg, kn_bridge_pkg_target, kn_bridge_prefix)
         self.gen_func_macro(pkg, kn_bridge_pkg_target)
         self.undef_macro(pkg, kn_bridge_pkg_target)
@@ -418,9 +418,9 @@ class KNBridgeCodeGenerator:
 
     def def_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
-            f"#define THOBJ_toKotlin(obj, obj_slot) thobj_tokotlin((void*)&obj, obj_slot)\n"
-            f"#define THCont_toKotlin(container, container_slot) DerefStablePointer((void*)container.ptr, container_slot)"
-            f"\n"
+            "#define THOBJ_toKotlin(obj, obj_slot) thobj_tokotlin((void*)&obj, obj_slot)\n"
+            "#define THCont_toKotlin(container, container_slot) DerefStablePointer((void*)container.ptr, container_slot)"
+            "\n"
         )
 
     def gen_package_th_tydef(
@@ -438,12 +438,7 @@ class KNBridgeCodeGenerator:
             if "constructor" not in func.attrs and "singleton" not in func.attrs:
                 self.gen_toplevel_method_decl(func, kn_bridge_pkg_target)
 
-    def gen_class_impl(
-        self,
-        pkg: PackageDecl,
-        kn_bridge_pkg_target: COutputBuffer,
-        kn_bridge_prefix: str,
-    ):
+    def gen_class_impl(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         for iface in pkg.interfaces:
             if "object_kind" not in iface.attrs:
                 raise KeyError("'object_kind' key not found. Exiting program.")
@@ -690,8 +685,8 @@ class KNBridgeCodeGenerator:
         need_ret_holder = False
 
         params.append(f"Kref_{iface_name} thiz")
-        konan_params_only_ty.append(f"KObjHeader*")
-        convert_params.append(f"DerefStablePointer(thiz, thiz_holder.slot())")
+        konan_params_only_ty.append("KObjHeader*")
+        convert_params.append("DerefStablePointer(thiz, thiz_holder.slot())")
 
         for param in func.params:
             type_knbridge_info = TypeKnBridgeInfo.get(self.am, param.ty_ref.resolved_ty)
@@ -832,7 +827,7 @@ class KNBridgeCodeGenerator:
                 f"static {return_ty_name} {konan_proj_name}_impl({params_str}) {{\n"
             )
         kn_bridge_pkg_target.write(
-            f"  Kotlin_initRuntimeIfNeeded();\n" f"  ScopedRunnableState stateGuard;\n"
+            "  Kotlin_initRuntimeIfNeeded();\n" "  ScopedRunnableState stateGuard;\n"
         )
 
         for index, need_holder in enumerate(params_holder):
@@ -842,7 +837,7 @@ class KNBridgeCodeGenerator:
                 )
 
         if need_thiz_holder:
-            kn_bridge_pkg_target.write(f"  KObjHolder thiz_holder;\n")
+            kn_bridge_pkg_target.write("  KObjHolder thiz_holder;\n")
 
         # kn_bridge_pkg_target.write(f"  try {{\n")
 
@@ -852,7 +847,7 @@ class KNBridgeCodeGenerator:
             )
         else:
             if need_ret_holder:
-                kn_bridge_pkg_target.write(f"  KObjHolder result_holder;\n")
+                kn_bridge_pkg_target.write("  KObjHolder result_holder;\n")
             kn_bridge_pkg_target.write(
                 f"  auto result = {konan_proj_name}({convert_params_str});\n"
                 f"  return {return_ty_str};\n"
@@ -863,8 +858,8 @@ class KNBridgeCodeGenerator:
             # f"    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
             # f"    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
             # f"  }} \n"
-            f"}}\n"
-            f"\n"
+            "}\n"
+            "\n"
         )
 
     def _generate_function_body(
@@ -894,9 +889,9 @@ class KNBridgeCodeGenerator:
                 f"static {return_ty_name} {konan_proj_name}_impl({params_str}) {{\n"
             )
         kn_bridge_pkg_target.write(
-            f"  Kotlin_initRuntimeIfNeeded();\n"
-            f"  ScopedRunnableState stateGuard;\n"
-            f"  FrameOverlay* frame = getCurrentFrame();\n"
+            "  Kotlin_initRuntimeIfNeeded();\n"
+            "  ScopedRunnableState stateGuard;\n"
+            "  FrameOverlay* frame = getCurrentFrame();\n"
         )
 
         for index, need_holder in enumerate(params_holder):
@@ -906,9 +901,9 @@ class KNBridgeCodeGenerator:
                 )
 
         if need_thiz_holder:
-            kn_bridge_pkg_target.write(f"  KObjHolder thiz_holder;\n")
+            kn_bridge_pkg_target.write("  KObjHolder thiz_holder;\n")
 
-        kn_bridge_pkg_target.write(f"  try {{\n")
+        kn_bridge_pkg_target.write("  try {\n")
 
         if return_ty_name == "void":
             kn_bridge_pkg_target.write(
@@ -916,19 +911,19 @@ class KNBridgeCodeGenerator:
             )
         else:
             if need_ret_holder:
-                kn_bridge_pkg_target.write(f"    KObjHolder result_holder;\n")
+                kn_bridge_pkg_target.write("    KObjHolder result_holder;\n")
             kn_bridge_pkg_target.write(
                 f"    auto result = {konan_proj_name}({convert_params_str});\n"
                 f"    return {return_ty_str};\n"
             )
 
         kn_bridge_pkg_target.write(
-            f"  }} catch (...) {{\n"
-            f"    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
-            f"    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
-            f"  }} \n"
-            f"}}\n"
-            f"\n"
+            "  } catch (...) {\n"
+            "    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
+            "    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
+            "  } \n"
+            "}\n"
+            "\n"
         )
 
     def _generate_init_function_body(
@@ -959,9 +954,9 @@ class KNBridgeCodeGenerator:
             f"static {return_ty_name} {konan_proj_name}_impl({params_str}) {{\n"
         )
         kn_bridge_pkg_target.write(
-            f"  Kotlin_initRuntimeIfNeeded();\n"
-            f"  ScopedRunnableState stateGuard;\n"
-            f"  FrameOverlay* frame = getCurrentFrame();\n"
+            "  Kotlin_initRuntimeIfNeeded();\n"
+            "  ScopedRunnableState stateGuard;\n"
+            "  FrameOverlay* frame = getCurrentFrame();\n"
         )
 
         for index, need_holder in enumerate(params_holder):
@@ -970,10 +965,10 @@ class KNBridgeCodeGenerator:
                     f"  KObjHolder {func.params[index].name}_holder;\n"
                 )
 
-        kn_bridge_pkg_target.write(f"  try {{\n")
+        kn_bridge_pkg_target.write("  try {\n")
 
         if need_ret_holder:
-            kn_bridge_pkg_target.write(f"    KObjHolder result_holder;\n")
+            kn_bridge_pkg_target.write("    KObjHolder result_holder;\n")
 
         kn_bridge_pkg_target.write(
             f"    KObjHeader* result = AllocInstance((KTypeInfo*){type_func}(), result_holder.slot());\n"
@@ -982,12 +977,12 @@ class KNBridgeCodeGenerator:
         )
 
         kn_bridge_pkg_target.write(
-            f"  }} catch (...) {{\n"
-            f"    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
-            f"    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
-            f"  }} \n"
-            f"}}\n"
-            f"\n"
+            "  } catch (...) {\n"
+            "    SetCurrentFrame(reinterpret_cast<KObjHeader**>(frame));\n"
+            "    HandleCurrentExceptionWhenLeavingKotlinCode();\n"
+            "  } \n"
+            "}\n"
+            "\n"
         )
 
     def gen_class_init_func_impl(
@@ -1068,7 +1063,7 @@ class KNBridgeCodeGenerator:
         # for func in iface.methods:
         #     self._gen_class_func_bind(func, kn_bridge_pkg_target)
 
-        kn_bridge_pkg_target.write(f"}};\n" f"\n")
+        kn_bridge_pkg_target.write("};\n\n")
 
     def _gen_class_all_func_bind(
         self, iface: IfaceDecl, kn_bridge_pkg_target: COutputBuffer
@@ -1149,10 +1144,10 @@ class KNBridgeCodeGenerator:
 
     def undef_macro(self, pkg: PackageDecl, kn_bridge_pkg_target: COutputBuffer):
         kn_bridge_pkg_target.write(
-            f"#ifdef THOBJ_toKotlin\n"
-            f"#undef THOBJ_toKotlin\n"
-            f"#endif\n"
-            f"#ifdef THCont_toKotlin\n"
-            f"#undef THCont_toKotlin\n"
-            f"#endif\n"
+            "#ifdef THOBJ_toKotlin\n"
+            "#undef THOBJ_toKotlin\n"
+            "#endif\n"
+            "#ifdef THCont_toKotlin\n"
+            "#undef THCont_toKotlin\n"
+            "#endif\n"
         )

@@ -32,6 +32,8 @@ struct box_view {
         return m_handle;
     }
 
+    cpp_owner_t const* get() const noexcept { return m_handle; }
+
     friend std::size_t hash_impl(adl_helper_t, box_view val) {
         return val ? hash(*val) + 0x9e3779b9 : 0;
     }
