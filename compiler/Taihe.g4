@@ -317,10 +317,6 @@ KW_INTERFACE
     : 'interface'
     ;
 
-KW_CONSTRUCTOR
-    : 'constructor'
-    ;
-
 KW_FUNCTION
     : 'function'
     ;
