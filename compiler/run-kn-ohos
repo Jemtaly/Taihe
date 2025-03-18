@@ -75,7 +75,6 @@ def main(
     target_path = Path(target_dir)
 
     idl_dir = target_path / "idl"
-    author_dir = target_path / "author"
 
     user_dir = target_path / "user"
 
@@ -103,16 +102,18 @@ def main(
     build_user_dir = build_dir / "user"
     build_napi_dir = build_dir / "napi"
 
+    clean_directory(author_test_dir)
+    create_directory(author_test_src_dir)
+    create_directory(author_test_include_dir)
+
     if not idl_dir.is_dir():
         raise FileNotFoundError(f"'{idl_dir}' is not an valid directory.")
 
     print("Generating kn bridge implement...")
-    clean_directory(author_dir)
-    create_directory(author_dir)
     CompilerInstance(
         CompilerInvocation(
             src_dirs=[idl_dir],
-            out_dir=author_dir,
+            out_dir=author_test_dir,
             gen_knbridge=True,
             quiet=True,
         )
@@ -120,9 +121,6 @@ def main(
     print("Done.")
 
     print("Generating author codes...")
-    clean_directory(author_test_dir)
-    create_directory(author_test_src_dir)
-    create_directory(author_test_include_dir)
     CompilerInstance(
         CompilerInvocation(
             src_dirs=[idl_dir],
@@ -144,8 +142,8 @@ def main(
     create_directory(build_napi_dir)
 
     print("Compiling to dynamic link library...")
-    copy_directory(author_dir, author_test_dir)
-    node_file = target_path / "libtest.so"
+    lib_name = target_path.absolute().name
+    node_file = target_path / f"lib{lib_name}.so"
     link(
         node_file,
         *compile(
