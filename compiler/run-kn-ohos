@@ -11,7 +11,7 @@ ohos_sdk_home = os.environ.get('OHOS_SDK_HOME')
 CXX = ohos_sdk_home + "/sdk/default/openharmony/native/llvm/bin/clang++"
 C = ohos_sdk_home + "/sdk/default/openharmony/native/llvm/bin/clang"
 NAPI_HEADER_DIR = ohos_sdk_home + "/sdk/default/openharmony/native/sysroot/usr/include"
-NAPI_SO = ohos_sdk_home + "/sdk/default/openharmony/native/sysroot/usr/lib/aarch64-linux-ohos/libace_napi.z.so"
+NAPI_SO = ohos_sdk_home + "/sdk/default/openharmony/native/sysroot/usr/lib/aarch64-linux-ohos"
 
 TH_HOME = Path(os.environ.get('TH_HOME', ''))
 
@@ -46,7 +46,7 @@ def compile(output_dir, input_dir, *include_dirs, opt_level):
         else:
             compiler = CXX
             std = "gnu++17"
-        command = f"{compiler} -c -fvisibility=hidden --target=aarch64-linux-ohos -fPIC -O{opt_level} -std={std} -o {output_file} {input_file}"
+        command = f"{compiler} -c --target=aarch64-linux-ohos -fPIC -O{opt_level} -std={std} -o {output_file} {input_file}"
         for include_dir in include_dirs:
             command += f" -I {include_dir}"
         run_command(command)
@@ -62,7 +62,7 @@ def link(output_file, *input_files, shared, link_options):
         command += f" {link_option}"
     if shared:
         command += " -shared"
-    command += f" -I{NAPI_HEADER_DIR} -L{NAPI_SO}"
+    command += f" -I{NAPI_HEADER_DIR} -L{NAPI_SO}/libace_napi.z.so -Wl,-rpath={NAPI_SO}"
     run_command(command)
 
 
