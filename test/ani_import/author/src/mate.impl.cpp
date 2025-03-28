@@ -6,7 +6,7 @@
 using namespace taihe::core;
 namespace {
 void testBar(::mate::bar::BarType const& bar) {
-  throw std::runtime_error("Function testBar Not implemented");
+    throw std::runtime_error("Function testBar Not implemented");
 }
 }  // namespace
 TH_EXPORT_CPP_API_testBar(testBar);

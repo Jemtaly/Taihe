@@ -9,18 +9,18 @@
 /////////////////////////////////////////
 
 enum TStringFlags {
-  TSTRING_REF = 1,
+    TSTRING_REF = 1,
 };
 
 struct TString {
-  uint32_t flags;
-  uint32_t length;
-  char const* ptr;  // always valid and non-null
+    uint32_t flags;
+    uint32_t length;
+    char const* ptr;  // always valid and non-null
 };
 
 struct TStringData {
-  TRefCount count;
-  char buffer[];
+    TRefCount count;
+    char buffer[];
 };
 
 //////////////////
@@ -28,10 +28,14 @@ struct TStringData {
 //////////////////
 
 // Returns the buffer of the TString.
-TH_INLINE const char* tstr_buf(struct TString tstr) { return tstr.ptr; }
+TH_INLINE const char* tstr_buf(struct TString tstr) {
+    return tstr.ptr;
+}
 
 // Returns the length of the TString.
-TH_INLINE size_t tstr_len(struct TString tstr) { return tstr.length; }
+TH_INLINE size_t tstr_len(struct TString tstr) {
+    return tstr.length;
+}
 
 // Allocates memory and initializes a TString with a given capacity.
 //

@@ -7,7 +7,7 @@ using namespace taihe::core;
 namespace {
 
 ::binding::Color convert_color(::binding::Color const& a) {
-  return ::binding::Color{a.G, a.B, a.R};
+    return ::binding::Color{a.G, a.B, a.R};
 }
 
 }  // namespace

@@ -9,15 +9,19 @@ using namespace taihe::core;
 namespace {
 
 class Foo {
- public:
-  int32_t bar_int(int32_t a) { return a; }
-  string bar_str(string_view a) { return a; }
+public:
+    int32_t bar_int(int32_t a) { return a; }
+    string bar_str(string_view a) { return a; }
 };
 
-int32_t add_int(int32_t a, int32_t b) { return a + b; }
-string add_str(string_view a, string_view b) { return concat(a, b); }
+int32_t add_int(int32_t a, int32_t b) {
+    return a + b;
+}
+string add_str(string_view a, string_view b) {
+    return concat(a, b);
+}
 ::overload_test::Foo makeFoo() {
-  return make_holder<Foo, ::overload_test::Foo>();
+    return make_holder<Foo, ::overload_test::Foo>();
 }
 
 }  // namespace

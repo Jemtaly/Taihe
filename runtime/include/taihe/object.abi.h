@@ -14,8 +14,8 @@ struct DataBlockHead;
 // - `id`: A constant pointer representing the interface ID.
 // - `vtbl_ptr`: A pointer to the virtual table associated with the ID.
 struct IdMapItem {
-  void const* id;
-  void const* vtbl_ptr;
+    void const* id;
+    void const* vtbl_ptr;
 };
 
 // TypeInfo
@@ -32,16 +32,16 @@ struct IdMapItem {
 // - `idmap`: A flexible array of `IdMapItem` structures for ID-to-vtable
 // mapping.
 struct TypeInfo {
-  uint64_t version;
-  void (*free)(struct DataBlockHead*);
-  uint64_t len;
-  struct IdMapItem idmap[];
+    uint64_t version;
+    void (*free)(struct DataBlockHead*);
+    uint64_t len;
+    struct IdMapItem idmap[];
 };
 
 // DataBlockHead
 struct DataBlockHead {
-  struct TypeInfo const* rtti_ptr;
-  TRefCount m_count;
+    struct TypeInfo const* rtti_ptr;
+    TRefCount m_count;
 };
 
 // Initializes the TObject with the given runtime typeinfo.

@@ -7,18 +7,20 @@
 using namespace taihe::core;
 namespace {
 class IStringHolder {
- public:
-  IStringHolder() : str("MyStr") {}
-  ~IStringHolder() {}
-  string get() { return str; }
-  void set(string_view a) { this->str = a; }
+public:
+    IStringHolder() : str("MyStr") {}
+    ~IStringHolder() {}
+    string get() { return str; }
+    void set(string_view a) { this->str = a; }
 
- private:
-  string str;
+private:
+    string str;
 };
-int32_t addSync(int32_t a, int32_t b) { return a + b; }
+int32_t addSync(int32_t a, int32_t b) {
+    return a + b;
+}
 ::async::IStringHolder makeIStringHolder() {
-  return make_holder<IStringHolder, ::async::IStringHolder>();
+    return make_holder<IStringHolder, ::async::IStringHolder>();
 }
 }  // namespace
 TH_EXPORT_CPP_API_addSync(addSync);

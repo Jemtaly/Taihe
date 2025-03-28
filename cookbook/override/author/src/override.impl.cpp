@@ -6,16 +6,16 @@
 using namespace taihe::core;
 namespace {
 class UIAbility {
- public:
-  void onForeground() { std::cout << "in cpp onForeground" << std::endl; }
-  void onBackground() { std::cout << "in cpp onBackground" << std::endl; }
+public:
+    void onForeground() { std::cout << "in cpp onForeground" << std::endl; }
+    void onBackground() { std::cout << "in cpp onBackground" << std::endl; }
 };
 ::override::UIAbility getUIAbility() {
-  return make_holder<UIAbility, ::override::UIAbility>();
+    return make_holder<UIAbility, ::override::UIAbility>();
 }
 void useUIAbility(::override::weak::UIAbility a) {
-  a->onForeground();
-  a->onBackground();
+    a->onForeground();
+    a->onBackground();
 }
 }  // namespace
 TH_EXPORT_CPP_API_getUIAbility(getUIAbility);

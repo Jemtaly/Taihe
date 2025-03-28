@@ -5,100 +5,100 @@ using namespace ani_test;
 
 namespace {
 Data makeData() {
-  return Data{
-      string("C++ Object"),
-      (float)1.0,
-      array<string>::make(2, "file.txt"),
-  };
+    return Data{
+        string("C++ Object"),
+        (float)1.0,
+        array<string>::make(2, "file.txt"),
+    };
 }
 
-void showData(Data const &s) {
-  std::cout << "src: " << s.src << std::endl;
-  std::cout << "dest: " << s.dest << std::endl;
-  for (const auto &s : s.files) {
-    std::cout << "file: " << s.c_str() << std::endl;
-  }
+void showData(Data const& s) {
+    std::cout << "src: " << s.src << std::endl;
+    std::cout << "dest: " << s.dest << std::endl;
+    for (const auto& s : s.files) {
+        std::cout << "file: " << s.c_str() << std::endl;
+    }
 }
 
 Union makeUnion(int32_t v) {
-  switch (v) {
-    case 1:
-      return Union::make_iValue(100);
-    case 2:
-      return Union::make_fValue(0.5);
-    case 3:
-      return Union::make_sValue("Hello from C++!");
-    default:
-      return Union::make_empty();
-  }
+    switch (v) {
+        case 1:
+            return Union::make_iValue(100);
+        case 2:
+            return Union::make_fValue(0.5);
+        case 3:
+            return Union::make_sValue("Hello from C++!");
+        default:
+            return Union::make_empty();
+    }
 }
 
-void showUnion(Union const &u) {
-  if (auto iPtr = u.get_iValue_ptr()) {
-    std::cout << "I " << *iPtr << std::endl;
-  } else if (auto fPtr = u.get_fValue_ptr()) {
-    std::cout << "F " << *fPtr << std::endl;
-  } else if (auto sPtr = u.get_sValue_ptr()) {
-    std::cout << "S " << *sPtr << std::endl;
-  } else {
-    std::cout << "E" << std::endl;
-  }
+void showUnion(Union const& u) {
+    if (auto iPtr = u.get_iValue_ptr()) {
+        std::cout << "I " << *iPtr << std::endl;
+    } else if (auto fPtr = u.get_fValue_ptr()) {
+        std::cout << "F " << *fPtr << std::endl;
+    } else if (auto sPtr = u.get_sValue_ptr()) {
+        std::cout << "S " << *sPtr << std::endl;
+    } else {
+        std::cout << "E" << std::endl;
+    }
 }
 
 void showOptionalInt(optional_view<int32_t> x) {
-  if (x) {
-    std::cout << *x << std::endl;
-  } else {
-    std::cout << "Null" << std::endl;
-  }
+    if (x) {
+        std::cout << *x << std::endl;
+    } else {
+        std::cout << "Null" << std::endl;
+    }
 }
 
 optional<int32_t> makeOptionalInt(bool b) {
-  if (b) {
-    return optional<int32_t>::make(10);
-  } else {
-    return optional<int32_t>(nullptr);
-  }
+    if (b) {
+        return optional<int32_t>::make(10);
+    } else {
+        return optional<int32_t>(nullptr);
+    }
 }
 
 void showArrayInt(array_view<int32_t> x) {
-  for (auto i : x) {
-    std::cout << i << ", ";
-  }
-  std::cout << std::endl;
+    for (auto i : x) {
+        std::cout << i << ", ";
+    }
+    std::cout << std::endl;
 }
 
 array<int32_t> makeArrayInt(int32_t n, int32_t v) {
-  return array<int32_t>::make(n, v);
+    return array<int32_t>::make(n, v);
 }
 
 array<Foo> makeFoo(array_view<string> list) {
-  struct AuthorFoo {
-    string name;
-    AuthorFoo(string_view name) : name(name) {
-      std::cout << "AuthorFoo(" << this->name << ") is constructing"
-                << std::endl;
+    struct AuthorFoo {
+        string name;
+        AuthorFoo(string_view name) : name(name) {
+            std::cout << "AuthorFoo(" << this->name << ") is constructing"
+                      << std::endl;
+        }
+        ~AuthorFoo() {
+            std::cout << "AuthorFoo(" << this->name << ") is destructing"
+                      << std::endl;
+        }
+        void bar() {
+            std::cout << "AuthorFoo(" << this->name << ") is calling bar()"
+                      << std::endl;
+        }
+    };
+    std::vector<Foo> vec;
+    for (string_view name : list) {
+        vec.push_back(make_holder<AuthorFoo, Foo>(name));
     }
-    ~AuthorFoo() {
-      std::cout << "AuthorFoo(" << this->name << ") is destructing"
-                << std::endl;
-    }
-    void bar() {
-      std::cout << "AuthorFoo(" << this->name << ") is calling bar()"
-                << std::endl;
-    }
-  };
-  std::vector<Foo> vec;
-  for (string_view name : list) {
-    vec.push_back(make_holder<AuthorFoo, Foo>(name));
-  }
-  return array<Foo>(vec.data(), vec.size(), move_data_t{});
+    return array<Foo>(vec.data(), vec.size(), move_data_t{});
 }
 
 void callBar(array_view<Foo> arr) {
-  for (weak::Foo foo : arr) {
-    foo->bar();
-  }
+    for (weak::Foo foo : arr) {
+        foo->bar();
+    }
 }
 }  // namespace
 

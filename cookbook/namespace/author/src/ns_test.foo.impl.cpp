@@ -7,20 +7,20 @@ using namespace taihe::core;
 namespace {
 
 class window {
- private:
-  int32_t height = 10;
+private:
+    int32_t height = 10;
 
- public:
-  int32_t getheight() { return this->height; }
-  void setheight(int32_t b) { this->height = b; }
+public:
+    int32_t getheight() { return this->height; }
+    void setheight(int32_t b) { this->height = b; }
 };
 
 ::ns_test::foo::window get_interface(int32_t v) {
-  return make_holder<window, ::ns_test::foo::window>();
+    return make_holder<window, ::ns_test::foo::window>();
 }
 void check_interface(::ns_test::foo::weak::window a) {
-  int32_t res = a->getheight();
-  std::cout << res << std::endl;
+    int32_t res = a->getheight();
+    std::cout << res << std::endl;
 }
 
 }  // namespace

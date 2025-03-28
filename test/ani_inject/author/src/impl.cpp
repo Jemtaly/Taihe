@@ -7,11 +7,13 @@ using namespace taihe::core;
 namespace {
 
 class Foo {
- public:
-  void with_this(uintptr_t thiz) { std::cout << thiz << std::endl; }
+public:
+    void with_this(uintptr_t thiz) { std::cout << thiz << std::endl; }
 };
 
-::inject_test::Foo makeFoo() { return make_holder<Foo, ::inject_test::Foo>(); }
+::inject_test::Foo makeFoo() {
+    return make_holder<Foo, ::inject_test::Foo>();
+}
 
 }  // namespace
 

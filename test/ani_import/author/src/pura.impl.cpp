@@ -7,10 +7,10 @@
 using namespace taihe::core;
 namespace {
 void testBar(::mate::bar::BarType const& bar) {
-  throw std::runtime_error("Function testBar Not implemented");
+    throw std::runtime_error("Function testBar Not implemented");
 }
 void testNova(::nova::weak::NovaType nove) {
-  throw std::runtime_error("Function testNova Not implemented");
+    throw std::runtime_error("Function testNova Not implemented");
 }
 }  // namespace
 TH_EXPORT_CPP_API_testBar(testBar);

@@ -3,13 +3,13 @@
 #include <taihe/common.h>
 
 struct TCallbackData {
-  TRefCount m_count;
-  void (*m_free)(struct TCallbackData*);
-  void* m_func;
+    TRefCount m_count;
+    void (*m_free)(struct TCallbackData*);
+    void* m_func;
 };
 
 struct TCallback {
-  struct TCallbackData* data_ptr;
+    struct TCallbackData* data_ptr;
 };
 
 TH_EXPORT void tcallback_init(struct TCallbackData* data_ptr, void* func,
