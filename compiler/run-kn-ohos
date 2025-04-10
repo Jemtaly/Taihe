@@ -62,7 +62,7 @@ def link(output_file, *input_files, shared, link_options):
         command += f" {link_option}"
     if shared:
         command += " -shared"
-    command += f" -I{NAPI_HEADER_DIR} -L{NAPI_SO}/libace_napi.z.so -Wl,-rpath={NAPI_SO}"
+    command += f" -I{NAPI_HEADER_DIR} -L{NAPI_SO} -lace_napi.z -lhilog_ndk.z -Wl,-rpath={NAPI_SO}"
     run_command(command)
 
 
@@ -77,7 +77,7 @@ def main(
 ):
     target_path = Path(target_dir)
 
-    idl_dir = target_path / "idl"
+    idl_dir = target_path
 
     user_dir = target_path / "user"
 
