@@ -67,7 +67,8 @@ def link(output_file, *input_files, shared, link_options):
 
 
 def main(
-    target_dir: str,
+    input_dir: str,
+    output: str,
     generate_only: bool,
     generate_and_compile: bool,
     opt_level: str,
@@ -75,22 +76,22 @@ def main(
     user_link_options: list[str],
     run_args: list[str],
 ):
-    target_path = Path(target_dir)
+    output_path = Path(output)
 
-    idl_dir = target_path
+    idl_dir = Path(input_dir)
 
-    user_dir = target_path / "user"
+    user_dir = output_path / "user"
 
 
-    author_test_dir = target_path / "author_test"
+    author_test_dir = output_path / "author_test"
     author_test_include_dir = author_test_dir / "include"
     author_test_src_dir = author_test_dir / "src"
 
-    user_test_dir = target_path / "user_test"
+    user_test_dir = output_path / "user_test"
     user_test_include_dir = user_test_dir / "include"
     user_test_src_dir = user_test_dir / "src"
 
-    napi_test_dir = target_path / "napi_test"
+    napi_test_dir = output_path / "napi_test"
     napi_test_include_dir = napi_test_dir / "include"
     napi_test_src_dir = napi_test_dir / "src"
 
@@ -99,7 +100,7 @@ def main(
     runtime_include_dir = runtime_dir / "include"
     runtime_src_dir = runtime_dir / "src"
 
-    build_dir = target_path / "build1"
+    build_dir = output_path / "build1"
     build_runtime_dir = build_dir / "runtime"
     build_author_dir = build_dir / "author"
     build_user_dir = build_dir / "user"
@@ -145,8 +146,8 @@ def main(
     create_directory(build_napi_dir)
 
     print("Compiling to dynamic link library...")
-    lib_name = target_path.absolute().name
-    node_file = target_path / f"lib{lib_name}.so"
+    lib_name = output_path.absolute().name
+    node_file = output_path / f"lib{lib_name}.so"
     link(
         node_file,
         *compile(
@@ -172,10 +173,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Build and run project from a target directory",
     )
+    # parser.add_argument(
+    #     "target_directory",
+    #     type=str,
+    #     help="The target directory containing source files for the project",
+    # )
     parser.add_argument(
-        "target_directory",
+        "input_dir",
         type=str,
-        help="The target directory containing source files for the project",
+        help="The directory containing taihe source files for the project",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        help="output of result",
     )
     parser.add_argument(
         "-g",
@@ -221,9 +233,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
+    print(args)
     main(
-        args.target_directory,
+        args.input_dir,
+        args.output,
         args.generate_only,
         args.generate_and_compile,
         args.optimization,
