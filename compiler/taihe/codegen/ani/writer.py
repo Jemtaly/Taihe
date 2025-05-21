@@ -28,7 +28,9 @@ class StsWriter(FileWriter):
                 import_str = f"{{{type_name}}}"
             else:
                 import_str = f"{{{type_name} as {import_name}}}"
-            f.write(f"import {import_str} from './{module_name}';\n")
+            if module_name != "@ohos.base":
+                module_name = f"./{module_name}"
+            f.write(f"import {import_str} from '{module_name}';\n")
 
     def add_import_module(
         self,
