@@ -32,14 +32,20 @@ class CppUserHeadersGenerator(Backend):
         with CHeaderWriter(
             self.oc,
             f"include/{pkg_cpp_user_info.header}",
-        ) as pkg_cpp_user_target:
+        ) as pkg_cpp_target:
             # types
-            pkg_cpp_user_target.add_include(pkg_cpp_info.header)
+            pkg_cpp_target.add_include(pkg_cpp_info.header)
             # functions
-            pkg_cpp_user_target.add_include("taihe/common.hpp")
-            pkg_cpp_user_target.add_include(pkg_abi_info.header)
+            pkg_cpp_target.add_include("taihe/common.hpp")
+            pkg_cpp_target.add_include(pkg_abi_info.header)
             for func in pkg.functions:
-                self.gen_func(func, pkg_cpp_user_target)
+                for param in func.params:
+                    type_cpp_info = TypeCppInfo.get(self.am, param.ty_ref.resolved_ty)
+                    pkg_cpp_target.add_include(*type_cpp_info.impl_headers)
+                if return_ty_ref := func.return_ty_ref:
+                    type_cpp_info = TypeCppInfo.get(self.am, return_ty_ref.resolved_ty)
+                    pkg_cpp_target.add_include(*type_cpp_info.impl_headers)
+                self.gen_func(func, pkg_cpp_target)
 
     def gen_func(
         self,
@@ -52,7 +58,6 @@ class CppUserHeadersGenerator(Backend):
         args_into_abi = []
         for param in func.params:
             type_cpp_info = TypeCppInfo.get(self.am, param.ty_ref.resolved_ty)
-            pkg_cpp_target.add_include(*type_cpp_info.impl_headers)
             params_cpp.append(f"{type_cpp_info.as_param} {param.name}")
             args_into_abi.append(type_cpp_info.pass_into_abi(param.name))
         params_cpp_str = ", ".join(params_cpp)
@@ -60,7 +65,6 @@ class CppUserHeadersGenerator(Backend):
         abi_result = f"{func_abi_info.mangled_name}({args_into_abi_str})"
         if return_ty_ref := func.return_ty_ref:
             type_cpp_info = TypeCppInfo.get(self.am, return_ty_ref.resolved_ty)
-            pkg_cpp_target.add_include(*type_cpp_info.impl_headers)
             cpp_return_ty_name = type_cpp_info.as_owner
             cpp_result = type_cpp_info.return_from_abi(abi_result)
         else:
