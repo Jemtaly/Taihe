@@ -1058,7 +1058,6 @@ class CppHeadersGenerator(Backend):
             self.oc,
             f"include/{union_cpp_info.impl_header}",
         ) as union_cpp_impl_target:
-            union_cpp_impl_target.add_include("taihe/common.hpp")
             union_cpp_impl_target.add_include(union_cpp_info.defn_header)
             union_cpp_impl_target.add_include(union_abi_info.impl_header)
             for field in union.fields:
@@ -1081,7 +1080,7 @@ class CppHeadersGenerator(Backend):
             struct_cpp_defn_target.add_include(struct_abi_info.defn_header)
             for field in struct.fields:
                 type_cpp_info = TypeCppInfo.get(self.am, field.ty_ref.resolved_ty)
-                struct_cpp_defn_target.add_include(*type_cpp_info.impl_headers)
+                struct_cpp_defn_target.add_include(*type_cpp_info.defn_headers)
             self.gen_struct_defn(
                 struct,
                 struct_abi_info,
@@ -1232,7 +1231,6 @@ class CppHeadersGenerator(Backend):
             self.oc,
             f"include/{struct_cpp_info.impl_header}",
         ) as struct_cpp_impl_target:
-            struct_cpp_impl_target.add_include("taihe/common.hpp")
             struct_cpp_impl_target.add_include(struct_cpp_info.defn_header)
             struct_cpp_impl_target.add_include(struct_abi_info.impl_header)
             for field in struct.fields:
@@ -1865,7 +1863,6 @@ class CppHeadersGenerator(Backend):
                 args_into_abi = [thiz]
                 for param in method.params:
                     type_cpp_info = TypeCppInfo.get(self.am, param.ty_ref.resolved_ty)
-                    iface_cpp_impl_target.add_include(*type_cpp_info.impl_headers)
                     params_cpp.append(f"{type_cpp_info.as_param} {param.name}")
                     args_into_abi.append(type_cpp_info.pass_into_abi(param.name))
                 params_cpp_str = ", ".join(params_cpp)
@@ -1873,7 +1870,6 @@ class CppHeadersGenerator(Backend):
                 abi_result = f"{method_abi_info.mangled_name}({args_into_abi_str})"
                 if return_ty_ref := method.return_ty_ref:
                     type_cpp_info = TypeCppInfo.get(self.am, return_ty_ref.resolved_ty)
-                    iface_cpp_impl_target.add_include(*type_cpp_info.impl_headers)
                     cpp_return_ty_name = type_cpp_info.as_owner
                     cpp_result = type_cpp_info.return_from_abi(abi_result)
                 else:
@@ -1934,16 +1930,16 @@ class CppHeadersGenerator(Backend):
         iface: IfaceDecl,
         iface_abi_info: IfaceABIInfo,
         iface_cpp_info: IfaceCppInfo,
-        iface_cpp_defn_target: CHeaderWriter,
+        iface_cpp_impl_target: CHeaderWriter,
     ):
-        iface_cpp_defn_target.writelns(
+        iface_cpp_impl_target.writelns(
             f"template<typename Impl>",
         )
-        with iface_cpp_defn_target.indented(
+        with iface_cpp_impl_target.indented(
             f"constexpr {iface_abi_info.ftable} {iface_cpp_info.weakspace}::{iface_cpp_info.weak_name}::ftbl_impl = {{",
             f"}};",
         ):
             for method in iface.methods:
-                iface_cpp_defn_target.writelns(
+                iface_cpp_impl_target.writelns(
                     f".{method.name} = &methods_impl<Impl>::{method.name},",
                 )
