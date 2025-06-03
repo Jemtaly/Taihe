@@ -569,8 +569,16 @@ class ANICodeGenerator:
                                 iface_ani_impl_target.writelns(
                                     f'env->Object_CallMethod_Void(static_cast<ani_object>(this->ref), TH_ANI_FIND_CLASS_METHOD(env, "{iface_ani_info.type_desc}", "{method_ani_info.ani_method_name}", nullptr){inner_ani_args_trailing});',
                                 )
+                with iface_ani_impl_target.indented(
+                    f"uintptr_t getGlobalReference() const {{",
+                    f"}}",
+                ):
+                    iface_ani_impl_target.writelns(
+                        f"return reinterpret_cast<uintptr_t>(this->ref);",
+                    )
+            iface_ani_impl_target.add_include("thlib.lang.proj.hpp")
             iface_ani_impl_target.writelns(
-                f"return ::taihe::make_holder<cpp_impl_t, {iface_cpp_info.as_owner}>(env, ani_obj);",
+                f"return ::taihe::make_holder<cpp_impl_t, {iface_cpp_info.as_owner}, ::thlib::lang::AniObject>(env, ani_obj);",
             )
 
     def gen_iface_into_ani_func(

@@ -2089,8 +2089,16 @@ class CallbackTypeANIInfo(AbstractTypeANIInfo, AbstractAnalysis[CallbackType]):
                         f"env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), {len(self.t.params_ty)}, ani_argv, &{inner_ani_res});",
                         f"return;",
                     )
+            with target.indented(
+                f"uintptr_t getGlobalReference() const {{",
+                f"}}",
+            ):
+                target.writelns(
+                    f"return reinterpret_cast<uintptr_t>(this->ref);",
+                )
+        target.add_include("thlib.lang.proj.hpp")
         target.writelns(
-            f"{self.cpp_info.as_owner} {cpp_result} = ::taihe::make_holder<{cpp_impl_class}, {self.cpp_info.as_owner}>({env}, {ani_value});",
+            f"{self.cpp_info.as_owner} {cpp_result} = ::taihe::make_holder<{cpp_impl_class}, {self.cpp_info.as_owner}, ::thlib::lang::AniObject>({env}, {ani_value});",
         )
 
     @override
