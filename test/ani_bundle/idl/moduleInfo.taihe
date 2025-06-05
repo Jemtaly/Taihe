@@ -1,0 +1,6 @@
+
+interface ModuleInfo {
+    @get GetModuleName(): String;
+    @get GetModuleSourceDir(): String;
+}
+function GetModuleInfo(): ModuleInfo;
