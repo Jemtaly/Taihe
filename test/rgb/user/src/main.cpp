@@ -11,6 +11,7 @@
 #include "rgb.base.user.hpp"
 #include "rgb.show.user.hpp"
 
+#include "taihe/string.hpp"
 #include "tester.hpp"
 
 using namespace rgb::base;
@@ -368,6 +369,44 @@ void testMemoryLeak() {
                  remaining);
 }
 
+struct AutoCompareType {
+  string id;
+
+  AutoCompareType(string_view id) : id(id) {
+    std::cout << "AutoCompareType " << id << " made" << std::endl;
+  }
+
+  string getId() const {
+    return id;
+  }
+};
+
+struct UserCompareType {
+  string id;
+
+  UserCompareType(string_view id) : id(id) {
+    std::cout << "UserCompareType " << id << " made" << std::endl;
+  }
+
+  string getId() const {
+    return id;
+  }
+};
+
+template<>
+struct taihe::same_impl_t<UserCompareType> {
+  bool operator()(data_view lhs, data_view rhs) const {
+    return weak::IBase(lhs)->getId() == weak::IBase(rhs)->getId();
+  }
+};
+
+template<>
+struct taihe::hash_impl_t<UserCompareType> {
+  std::size_t operator()(data_view val) const {
+    return std::hash<std::string_view>{}(weak::IBase(val)->getId());
+  }
+};
+
 int main() {
   Tester tester;
 
@@ -381,6 +420,26 @@ int main() {
   tester.run("testSet", testSet);
   tester.run("testCallback", testCallback);
   tester.run("testMemoryLeak", testMemoryLeak);
+
+  map<IBase, string> auto_compare_map;
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "a");
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("b"), "b");
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "c");
+  std::cout << "AutoCompareMap size: " << auto_compare_map.size() << std::endl;
+  for (auto const &[key, value] : auto_compare_map) {
+    std::cout << "AutoCompareMap: " << key->getId() << " -> " << value
+              << std::endl;
+  }
+
+  map<IBase, string> user_compare_map;
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "a");
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("b"), "b");
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "c");
+  std::cout << "UserCompareMap size: " << user_compare_map.size() << std::endl;
+  for (auto const &[key, value] : user_compare_map) {
+    std::cout << "UserCompareMap: " << key->getId() << " -> " << value
+              << std::endl;
+  }
 
   return tester.report();
 }
