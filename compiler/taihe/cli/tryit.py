@@ -354,7 +354,7 @@ class BuildSystem(BuildUtils):
 
         registry = BackendRegistry()
         registry.register_all()
-        backend_names = ["cpp-author"]
+        backend_names = ["cpp-author", "cmake-user"]
         if self.user == UserType.STS:
             backend_names.append("ani-bridge")
         if self.user == UserType.CPP:
