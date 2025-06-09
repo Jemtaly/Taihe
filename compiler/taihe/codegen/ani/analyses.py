@@ -2096,9 +2096,9 @@ class CallbackTypeANIInfo(AbstractTypeANIInfo, AbstractAnalysis[CallbackType]):
                 target.writelns(
                     f"return reinterpret_cast<uintptr_t>(this->ref);",
                 )
-        target.add_include("thlib.lang.proj.hpp")
+        target.add_include("taihe.platform.arkts.proj.hpp")
         target.writelns(
-            f"{self.cpp_info.as_owner} {cpp_result} = ::taihe::make_holder<{cpp_impl_class}, {self.cpp_info.as_owner}, ::thlib::lang::AniObject>({env}, {ani_value});",
+            f"{self.cpp_info.as_owner} {cpp_result} = ::taihe::make_holder<{cpp_impl_class}, {self.cpp_info.as_owner}, ::taihe::platform::arkts::AniObject>({env}, {ani_value});",
         )
 
     @override

@@ -2,11 +2,11 @@
 #include "ani.h"
 #include "taihe/array.hpp"
 #include "taihe/runtime.hpp"
-
 #include "taihe/string.hpp"
+
+#include "taihe.platform.arkts.proj.hpp"
 #include "test.impl.hpp"
 #include "test.proj.hpp"
-#include "thlib.lang.proj.hpp"
 
 namespace {
 // To be implemented.
@@ -18,7 +18,7 @@ public:
   CallbackManagerImpl() {}
 
   bool addCallback(::taihe::callback_view<taihe::string()> new_cb) {
-    auto new_obj = thlib::lang::weak::AniObject(new_cb);
+    auto new_obj = taihe::platform::arkts::weak::AniObject(new_cb);
     if (new_obj.is_error()) {
       std::cerr << "Failed to cast callback to ani." << std::endl;
       return false;
@@ -26,7 +26,7 @@ public:
     ani_ref new_ref = reinterpret_cast<ani_ref>(new_obj->getGlobalReference());
     ani_env *env = taihe::get_env();
     for (auto const &old_cb : callbacks_) {
-      auto old_obj = thlib::lang::weak::AniObject(old_cb);
+      auto old_obj = taihe::platform::arkts::weak::AniObject(old_cb);
       ani_ref old_ref =
           reinterpret_cast<ani_ref>(old_obj->getGlobalReference());
       ani_boolean is_equal;
@@ -44,7 +44,7 @@ public:
   }
 
   bool removeCallback(::taihe::callback_view<taihe::string()> cb) {
-    auto obj = thlib::lang::weak::AniObject(cb);
+    auto obj = taihe::platform::arkts::weak::AniObject(cb);
     if (obj.is_error()) {
       std::cerr << "Failed to cast callback to ani." << std::endl;
       return false;
@@ -52,7 +52,7 @@ public:
     ani_ref ref = reinterpret_cast<ani_ref>(obj->getGlobalReference());
     ani_env *env = taihe::get_env();
     for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it) {
-      auto old_obj = thlib::lang::weak::AniObject(*it);
+      auto old_obj = taihe::platform::arkts::weak::AniObject(*it);
       ani_ref old_ref =
           reinterpret_cast<ani_ref>(old_obj->getGlobalReference());
       ani_boolean is_equal;
