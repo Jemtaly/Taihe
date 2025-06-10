@@ -28,6 +28,8 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 
+set(TH_STDLIB_DIR "${CMAKE_SOURCE_DIR}/stdlib")
+
 # taihe runtime .c/.cpp path
 set(TH_RUNTIME_DIR "${CMAKE_SOURCE_DIR}/runtime")
 set(TH_RUNTIME_INCLUDE_DIR "${TH_RUNTIME_DIR}/include")
@@ -72,7 +74,7 @@ endfunction()
 
 
 function(generate_code_from_idl this_target_name idl_files gen_ets_files idl_dir generated_dir taihe_conf)
-  set(IDL_FILES ${idl_files})
+  set(IDL_FILES ${idl_files} "${TH_STDLIB_DIR}/taihe.platform.ani.taihe")
   set(GEN_ETS_FILES ${gen_ets_files})
 
   set(PROJ_HPP_FILES)
@@ -105,9 +107,9 @@ function(generate_code_from_idl this_target_name idl_files gen_ets_files idl_dir
 
   # 如果启用覆盖率，使用 coverage run
   if(ENABLE_COVERAGE)
-    list(APPEND COMMAND_TO_RUN "coverage" "run" "--parallel-mode" "-m" "taihe.cli.compiler" "-I" "${idl_dir}/idl" "-O" "${generated_dir}" "--ani" "--author" "${taihe_conf}" "--debug")
+    list(APPEND COMMAND_TO_RUN "coverage" "run" "--parallel-mode" "-m" "taihe.cli.compiler" "-I" "${TH_STDLIB_DIR}" "${idl_dir}/idl" "-O" "${generated_dir}" "--ani" "--author" "${taihe_conf}" "--debug")
   else()
-    list(APPEND COMMAND_TO_RUN "python" "-m" "taihe.cli.compiler" "-I" "${idl_dir}/idl" "-O" "${generated_dir}" "--ani" "--author" "--sts-keep-name")
+    list(APPEND COMMAND_TO_RUN "python" "-m" "taihe.cli.compiler" "-I" "${TH_STDLIB_DIR}" "${idl_dir}/idl" "-O" "${generated_dir}" "--ani" "--author" "--sts-keep-name")
   endif()
 
   add_custom_command(
@@ -406,6 +408,7 @@ function(add_ani_demo this_target_name idl_files taihe_conf gen_ets_names user_e
   set(BUILD_DEMO_DIR "${CMAKE_BINARY_DIR}/${run_dir}/${this_target_name}")
   set(GEN_DIR "${BUILD_DEMO_DIR}/generated")
   set(GEN_ETS_FILES "")
+  list(APPEND GEN_ETS_FILES "${GEN_DIR}/taihe.platform.ani.ets")
   foreach(ETS_NAME ${gen_ets_names})
     set(ETS_FILE "${GEN_DIR}/${ETS_NAME}")
     list(APPEND GEN_ETS_FILES "${ETS_FILE}")
