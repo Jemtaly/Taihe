@@ -25,8 +25,13 @@ class CMakeCodeGenerator:
             self.emit_runtime_files_list("aaa", gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
             self.emit_generated_sources(pg, gen_cmake_target)
+            self.emit_set_cpp_standard(pg, gen_cmake_target)
 
-    def emit_runtime_files_list(self, runtime_path: str, gen_cmake_target: CMakeWriter):
+    def emit_runtime_files_list(
+        self,
+        runtime_path: str,
+        gen_cmake_target: CMakeWriter,
+    ):
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_DIR",
             f")",
@@ -54,13 +59,19 @@ class CMakeCodeGenerator:
         ):
             gen_cmake_target.writeln(f"${{CMAKE_CURRENT_LIST_DIR}}/include")
 
-    def emit_generated_sources(self, pg: PackageGroup, gen_cmake_target: CMakeWriter):
+    def emit_generated_sources(
+        self,
+        pg: PackageGroup,
+        gen_cmake_target: CMakeWriter,
+    ):
         for pkg in pg.packages:
             self.emit_pkg_source(pkg, gen_cmake_target)
         self.emit_generated_merge_source(pg, gen_cmake_target)
 
     def emit_generated_merge_source(
-        self, pg: PackageGroup, gen_cmake_target: CMakeWriter
+        self,
+        pg: PackageGroup,
+        gen_cmake_target: CMakeWriter,
     ):
         with gen_cmake_target.indented(
             f"set(TAIHE_GEN_SRC",
@@ -70,12 +81,43 @@ class CMakeCodeGenerator:
                 pkg_cmake_info = PackageCMakeInfo.get(self.am, pkg)
                 gen_cmake_target.writeln(f"${{{pkg_cmake_info.all_src}}}")
 
-    def emit_pkg_source(self, p: PackageDecl, gen_cmake_target: CMakeWriter):
+    def emit_set_cpp_standard(
+        self,
+        pg: PackageGroup,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"set_source_files_properties(",
+            f")",
+        ):
+            for pkg in pg.packages:
+                pkg_cmake_info = PackageCMakeInfo.get(self.am, pkg)
+                # TODO: all c++ generated files
+                # Add c++ generated files
+                gen_cmake_target.writeln(f"${{{pkg_cmake_info.ani_src}}}")
+            gen_cmake_target.writelns(
+                # Add taihe runtime c++ files
+                f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/runtime.cpp",
+                # setting
+                f"PROPERTIES",
+                f"LANGUAGE CXX",
+                f'COMPILE_FLAGS "-std=c++17"',
+            )
+
+    def emit_pkg_source(
+        self,
+        p: PackageDecl,
+        gen_cmake_target: CMakeWriter,
+    ):
         self.emit_pkg_abi_source(p, gen_cmake_target)
         self.emit_pkg_ani_source(p, gen_cmake_target)
         self.emit_pkg_merged_sources(p, gen_cmake_target)
 
-    def emit_pkg_merged_sources(self, p: PackageDecl, gen_cmake_target: CMakeWriter):
+    def emit_pkg_merged_sources(
+        self,
+        p: PackageDecl,
+        gen_cmake_target: CMakeWriter,
+    ):
         pkg_cmake_info = PackageCMakeInfo.get(self.am, p)
         with gen_cmake_target.indented(
             f"set({pkg_cmake_info.all_src}",
@@ -86,7 +128,11 @@ class CMakeCodeGenerator:
                 f"${{{pkg_cmake_info.ani_src}}}",
             )
 
-    def emit_pkg_abi_source(self, p: PackageDecl, gen_cmake_target: CMakeWriter):
+    def emit_pkg_abi_source(
+        self,
+        p: PackageDecl,
+        gen_cmake_target: CMakeWriter,
+    ):
         """The generated abi file only has C language source file(.c)."""
         pkg_abi_info = PackageABIInfo.get(self.am, p)
         pkg_cmake_info = PackageCMakeInfo.get(self.am, p)
@@ -98,7 +144,11 @@ class CMakeCodeGenerator:
                 f"${{CMAKE_CURRENT_LIST_DIR}}/src/{pkg_abi_info.src}"
             )
 
-    def emit_pkg_ani_source(self, p: PackageDecl, gen_cmake_target: CMakeWriter):
+    def emit_pkg_ani_source(
+        self,
+        p: PackageDecl,
+        gen_cmake_target: CMakeWriter,
+    ):
         """The generated ani file only has C++ language source file(.cpp)."""
         pkg_ani_info = PackageANIInfo.get(self.am, p)
         pkg_cmake_info = PackageCMakeInfo.get(self.am, p)
