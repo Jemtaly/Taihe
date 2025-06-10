@@ -4,7 +4,7 @@
 #include "taihe/runtime.hpp"
 #include "taihe/string.hpp"
 
-#include "taihe.platform.arkts.proj.hpp"
+#include "taihe.platform.ani.proj.hpp"
 #include "test.impl.hpp"
 #include "test.proj.hpp"
 
@@ -12,8 +12,8 @@ namespace {
 // To be implemented.
 
 bool ani_ref_equals(::taihe::data_view lhs, ::taihe::data_view rhs) {
-  auto lhs_as_ani = taihe::platform::arkts::weak::AniObject(lhs);
-  auto rhs_as_ani = taihe::platform::arkts::weak::AniObject(rhs);
+  auto lhs_as_ani = taihe::platform::ani::weak::AniObject(lhs);
+  auto rhs_as_ani = taihe::platform::ani::weak::AniObject(rhs);
   if (lhs_as_ani.is_error() || rhs_as_ani.is_error()) {
     return false;
   }

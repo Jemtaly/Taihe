@@ -576,9 +576,9 @@ class ANICodeGenerator:
                     iface_ani_impl_target.writelns(
                         f"return reinterpret_cast<uintptr_t>(this->ref);",
                     )
-            iface_ani_impl_target.add_include("taihe.platform.arkts.proj.hpp")
+            iface_ani_impl_target.add_include("taihe.platform.ani.proj.hpp")
             iface_ani_impl_target.writelns(
-                f"return ::taihe::make_holder<cpp_impl_t, {iface_cpp_info.as_owner}, ::taihe::platform::arkts::AniObject>(env, ani_obj);",
+                f"return ::taihe::make_holder<cpp_impl_t, {iface_cpp_info.as_owner}, ::taihe::platform::ani::AniObject>(env, ani_obj);",
             )
 
     def gen_iface_into_ani_func(
