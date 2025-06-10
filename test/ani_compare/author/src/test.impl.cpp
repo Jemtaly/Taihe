@@ -11,19 +11,6 @@
 namespace {
 // To be implemented.
 
-bool ani_ref_equals(::taihe::data_view lhs, ::taihe::data_view rhs) {
-  auto lhs_as_ani = taihe::platform::ani::weak::AniObject(lhs);
-  auto rhs_as_ani = taihe::platform::ani::weak::AniObject(rhs);
-  if (lhs_as_ani.is_error() || rhs_as_ani.is_error()) {
-    return false;
-  }
-  ani_env *env = taihe::get_env();
-  ani_ref lhs_ref = reinterpret_cast<ani_ref>(lhs_as_ani->getGlobalReference());
-  ani_ref rhs_ref = reinterpret_cast<ani_ref>(rhs_as_ani->getGlobalReference());
-  ani_boolean result;
-  return env->Reference_Equals(lhs_ref, rhs_ref, &result) == ANI_OK && result;
-}
-
 class CallbackManagerImpl {
   std::vector<::taihe::callback<taihe::string()>> callbacks_;
 
@@ -32,7 +19,7 @@ public:
 
   bool addCallback(::taihe::callback_view<taihe::string()> new_cb) {
     for (auto const &old_cb : callbacks_) {
-      if (ani_ref_equals(old_cb, new_cb)) {
+      if (taihe::same(old_cb, new_cb)) {
         std::cerr << "Callback already exists." << std::endl;
         return false;
       }
@@ -43,7 +30,7 @@ public:
 
   bool removeCallback(::taihe::callback_view<taihe::string()> cb) {
     for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it) {
-      if (ani_ref_equals(*it, cb)) {
+      if (taihe::same(*it, cb)) {
         callbacks_.erase(it);
         return true;
       }

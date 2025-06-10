@@ -54,6 +54,34 @@ public:
     env->GlobalReference_Delete(ref);
   }
 };
+
+template<typename AniRefGuard>
+struct same_impl_t<
+    AniRefGuard, std::enable_if_t<std::is_base_of_v<sref_guard, AniRefGuard>>> {
+  bool operator()(data_view lhs, data_view rhs) const {
+    auto lhs_as_ani = ::taihe::platform::ani::weak::AniObject(lhs);
+    auto rhs_as_ani = ::taihe::platform::ani::weak::AniObject(rhs);
+    if (lhs_as_ani.is_error() || rhs_as_ani.is_error()) {
+      return false;
+    }
+    env_guard guard;
+    ani_env *env = guard.get_env();
+    ani_ref lhs_ref =
+        reinterpret_cast<ani_ref>(lhs_as_ani->getGlobalReference());
+    ani_ref rhs_ref =
+        reinterpret_cast<ani_ref>(rhs_as_ani->getGlobalReference());
+    ani_boolean result;
+    return env->Reference_Equals(lhs_ref, rhs_ref, &result) == ANI_OK && result;
+  }
+};
+
+template<typename AniRefGuard>
+struct hash_impl_t<
+    AniRefGuard, std::enable_if_t<std::is_base_of_v<sref_guard, AniRefGuard>>> {
+  size_t operator()(data_view value) const {
+    throw std::runtime_error("Hashing of ani_ref is not implemented yet.");
+  }
+};
 }  // namespace taihe
 
 #if __cplusplus >= 202002L
