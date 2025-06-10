@@ -407,6 +407,37 @@ struct taihe::hash_impl_t<UserCompareType> {
   }
 };
 
+void testCompare() {
+  // AutoCompareType uses default comparison
+  map<IBase, string> auto_compare_map;
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "a");
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("b"), "b");
+  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "c");
+  std::cout << "AutoCompareMap size: " << auto_compare_map.size() << std::endl;
+  for (auto const &[key, value] : auto_compare_map) {
+    std::cout << "AutoCompareMap: " << key->getId() << " -> " << value
+              << std::endl;
+  }
+
+  // UserCompareType uses custom comparison
+  map<IBase, string> user_compare_map;
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "a");
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("b"), "b");
+  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "c");
+  std::cout << "UserCompareMap size: " << user_compare_map.size() << std::endl;
+  for (auto const &[key, value] : user_compare_map) {
+    std::cout << "UserCompareMap: " << key->getId() << " -> " << value
+              << std::endl;
+  }
+
+  Tester::assert(auto_compare_map.size() == 3,
+                 "AutoCompareMap should have 3 items, got %zu",
+                 auto_compare_map.size());
+  Tester::assert(user_compare_map.size() == 2,
+                 "UserCompareMap should have 2 items, got %zu",
+                 user_compare_map.size());
+}
+
 int main() {
   Tester tester;
 
@@ -420,26 +451,7 @@ int main() {
   tester.run("testSet", testSet);
   tester.run("testCallback", testCallback);
   tester.run("testMemoryLeak", testMemoryLeak);
-
-  map<IBase, string> auto_compare_map;
-  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "a");
-  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("b"), "b");
-  auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "c");
-  std::cout << "AutoCompareMap size: " << auto_compare_map.size() << std::endl;
-  for (auto const &[key, value] : auto_compare_map) {
-    std::cout << "AutoCompareMap: " << key->getId() << " -> " << value
-              << std::endl;
-  }
-
-  map<IBase, string> user_compare_map;
-  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "a");
-  user_compare_map.emplace(make_holder<UserCompareType, IBase>("b"), "b");
-  user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "c");
-  std::cout << "UserCompareMap size: " << user_compare_map.size() << std::endl;
-  for (auto const &[key, value] : user_compare_map) {
-    std::cout << "UserCompareMap: " << key->getId() << " -> " << value
-              << std::endl;
-  }
+  tester.run("testCompare", testCompare);
 
   return tester.report();
 }

@@ -11,6 +11,19 @@
 namespace {
 // To be implemented.
 
+bool ani_ref_equals(::taihe::data_view lhs, ::taihe::data_view rhs) {
+  auto lhs_as_ani = taihe::platform::arkts::weak::AniObject(lhs);
+  auto rhs_as_ani = taihe::platform::arkts::weak::AniObject(rhs);
+  if (lhs_as_ani.is_error() || rhs_as_ani.is_error()) {
+    return false;
+  }
+  ani_env *env = taihe::get_env();
+  ani_ref lhs_ref = reinterpret_cast<ani_ref>(lhs_as_ani->getGlobalReference());
+  ani_ref rhs_ref = reinterpret_cast<ani_ref>(rhs_as_ani->getGlobalReference());
+  ani_boolean result;
+  return env->Reference_Equals(lhs_ref, rhs_ref, &result) == ANI_OK && result;
+}
+
 class CallbackManagerImpl {
   std::vector<::taihe::callback<taihe::string()>> callbacks_;
 
@@ -18,23 +31,8 @@ public:
   CallbackManagerImpl() {}
 
   bool addCallback(::taihe::callback_view<taihe::string()> new_cb) {
-    auto new_obj = taihe::platform::arkts::weak::AniObject(new_cb);
-    if (new_obj.is_error()) {
-      std::cerr << "Failed to cast callback to ani." << std::endl;
-      return false;
-    }
-    ani_ref new_ref = reinterpret_cast<ani_ref>(new_obj->getGlobalReference());
-    ani_env *env = taihe::get_env();
     for (auto const &old_cb : callbacks_) {
-      auto old_obj = taihe::platform::arkts::weak::AniObject(old_cb);
-      ani_ref old_ref =
-          reinterpret_cast<ani_ref>(old_obj->getGlobalReference());
-      ani_boolean is_equal;
-      if (env->Reference_Equals(old_ref, new_ref, &is_equal) != ANI_OK) {
-        std::cerr << "Failed to compare references." << std::endl;
-        return false;
-      }
-      if (is_equal) {
+      if (ani_ref_equals(old_cb, new_cb)) {
         std::cerr << "Callback already exists." << std::endl;
         return false;
       }
@@ -44,23 +42,8 @@ public:
   }
 
   bool removeCallback(::taihe::callback_view<taihe::string()> cb) {
-    auto obj = taihe::platform::arkts::weak::AniObject(cb);
-    if (obj.is_error()) {
-      std::cerr << "Failed to cast callback to ani." << std::endl;
-      return false;
-    }
-    ani_ref ref = reinterpret_cast<ani_ref>(obj->getGlobalReference());
-    ani_env *env = taihe::get_env();
     for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it) {
-      auto old_obj = taihe::platform::arkts::weak::AniObject(*it);
-      ani_ref old_ref =
-          reinterpret_cast<ani_ref>(old_obj->getGlobalReference());
-      ani_boolean is_equal;
-      if (env->Reference_Equals(old_ref, ref, &is_equal) != ANI_OK) {
-        std::cerr << "Failed to compare references." << std::endl;
-        return false;
-      }
-      if (is_equal) {
+      if (ani_ref_equals(*it, cb)) {
         callbacks_.erase(it);
         return true;
       }
