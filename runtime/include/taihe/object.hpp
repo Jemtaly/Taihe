@@ -66,14 +66,14 @@ struct data_block_full : DataBlockHead {
   data_block_full(Args &&...args) : impl(std::forward<Args>(args)...) {}
 };
 
-template<typename Impl>
+template<typename Impl, typename Enabled = void>
 struct same_impl_t {
   bool operator()(data_view lhs, data_view rhs) const {
     return lhs.data_ptr == rhs.data_ptr;
   }
 };
 
-template<typename Impl>
+template<typename Impl, typename Enabled = void>
 struct hash_impl_t {
   std::size_t operator()(data_view val) const {
     return reinterpret_cast<std::size_t>(val.data_ptr);
