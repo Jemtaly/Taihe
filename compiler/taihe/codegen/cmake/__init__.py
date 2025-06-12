@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import ClassVar
 
 from taihe.driver.backend import Backend, BackendConfig
 from taihe.driver.contexts import CompilerInstance
@@ -7,8 +8,7 @@ from taihe.driver.contexts import CompilerInstance
 @dataclass
 class CMakeBridgeBackendConfig(BackendConfig):
     NAME = "cmake-user"
-    gen_abi: bool = False
-    gen_ani: bool = False
+    DEPS: ClassVar = ["abi-header"]
     # TODO: DEPS and self var
 
     """Use the original function name (instead of "camelCase") in exported ArkTS sources."""
@@ -17,16 +17,14 @@ class CMakeBridgeBackendConfig(BackendConfig):
         from taihe.codegen.cmake.gen_cmake import CMakeCodeGenerator
 
         class CMakeBridgeBackendImpl(Backend):
-            def __init__(self, ci: CompilerInstance, config: CMakeBridgeBackendConfig):
+            def __init__(self, ci: CompilerInstance):
                 super().__init__(ci)
                 self._ci = ci
-                self.gen_abi = config.gen_abi
-                self.gen_ani = config.gen_ani
 
             def generate(self):
-                oc = self._ci.output_config
+                om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                CMakeCodeGenerator(oc, am).generate(pg)
+                CMakeCodeGenerator(om, am).generate(pg)
 
-        return CMakeBridgeBackendImpl(instance, self)
+        return CMakeBridgeBackendImpl(instance)

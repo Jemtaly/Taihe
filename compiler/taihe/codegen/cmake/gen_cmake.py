@@ -7,22 +7,23 @@ from taihe.semantics.declarations import (
     PackageGroup,
 )
 from taihe.utils.analyses import AnalysisManager
-from taihe.utils.outputs import OutputConfig
+from taihe.utils.outputs import OutputManager, FileKind
 
 
 class CMakeCodeGenerator:
-    def __init__(self, oc: OutputConfig, am: AnalysisManager):
-        self.oc = oc
+    def __init__(self, om: OutputManager, am: AnalysisManager):
+        self.om = om
         self.am = am
 
     def generate(self, pg: PackageGroup):
         gen_taihe_cmake_file = "taihe_generated.cmake"
         with CMakeWriter(
-            self.oc,
+            self.om,
             f"{gen_taihe_cmake_file}",
+            FileKind.CMAKE,
         ) as gen_cmake_target:
             # TODO: input runtime path
-            self.emit_runtime_files_list("aaa", gen_cmake_target)
+            self.emit_runtime_files_list("${OHOS_SDK_NATIVE}/../toolchains/taihe", gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
             self.emit_generated_sources(pg, gen_cmake_target)
             self.emit_set_cpp_standard(pg, gen_cmake_target)

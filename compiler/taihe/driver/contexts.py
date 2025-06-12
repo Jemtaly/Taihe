@@ -28,7 +28,7 @@ from taihe.semantics.declarations import PackageGroup
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import ConsoleDiagnosticsManager, DiagnosticsManager, Level
 from taihe.utils.exceptions import AdhocNote
-from taihe.utils.outputs import DebugLevel, OutputConfig
+from taihe.utils.outputs import DebugLevel, OutputManager
 from taihe.utils.sources import SourceFile, SourceLocation, SourceManager
 
 
@@ -76,7 +76,7 @@ class CompilerInstance:
 
     analysis_manager: AnalysisManager
 
-    output_config: OutputConfig
+    output_manager: OutputManager
 
     def __init__(self, invocation: CompilerInvocation):
         self.invocation = invocation
@@ -84,10 +84,11 @@ class CompilerInstance:
         self.analysis_manager = AnalysisManager(invocation, self.diagnostics_manager)
         self.source_manager = SourceManager()
         self.package_group = PackageGroup()
-        self.output_config = OutputConfig(
+        self.output_manager = OutputManager(
             self.invocation.out_dir,
             self.invocation.out_debug_level,
-        )
+            {},
+            )
         self.backends = [conf.construct(self) for conf in invocation.backends]
 
     ##########################

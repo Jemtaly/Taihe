@@ -5,7 +5,7 @@ import os.path
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from io import StringIO
 from pathlib import Path
@@ -32,12 +32,56 @@ class DebugLevel(Enum):
     """Besides CONSICE, also prints code snippet. Could be slow."""
 
 
+# @dataclass
+# class OutputConfig:
+#     """Manages the creation and saving of output files."""
+
+#     dst_dir: Path | None = None
+#     debug_level: DebugLevel = DebugLevel.NONE
+
+
+class FileKind(str, Enum):
+    C_HEADER = "c_header"
+    C_SOURCE = "c_source"
+    CPP_HEADER = "cpp_header"
+    CPP_SOURCE = "cpp_source"
+    ETS = "ets"
+    CMAKE = "cmake"
+    TEMP = "temp"
+
+
 @dataclass
-class OutputConfig:
+class FileDescriptor:
+    relative_path: str  # e.g., "include/aaa.h"
+    kind: FileKind
+    # TODO: we may need to know which backend the file belongs to
+
+
+@dataclass
+class OutputManager:
     """Manages the creation and saving of output files."""
 
     dst_dir: Path | None = None
     debug_level: DebugLevel = DebugLevel.NONE
+    files: dict[str, FileDescriptor] = field(default_factory=dict[str, FileDescriptor])
+
+    def register(self, desc: FileDescriptor):
+        if desc.relative_path in self.files:
+            prev = self.files[desc.relative_path]
+            if prev.kind != desc.kind:
+                raise ValueError(
+                    f"File {desc.relative_path} is already registered as {prev.kind}, "
+                    f"cannot re-register with {desc.kind}."
+                )
+            return
+
+        self.files[desc.relative_path] = desc
+
+    def get_all_files(self) -> list[FileDescriptor]:
+        return list(self.files.values())
+
+    def get_files_by_kind(self, kind: FileKind) -> list[FileDescriptor]:
+        return [desc for desc in self.files.values() if desc.kind == kind]
 
 
 class BaseWriter:
@@ -157,8 +201,9 @@ class BaseWriter:
 class FileWriter(BaseWriter):
     def __init__(
         self,
-        oc: OutputConfig,
+        om: OutputManager,
         path: str,
+        file_kind: FileKind,
         *,
         default_indent: str = DEFAULT_INDENT,
         comment_prefix: str,
@@ -167,9 +212,12 @@ class FileWriter(BaseWriter):
             out=StringIO(),
             default_indent=default_indent,
             comment_prefix=comment_prefix,
-            debug_level=oc.debug_level,
+            debug_level=om.debug_level,
         )
-        self._path = None if oc.dst_dir is None else oc.dst_dir / path
+        self.om = om
+        self._path = None if om.dst_dir is None else om.dst_dir / path
+        self._relative_path = path
+        self.file_kind = file_kind
 
     def __enter__(self):
         return self
@@ -185,6 +233,12 @@ class FileWriter(BaseWriter):
         # Discard on exception
         if not exc_type and self._path is not None:
             self.save_as(self._path)
+
+            desc = FileDescriptor(
+                relative_path=self._relative_path,
+                kind=self.file_kind,
+            )
+            self.om.register(desc)
 
         # Propagate the exception if exists
         return False
