@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+# TODO: Should it be introduced?
+from taihe.codegen.cmake import CMakeBridgeBackendConfig
 from taihe.driver.backend import BackendConfig
 from taihe.utils.outputs import DebugLevel
 
@@ -362,6 +364,8 @@ class BuildSystem(BuildUtils):
         if self.should_run_pretty_print:
             backend_names.append("pretty-print")
         backends = registry.collect_required_backends(backend_names)
+        # TODO: backends sort
+        backends.append(CMakeBridgeBackendConfig)
 
         resolved_backends: list[BackendConfig] = []
         for b in backends:

@@ -88,7 +88,7 @@ class CompilerInstance:
             self.invocation.out_dir,
             self.invocation.out_debug_level,
             {},
-            )
+        )
         self.backends = [conf.construct(self) for conf in invocation.backends]
 
     ##########################

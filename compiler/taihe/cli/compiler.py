@@ -2,6 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from taihe.codegen.cmake import CMakeBridgeBackendConfig
 from taihe.driver.backend import BackendConfig, BackendRegistry
 from taihe.driver.contexts import CompilerInstance, CompilerInvocation
 

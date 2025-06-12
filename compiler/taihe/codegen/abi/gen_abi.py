@@ -90,8 +90,9 @@ class ABIHeadersGenerator:
         struct_abi_info: StructABIInfo,
     ):
         with CHeaderWriter(
-            self.oc,
+            self.om,
             f"include/{struct_abi_info.decl_header}",
+            FileKind.C_HEADER,
         ) as struct_abi_decl_target:
             struct_abi_decl_target.add_include("taihe/common.h")
             struct_abi_decl_target.writelns(
@@ -151,8 +152,9 @@ class ABIHeadersGenerator:
         union_abi_info: UnionABIInfo,
     ):
         with CHeaderWriter(
-            self.oc,
+            self.om,
             f"include/{union_abi_info.decl_header}",
+            FileKind.C_HEADER,
         ) as union_abi_decl_target:
             union_abi_decl_target.add_include("taihe/common.h")
             union_abi_decl_target.writelns(
@@ -230,8 +232,9 @@ class ABIHeadersGenerator:
         iface_abi_info: IfaceABIInfo,
     ):
         with CHeaderWriter(
-            self.oc,
+            self.om,
             f"include/{iface_abi_info.decl_header}",
+            FileKind.C_HEADER,
         ) as iface_abi_decl_target:
             iface_abi_decl_target.add_include("taihe/object.abi.h")
             iface_abi_decl_target.writelns(
