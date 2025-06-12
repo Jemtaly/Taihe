@@ -13,7 +13,7 @@ from enum import Enum
 from pathlib import Path
 
 from taihe.driver.backend import BackendConfig
-from taihe.utils.outputs import DebugLevel
+from taihe.utils.outputs import DebugLevel, OutputConfig
 
 # A lower value means more verbosity
 TRACE_CONCISE = logging.DEBUG - 1
@@ -346,7 +346,7 @@ class BuildSystem(BuildUtils):
 
         # Import here to avoid module dependency issues
         from taihe.driver.backend import BackendRegistry
-        from taihe.driver.contexts import CompilerInstance, CompilerInvocation
+        from taihe.driver.contexts import CompilerInstance, scan
 
         self.logger.info("Generating author and ani codes...")
 
@@ -369,14 +369,10 @@ class BuildSystem(BuildUtils):
                 resolved_backends.append(b())
 
         instance = CompilerInstance(
-            CompilerInvocation(
-                src_dirs=[self.idl_dir],
-                out_dir=self.generated_dir,
-                out_debug_level=self.codegen_debug_level,
-                backends=resolved_backends,
-            )
+            OutputConfig(self.generated_dir, self.codegen_debug_level),
+            resolved_backends,
         )
-
+        scan(instance, [self.idl_dir])
         if not instance.run():
             raise RuntimeError(f"Code generation failed")
 

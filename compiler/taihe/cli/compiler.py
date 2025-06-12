@@ -3,7 +3,8 @@ import sys
 from pathlib import Path
 
 from taihe.driver.backend import BackendConfig, BackendRegistry
-from taihe.driver.contexts import CompilerInstance, CompilerInvocation
+from taihe.driver.contexts import CompilerInstance, scan
+from taihe.utils.outputs import OutputConfig
 
 
 def main():
@@ -75,12 +76,8 @@ def main():
         else:
             resolved_backends.append(b())
 
-    invocation = CompilerInvocation(
-        src_dirs=[Path(d) for d in args.src_dirs],
-        out_dir=Path(args.dst_dir),
-        backends=resolved_backends,
-    )
-    instance = CompilerInstance(invocation)
+    instance = CompilerInstance(OutputConfig(Path(args.dst_dir)), resolved_backends)
+    scan(instance, [Path(d) for d in args.src_dirs])
     if not instance.run():
         return -1
     return 0
