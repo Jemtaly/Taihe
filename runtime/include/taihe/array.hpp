@@ -48,11 +48,11 @@ struct array_view {
   array_view(std::vector<C> const &value) noexcept
       : array_view(value.data(), static_cast<size_type>(value.size())) {}
 
-  template<typename C, size_t N>
+  template<typename C, std::size_t N>
   array_view(std::array<C, N> &value) noexcept
       : array_view(value.data(), static_cast<size_type>(value.size())) {}
 
-  template<typename C, size_t N>
+  template<typename C, std::size_t N>
   array_view(std::array<C, N> const &value) noexcept
       : array_view(value.data(), static_cast<size_type>(value.size())) {}
 
