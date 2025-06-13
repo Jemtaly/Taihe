@@ -150,18 +150,20 @@ void testUnion() {
 void testInterfaceCall() {
   IShowable colored_rect = makeColoredRectangle("Rect", color_yellow, 5, 5);
 
-  Tester::assert(same(weak::IColorable(colored_rect)->getColor(), color_yellow),
-                 "Colored Rectangle should have color %s, got %s",
-                 toString(color_yellow).c_str(),
-                 toString(weak::IColorable(colored_rect)->getColor()).c_str());
+  Tester::assert(
+      is_same(weak::IColorable(colored_rect)->getColor(), color_yellow),
+      "Colored Rectangle should have color %s, got %s",
+      toString(color_yellow).c_str(),
+      toString(weak::IColorable(colored_rect)->getColor()).c_str());
 
   copyColor(colored_rect,
             make_holder<UserType, IColorable>("Circ", color_114514));
 
-  Tester::assert(same(weak::IColorable(colored_rect)->getColor(), color_114514),
-                 "Colored Rectangle should have color %s, got %s",
-                 toString(color_114514).c_str(),
-                 toString(weak::IColorable(colored_rect)->getColor()).c_str());
+  Tester::assert(
+      is_same(weak::IColorable(colored_rect)->getColor(), color_114514),
+      "Colored Rectangle should have color %s, got %s",
+      toString(color_114514).c_str(),
+      toString(weak::IColorable(colored_rect)->getColor()).c_str());
 }
 
 void testInterfaceCast() {
@@ -198,15 +200,15 @@ void testArray() {
                  res.size());
 
   for (size_t i = 0; i < n; i++) {
-    Tester::assert(same(src[i], y), "src[%zu] should be %s, got %s", i,
+    Tester::assert(is_same(src[i], y), "src[%zu] should be %s, got %s", i,
                    y->getId().c_str(), src[i]->getId().c_str());
-    Tester::assert(same(dst[i], y), "dst[%zu] should be %s, got %s", i,
+    Tester::assert(is_same(dst[i], y), "dst[%zu] should be %s, got %s", i,
                    y->getId().c_str(), dst[i]->getId().c_str());
-    Tester::assert(same(res[i], x), "res[%zu] should be %s, got %s", i,
+    Tester::assert(is_same(res[i], x), "res[%zu] should be %s, got %s", i,
                    x->getId().c_str(), res[i]->getId().c_str());
   }
   for (size_t i = n; i < m; i++) {
-    Tester::assert(same(dst[i], x), "dst[%zu] should be %s, got %s", i,
+    Tester::assert(is_same(dst[i], x), "dst[%zu] should be %s, got %s", i,
                    x->getId().c_str(), dst[i]->getId().c_str());
   }
 }
@@ -394,7 +396,7 @@ struct UserCompareType {
 };
 
 template<>
-struct taihe::same_impl_t<UserCompareType> {
+struct taihe::is_same_impl_t<UserCompareType> {
   bool operator()(data_view lhs, data_view rhs) const {
     return weak::IBase(lhs)->getId() == weak::IBase(rhs)->getId();
   }

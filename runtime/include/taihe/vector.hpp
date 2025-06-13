@@ -113,7 +113,7 @@ protected:
 
   friend struct vector<T>;
 
-  friend bool taihe::same_adl(adl_tag_t, vector_view lhs, vector_view rhs);
+  friend bool taihe::is_same_adl(adl_tag_t, vector_view lhs, vector_view rhs);
   friend std::size_t taihe::hash_adl(adl_tag_t, vector_view val);
 };
 
@@ -164,7 +164,7 @@ private:
 };
 
 template<typename T>
-inline bool same_adl(adl_tag_t, vector_view<T> lhs, vector_view<T> rhs) {
+inline bool is_same_adl(adl_tag_t, vector_view<T> lhs, vector_view<T> rhs) {
   return lhs.m_handle == rhs.m_handle;
 }
 

@@ -257,13 +257,13 @@ inline std::size_t hash_adl(adl_tag_t, array_view<cpp_owner_t> val) {
 }
 
 template<typename cpp_owner_t>
-inline bool same_adl(adl_tag_t, array_view<cpp_owner_t> lhs,
-                     array_view<cpp_owner_t> rhs) {
+inline bool is_same_adl(adl_tag_t, array_view<cpp_owner_t> lhs,
+                        array_view<cpp_owner_t> rhs) {
   if (lhs.size() != rhs.size()) {
     return false;
   }
   for (std::size_t i = 0; i < lhs.size() && i < rhs.size(); i++) {
-    if (!same(lhs[i], rhs[i])) {
+    if (!is_same(lhs[i], rhs[i])) {
       return false;
     }
   }

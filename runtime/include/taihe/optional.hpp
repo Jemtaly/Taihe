@@ -120,9 +120,9 @@ inline std::size_t hash_adl(adl_tag_t, optional_view<cpp_owner_t> val) {
 }
 
 template<typename cpp_owner_t>
-inline bool same_adl(adl_tag_t, optional_view<cpp_owner_t> lhs,
-                     optional_view<cpp_owner_t> rhs) {
-  return (!lhs && !rhs) || (lhs && rhs && same(*lhs, *rhs));
+inline bool is_same_adl(adl_tag_t, optional_view<cpp_owner_t> lhs,
+                        optional_view<cpp_owner_t> rhs) {
+  return (!lhs && !rhs) || (lhs && rhs && is_same(*lhs, *rhs));
 }
 
 template<typename cpp_owner_t>

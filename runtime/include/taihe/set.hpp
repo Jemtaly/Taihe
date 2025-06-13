@@ -67,7 +67,7 @@ public:
     std::size_t index = hash(key) % m_handle->cap;
     node_t **current_ptr = &m_handle->bucket[index];
     while (*current_ptr) {
-      if (same((*current_ptr)->item, key)) {
+      if (is_same((*current_ptr)->item, key)) {
         if (cover) {
           node_t *replaced = new node_t{
               .item = key,
@@ -98,7 +98,7 @@ public:
     std::size_t index = hash(key) % m_handle->cap;
     node_t *current = m_handle->bucket[index];
     while (current) {
-      if (same(current->item, key)) {
+      if (is_same(current->item, key)) {
         return &current->item;
       }
       current = current->next;
@@ -119,7 +119,7 @@ public:
     std::size_t index = hash(key) % m_handle->cap;
     node_t **current_ptr = &m_handle->bucket[index];
     while (*current_ptr) {
-      if (same((*current_ptr)->item, key)) {
+      if (is_same((*current_ptr)->item, key)) {
         node_t *current = *current_ptr;
         *current_ptr = (*current_ptr)->next;
         delete current;
@@ -236,7 +236,7 @@ private:
 
   friend struct set<K>;
 
-  friend bool taihe::same_adl(adl_tag_t, set_view lhs, set_view rhs);
+  friend bool taihe::is_same_adl(adl_tag_t, set_view lhs, set_view rhs);
   friend std::size_t taihe::hash_adl(adl_tag_t, set_view val);
 };
 
@@ -290,7 +290,7 @@ private:
 };
 
 template<typename K>
-inline bool same_adl(adl_tag_t, set_view<K> lhs, set_view<K> rhs) {
+inline bool is_same_adl(adl_tag_t, set_view<K> lhs, set_view<K> rhs) {
   return lhs.m_handle == rhs.m_handle;
 }
 

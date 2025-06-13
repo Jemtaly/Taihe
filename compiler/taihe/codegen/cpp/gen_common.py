@@ -356,7 +356,7 @@ class CppHeadersGenerator:
             indent="",
         ):
             with enum_cpp_defn_target.indented(
-                f"inline bool same_adl(adl_tag_t, {enum_cpp_info.full_name} lhs, {enum_cpp_info.full_name} rhs) {{",
+                f"inline bool is_same_adl(adl_tag_t, {enum_cpp_info.full_name} lhs, {enum_cpp_info.full_name} rhs) {{",
                 f"}}",
             ):
                 enum_cpp_defn_target.writelns(
@@ -1013,14 +1013,14 @@ class CppHeadersGenerator:
             indent="",
         ):
             with union_cpp_defn_target.indented(
-                f"inline bool same_adl(adl_tag_t, {union_cpp_info.as_param} lhs, {union_cpp_info.as_param} rhs) {{",
+                f"inline bool is_same_adl(adl_tag_t, {union_cpp_info.as_param} lhs, {union_cpp_info.as_param} rhs) {{",
                 f"}}",
             ):
                 result = "false"
                 for field in union.fields:
                     cond = f"lhs.holds_{field.name}() && rhs.holds_{field.name}()"
                     if field.ty_ref:
-                        cond = f"{cond} && same(lhs.get_{field.name}_ref(), rhs.get_{field.name}_ref())"
+                        cond = f"{cond} && is_same(lhs.get_{field.name}_ref(), rhs.get_{field.name}_ref())"
                     result = f"{result} || ({cond})"
                 union_cpp_defn_target.writelns(
                     f"return {result};",
@@ -1204,12 +1204,12 @@ class CppHeadersGenerator:
             indent="",
         ):
             with struct_cpp_defn_target.indented(
-                f"inline bool same_adl(adl_tag_t, {struct_cpp_info.as_param} lhs, {struct_cpp_info.as_param} rhs) {{",
+                f"inline bool is_same_adl(adl_tag_t, {struct_cpp_info.as_param} lhs, {struct_cpp_info.as_param} rhs) {{",
                 f"}}",
             ):
                 result = "true"
                 for field in struct.fields:
-                    result = f"{result} && same(lhs.{field.name}, rhs.{field.name})"
+                    result = f"{result} && is_same(lhs.{field.name}, rhs.{field.name})"
                 struct_cpp_defn_target.writelns(
                     f"return {result};",
                 )
