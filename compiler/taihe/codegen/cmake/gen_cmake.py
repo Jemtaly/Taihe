@@ -22,6 +22,7 @@ class CMakeCodeGenerator:
             self.emit_runtime_files_list(
                 "${OHOS_SDK_NATIVE}/../toolchains/taihe", gen_cmake_target
             )
+            self.emit_ani_include(gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
             self.emit_generated_sources(gen_cmake_target)
             self.emit_set_cpp_standard(gen_cmake_target)
@@ -36,6 +37,9 @@ class CMakeCodeGenerator:
             f")",
         ):
             gen_cmake_target.writeln(f"{runtime_path}")
+        gen_cmake_target.writeln(
+            f'string(REPLACE "\\\\" "/" TAIHE_RUNTIME_DIR ${{TAIHE_RUNTIME_DIR}})'
+        )
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_INCLUDE",
             f")",
@@ -50,6 +54,16 @@ class CMakeCodeGenerator:
                 f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/object.c",
                 f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/runtime.cpp",
             )
+
+    def emit_ani_include(self, gen_cmake_target: CMakeWriter):
+        with gen_cmake_target.indented(
+            f"set(ANI_INCLUDE",
+            f")",
+        ):
+            gen_cmake_target.writeln(f"${{OHOS_SDK_NATIVE}}/sysroot/usr/include/ani")
+        gen_cmake_target.writeln(
+            f'string(REPLACE "\\\\" "/" ANI_INCLUDE ${{ANI_INCLUDE}})'
+        )
 
     def emit_generated_includes(self, gen_cmake_target: CMakeWriter):
         with gen_cmake_target.indented(

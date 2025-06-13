@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import ClassVar
 
 from taihe.driver.backend import Backend, BackendConfig
 from taihe.driver.contexts import CompilerInstance
@@ -8,7 +7,6 @@ from taihe.driver.contexts import CompilerInstance
 @dataclass
 class CMakeBridgeBackendConfig(BackendConfig):
     NAME = "cmake-user"
-    DEPS: ClassVar = ["abi-header"]
     # TODO: DEPS and self var
 
     """Use the original function name (instead of "camelCase") in exported ArkTS sources."""
