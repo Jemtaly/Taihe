@@ -56,7 +56,7 @@ public:
 };
 
 template<typename AniRefGuard>
-struct is_same_impl_t<
+struct same_impl_t<
     AniRefGuard, std::enable_if_t<std::is_base_of_v<sref_guard, AniRefGuard>>> {
   bool operator()(data_view lhs, data_view rhs) const {
     auto lhs_as_ani = ::taihe::platform::ani::weak::AniObject(lhs);

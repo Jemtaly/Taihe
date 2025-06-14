@@ -19,7 +19,7 @@ public:
 
   bool addCallback(::taihe::callback_view<taihe::string()> new_cb) {
     for (auto const &old_cb : callbacks_) {
-      if (taihe::is_same(old_cb, new_cb)) {
+      if (old_cb == new_cb) {
         std::cerr << "Callback already exists." << std::endl;
         return false;
       }
@@ -30,7 +30,7 @@ public:
 
   bool removeCallback(::taihe::callback_view<taihe::string()> cb) {
     for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it) {
-      if (taihe::is_same(*it, cb)) {
+      if (*it == cb) {
         callbacks_.erase(it);
         return true;
       }

@@ -9,6 +9,7 @@
 #include <unordered_set>
 
 #include "rgb.base.user.hpp"
+#include "rgb.show.IShape.proj.1.hpp"
 #include "rgb.show.user.hpp"
 
 #include "taihe/string.hpp"
@@ -150,20 +151,18 @@ void testUnion() {
 void testInterfaceCall() {
   IShowable colored_rect = makeColoredRectangle("Rect", color_yellow, 5, 5);
 
-  Tester::assert(
-      is_same(weak::IColorable(colored_rect)->getColor(), color_yellow),
-      "Colored Rectangle should have color %s, got %s",
-      toString(color_yellow).c_str(),
-      toString(weak::IColorable(colored_rect)->getColor()).c_str());
+  Tester::assert(weak::IColorable(colored_rect)->getColor() == color_yellow,
+                 "Colored Rectangle should have color %s, got %s",
+                 toString(color_yellow).c_str(),
+                 toString(weak::IColorable(colored_rect)->getColor()).c_str());
 
   copyColor(colored_rect,
             make_holder<UserType, IColorable>("Circ", color_114514));
 
-  Tester::assert(
-      is_same(weak::IColorable(colored_rect)->getColor(), color_114514),
-      "Colored Rectangle should have color %s, got %s",
-      toString(color_114514).c_str(),
-      toString(weak::IColorable(colored_rect)->getColor()).c_str());
+  Tester::assert(weak::IColorable(colored_rect)->getColor() == color_114514,
+                 "Colored Rectangle should have color %s, got %s",
+                 toString(color_114514).c_str(),
+                 toString(weak::IColorable(colored_rect)->getColor()).c_str());
 }
 
 void testInterfaceCast() {
@@ -200,15 +199,15 @@ void testArray() {
                  res.size());
 
   for (size_t i = 0; i < n; i++) {
-    Tester::assert(is_same(src[i], y), "src[%zu] should be %s, got %s", i,
+    Tester::assert(src[i] == y, "src[%zu] should be %s, got %s", i,
                    y->getId().c_str(), src[i]->getId().c_str());
-    Tester::assert(is_same(dst[i], y), "dst[%zu] should be %s, got %s", i,
+    Tester::assert(dst[i] == y, "dst[%zu] should be %s, got %s", i,
                    y->getId().c_str(), dst[i]->getId().c_str());
-    Tester::assert(is_same(res[i], x), "res[%zu] should be %s, got %s", i,
+    Tester::assert(res[i] == x, "res[%zu] should be %s, got %s", i,
                    x->getId().c_str(), res[i]->getId().c_str());
   }
   for (size_t i = n; i < m; i++) {
-    Tester::assert(is_same(dst[i], x), "dst[%zu] should be %s, got %s", i,
+    Tester::assert(dst[i] == x, "dst[%zu] should be %s, got %s", i,
                    x->getId().c_str(), dst[i]->getId().c_str());
   }
 }
@@ -325,24 +324,24 @@ void testSet() {
   }
 }
 
+struct MyCallback {
+  string f;
+
+  MyCallback(string_view f) : f(f) {
+    std::cout << "Callback " << f << " made" << std::endl;
+  }
+
+  ~MyCallback() {
+    std::cout << "Callback " << f << " deleted" << std::endl;
+  }
+
+  string operator()(string_view a, string_view b) {
+    std::cout << "Callback " << f << " called" << std::endl;
+    return std::string(f) + "(" + a.c_str() + ", " + b.c_str() + ")";
+  }
+};
+
 void testCallback() {
-  struct MyCallback {
-    string f;
-
-    MyCallback(string_view f) : f(f) {
-      std::cout << "Callback " << f << " made" << std::endl;
-    }
-
-    ~MyCallback() {
-      std::cout << "Callback " << f << " deleted" << std::endl;
-    }
-
-    string operator()(string_view a, string_view b) {
-      std::cout << "Callback " << f << " called" << std::endl;
-      return std::string(f) + "(" + a.c_str() + ", " + b.c_str() + ")";
-    }
-  };
-
   auto curried = currying(
       make_holder<MyCallback, callback<string(string_view, string_view)>>("f"));
   auto f = curried("abc");
@@ -356,19 +355,6 @@ void testCallback() {
   auto expected_y = MyCallback("f")("abc", "456");
   Tester::assert(y == expected_y, "y should be %s, got %s", expected_y.c_str(),
                  y.c_str());
-}
-
-void testMemoryLeak() {
-  size_t remaining = 0;
-
-  for (auto *user : UserType::registry) {
-    std::cout << user->getId() << " is still alive" << std::endl;
-    remaining++;
-  }
-
-  Tester::assert(remaining == 0,
-                 "Memory leak detected: %zu UserType objects are still alive",
-                 remaining);
 }
 
 struct AutoCompareType {
@@ -396,7 +382,7 @@ struct UserCompareType {
 };
 
 template<>
-struct taihe::is_same_impl_t<UserCompareType> {
+struct taihe::same_impl_t<UserCompareType> {
   bool operator()(data_view lhs, data_view rhs) const {
     return weak::IBase(lhs)->getId() == weak::IBase(rhs)->getId();
   }
@@ -440,6 +426,68 @@ void testCompare() {
                  user_compare_map.size());
 }
 
+void testHashAndSame() {
+  auto a = make_holder<UserType, IBase>("a");
+  std::cout << "Hash of a: " << std::hash<IBase>()(a) << std::endl;
+  std::cout << "Comparing a with itself: " << std::boolalpha << (a == a)
+            << std::endl;
+
+  taihe::array<IBase> arr = {a, a, a};
+  std::cout << "Hash of array with three a's: "
+            << std::hash<array<IBase>>()(arr) << std::endl;
+  std::cout << "Comparing array with three a's with itself: " << std::boolalpha
+            << (arr == arr) << std::endl;
+
+  taihe::optional<IBase> opt(std::in_place, a);
+  std::cout << "Hash of optional with a: " << std::hash<optional<IBase>>()(opt)
+            << std::endl;
+  std::cout << "Comparing optional with a with itself: " << std::boolalpha
+            << (opt == opt) << std::endl;
+
+  taihe::vector<IBase> vec;
+  vec.push_back(a);
+  std::cout << "Hash of vector with a: " << std::hash<vector<IBase>>()(vec)
+            << std::endl;
+  std::cout << "Comparing vector with a with itself: " << std::boolalpha
+            << (vec == vec) << std::endl;
+
+  taihe::set<IBase> s;
+  s.emplace(a);
+  std::cout << "Hash of set with a: " << std::hash<set<IBase>>()(s)
+            << std::endl;
+  std::cout << "Comparing set with a with itself: " << std::boolalpha
+            << (s == s) << std::endl;
+
+  taihe::map<IBase, IBase> m;
+  m.emplace(a, a);
+  std::cout << "Hash of map with a: " << std::hash<map<IBase, IBase>>()(m)
+            << std::endl;
+  std::cout << "Comparing map with a with itself: " << std::boolalpha
+            << (m == m) << std::endl;
+
+  taihe::callback<string(string_view, string_view)> cb(
+      make_holder<MyCallback, callback<string(string_view, string_view)>>(
+          "cb"));
+  std::cout << "Hash of callback: "
+            << std::hash<callback<string(string_view, string_view)>>()(cb)
+            << std::endl;
+  std::cout << "Comparing callback with itself: " << std::boolalpha
+            << (cb == cb) << std::endl;
+}
+
+void testMemoryLeak() {
+  size_t remaining = 0;
+
+  for (auto *user : UserType::registry) {
+    std::cout << user->getId() << " is still alive" << std::endl;
+    remaining++;
+  }
+
+  Tester::assert(remaining == 0,
+                 "Memory leak detected: %zu UserType objects are still alive",
+                 remaining);
+}
+
 int main() {
   Tester tester;
 
@@ -452,8 +500,9 @@ int main() {
   tester.run("testMap", testMap);
   tester.run("testSet", testSet);
   tester.run("testCallback", testCallback);
-  tester.run("testMemoryLeak", testMemoryLeak);
   tester.run("testCompare", testCompare);
+  tester.run("testHashAndSame", testHashAndSame);
+  tester.run("testMemoryLeak", testMemoryLeak);
 
   return tester.report();
 }
