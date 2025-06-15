@@ -50,6 +50,14 @@ class CompilerInvocation:
     out_dir: Path | None = None
     out_debug_level: DebugLevel = DebugLevel.NONE
     backends: list[BackendConfig] = field(default_factory=lambda: [])
+    output_manager: OutputManager | None = None
+
+    def __post_init__(self):
+        if self.output_manager is None:
+            self.output_manager = OutputManager(
+                dst_dir=self.out_dir,
+                debug_level=self.out_debug_level,
+            )
 
     # TODO: refactor this to a more structured way
     sts_keep_name: bool = False
@@ -84,11 +92,8 @@ class CompilerInstance:
         self.analysis_manager = AnalysisManager(invocation, self.diagnostics_manager)
         self.source_manager = SourceManager()
         self.package_group = PackageGroup()
-        self.output_manager = OutputManager(
-            self.invocation.out_dir,
-            self.invocation.out_debug_level,
-            {},
-        )
+        assert isinstance(self.invocation.output_manager, OutputManager)
+        self.output_manager = self.invocation.output_manager
         self.backends = [conf.construct(self) for conf in invocation.backends]
 
     ##########################
@@ -171,6 +176,8 @@ class CompilerInstance:
 
         for b in self.backends:
             b.generate()
+
+        self.output_manager.post_generate(self.analysis_manager)
 
     def run(self):
         self.scan()

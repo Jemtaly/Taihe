@@ -2,9 +2,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from taihe.codegen.cmake import CMakeBridgeBackendConfig
+from taihe.codegen.cmake import CMakeOutputManager
 from taihe.driver.backend import BackendConfig, BackendRegistry
 from taihe.driver.contexts import CompilerInstance, CompilerInvocation
+from taihe.utils.outputs import OutputManager
 
 
 def main():
@@ -55,17 +56,28 @@ def main():
         default=[],
         help="additional code generation configuration",
     )
+    parser.add_argument(
+        "--cmake",
+        action="store_true",
+        help="generate cmake for generated files",
+    )
     args = parser.parse_args()
 
     resolved_backends: list[BackendConfig] = []
     for b in registry.collect_required_backends(args.backends):
         resolved_backends.append(b())
 
+    if args.cmake:
+        om = CMakeOutputManager(Path(args.dst_dir))
+    else:
+        om = OutputManager(Path(args.dst_dir))
+
     invocation = CompilerInvocation(
         src_files=args.src_files,
         src_dirs=args.src_dirs,
         out_dir=args.dst_dir,
         backends=resolved_backends,
+        output_manager=om,
     )
 
     for config in args.config:

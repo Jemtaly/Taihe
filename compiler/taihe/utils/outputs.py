@@ -14,6 +14,8 @@ from typing import TextIO
 
 from typing_extensions import Self
 
+from taihe.utils.analyses import AnalysisManager
+
 DEFAULT_INDENT = "    "  # Four spaces
 
 
@@ -82,6 +84,9 @@ class OutputManager:
 
     def get_files_by_kind(self, kind: FileKind) -> list[FileDescriptor]:
         return [desc for desc in self.files.values() if desc.kind == kind]
+
+    def post_generate(self, am: AnalysisManager) -> None:
+        pass
 
 
 class BaseWriter:

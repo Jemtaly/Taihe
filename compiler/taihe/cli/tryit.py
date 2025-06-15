@@ -12,10 +12,9 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-# TODO: Should it be introduced?
-from taihe.codegen.cmake import CMakeBridgeBackendConfig
+from taihe.codegen.cmake import CMakeOutputManager
 from taihe.driver.backend import BackendConfig
-from taihe.utils.outputs import DebugLevel
+from taihe.utils.outputs import DebugLevel, OutputManager
 
 # A lower value means more verbosity
 TRACE_CONCISE = logging.DEBUG - 1
@@ -356,7 +355,7 @@ class BuildSystem(BuildUtils):
 
         registry = BackendRegistry()
         registry.register_all()
-        backend_names = ["cpp-author", "cmake-user"]
+        backend_names = ["cpp-author"]
         if self.user == UserType.STS:
             backend_names.append("ani-bridge")
         if self.user == UserType.CPP:
@@ -364,12 +363,16 @@ class BuildSystem(BuildUtils):
         if self.should_run_pretty_print:
             backend_names.append("pretty-print")
         backends = registry.collect_required_backends(backend_names)
-        # TODO: backends sort
-        backends.append(CMakeBridgeBackendConfig)
 
         resolved_backends: list[BackendConfig] = []
         for b in backends:
             resolved_backends.append(b())
+
+        cmake_tag = True
+        if cmake_tag:
+            om = CMakeOutputManager(self.generated_dir)
+        else:
+            om = OutputManager(self.generated_dir)
 
         instance = CompilerInstance(
             CompilerInvocation(
@@ -377,6 +380,7 @@ class BuildSystem(BuildUtils):
                 out_dir=self.generated_dir,
                 out_debug_level=self.codegen_debug_level,
                 backends=resolved_backends,
+                output_manager=om,
                 sts_keep_name=self.sts_keep_name,
             )
         )

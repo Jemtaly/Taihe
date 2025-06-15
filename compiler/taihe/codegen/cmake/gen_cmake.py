@@ -1,7 +1,4 @@
 from taihe.codegen.cmake.writer import CMakeWriter
-from taihe.semantics.declarations import (
-    PackageGroup,
-)
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import FileKind, OutputManager
 
@@ -11,7 +8,7 @@ class CMakeCodeGenerator:
         self.om = om
         self.am = am
 
-    def generate(self, pg: PackageGroup):
+    def post_generate(self):
         gen_taihe_cmake_file = "taihe_generated.cmake"
         with CMakeWriter(
             self.om,

@@ -100,7 +100,6 @@ class BackendRegistry:
             CAuthorBackendConfig,
         )
         from taihe.codegen.ani import AniBridgeBackendConfig
-        from taihe.codegen.cmake import CMakeBridgeBackendConfig
         from taihe.codegen.cpp import (
             CppAuthorBackendConfig,
             CppCommonHeadersBackendConfig,
@@ -119,8 +118,6 @@ class BackendRegistry:
             CppUserHeadersBackendConfig,
             # ani
             AniBridgeBackendConfig,
-            # cmake
-            CMakeBridgeBackendConfig,
             # pretty print
             PrettyPrintBackendConfig,
         ]
