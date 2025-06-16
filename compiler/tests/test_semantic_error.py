@@ -1,5 +1,9 @@
-from taihe.driver.backend import BackendRegistry
-from taihe.driver.contexts import CompilerInstance, CompilerInvocation
+import pytest
+
+from taihe.driver.backend import BackendConfig, BackendRegistry
+from taihe.driver.contexts import CompilerInstance
+from taihe.semantics.declarations import PackageGroup
+from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import DiagBase, DiagnosticsManager
 from taihe.utils.exceptions import (
     AdhocError,
@@ -34,6 +38,8 @@ class SemanticTestCompilerInstance(CompilerInstance):
     def __init__(self, invocation: CompilerInvocation):
         super().__init__(invocation)
         self.test_buffers = []
+        self.backends = [conf.construct(self) for conf in backends]
+        self.output_manager = OutputManager()
 
     def add_source(self, pkg_name, source):
         self.test_buffers.append((pkg_name, source))

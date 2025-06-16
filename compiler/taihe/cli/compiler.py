@@ -67,10 +67,25 @@ def main():
     for b in registry.collect_required_backends(args.backends):
         resolved_backends.append(b())
 
+    current_file = Path(__file__).resolve()
+    # for_distribution
+    # TODO: unified runtime path.
+    taihe_root_dir = current_file.parents[5]
+    runtime_include_dir = taihe_root_dir / "include"
+    runtime_src_dir = taihe_root_dir / "src" / "taihe" / "runtime"
+
     if args.cmake:
-        om = CMakeOutputManager(Path(args.dst_dir))
+        om = CMakeOutputManager(
+            runtime_include_dir=runtime_include_dir,
+            runtime_src_dir=runtime_src_dir,
+            dst_dir=Path(args.dst_dir),
+        )
     else:
-        om = OutputManager(Path(args.dst_dir))
+        om = OutputManager(
+            runtime_include_dir=runtime_include_dir,
+            runtime_src_dir=runtime_src_dir,
+            dst_dir=Path(args.dst_dir),
+        )
 
     invocation = CompilerInvocation(
         src_files=args.src_files,

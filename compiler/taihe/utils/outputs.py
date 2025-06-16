@@ -63,6 +63,8 @@ class FileDescriptor:
 class OutputManager:
     """Manages the creation and saving of output files."""
 
+    runtime_include_dir: Path
+    runtime_src_dir: Path
     dst_dir: Path | None = None
     debug_level: DebugLevel = DebugLevel.NONE
     files: dict[str, FileDescriptor] = field(default_factory=dict[str, FileDescriptor])

@@ -370,17 +370,23 @@ class BuildSystem(BuildUtils):
 
         cmake_tag = True
         if cmake_tag:
-            om = CMakeOutputManager(self.generated_dir)
+            om = CMakeOutputManager(
+                runtime_include_dir=self.config.runtime_include_dir,
+                runtime_src_dir=self.config.runtime_src_dir,
+                dst_dir=self.generated_dir,
+            )
         else:
-            om = OutputManager(self.generated_dir)
+            om = OutputManager(
+                runtime_include_dir=self.config.runtime_include_dir,
+                runtime_src_dir=self.config.runtime_src_dir,
+                dst_dir=self.generated_dir,
+            )
 
         instance = CompilerInstance(
             CompilerInvocation(
-                src_dirs=[self.idl_dir, self.config.stdlib_dir],
-                out_dir=self.generated_dir,
-                out_debug_level=self.codegen_debug_level,
-                backends=resolved_backends,
                 output_manager=om,
+                src_dirs=[self.idl_dir, self.config.stdlib_dir],
+                backends=resolved_backends,
                 sts_keep_name=self.sts_keep_name,
             )
         )

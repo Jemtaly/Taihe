@@ -16,9 +16,7 @@ class CMakeCodeGenerator:
             FileKind.CMAKE,
         ) as gen_cmake_target:
             # TODO: input runtime path
-            self.emit_runtime_files_list(
-                "${OHOS_SDK_NATIVE}/../toolchains/taihe", gen_cmake_target
-            )
+            self.emit_runtime_files_list(gen_cmake_target)
             self.emit_generated_dir("${CMAKE_CURRENT_LIST_DIR}", gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
             self.emit_generated_sources(gen_cmake_target)
@@ -26,35 +24,40 @@ class CMakeCodeGenerator:
 
     def emit_runtime_files_list(
         self,
-        runtime_path: str,
         gen_cmake_target: CMakeWriter,
     ):
         with gen_cmake_target.indented(
-            f"if(NOT DEFINED TAIHE_RUNTIME_DIR)",
+            f"if(NOT DEFINED TAIHE_RUNTIME_INCLUDE_INNER)",
             f"endif()",
         ):
             with gen_cmake_target.indented(
-                f"set(TAIHE_RUNTIME_DIR",
+                f"set(TAIHE_RUNTIME_INCLUDE_INNER",
                 f")",
             ):
-                gen_cmake_target.writeln(f"{runtime_path}")
-        gen_cmake_target.writeln(
-            f'string(REPLACE "\\\\" "/" TAIHE_RUNTIME_DIR ${{TAIHE_RUNTIME_DIR}})'
-        )
+                gen_cmake_target.writeln(f"{self.om.runtime_include_dir}")
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_RUNTIME_SRC_INNER)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_RUNTIME_SRC_INNER",
+                f")",
+            ):
+                gen_cmake_target.writelns(
+                    f"{self.om.runtime_src_dir}/string.c",
+                    f"{self.om.runtime_src_dir}/object.c",
+                    f"{self.om.runtime_src_dir}/runtime.cpp",
+                )
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_INCLUDE",
             f")",
         ):
-            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_DIR}}/include")
+            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_INCLUDE_INNER}}")
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_SRC",
             f")",
         ):
-            gen_cmake_target.writelns(
-                f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/string.c",
-                f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/object.c",
-                f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/runtime.cpp",
-            )
+            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_SRC_INNER}}")
 
     def emit_generated_dir(
         self,
@@ -126,7 +129,7 @@ class CMakeCodeGenerator:
             gen_cmake_target.writelns(
                 f"${{TAIHE_GEN_CXX_SRC}}",
                 # Add taihe runtime c++ files
-                f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/runtime.cpp",
+                f"{self.om.runtime_src_dir}/runtime.cpp",
                 # setting
                 f"PROPERTIES",
                 f"LANGUAGE CXX",

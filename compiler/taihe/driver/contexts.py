@@ -28,7 +28,7 @@ from taihe.semantics.declarations import PackageGroup
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import ConsoleDiagnosticsManager, DiagnosticsManager, Level
 from taihe.utils.exceptions import AdhocNote
-from taihe.utils.outputs import DebugLevel, OutputManager
+from taihe.utils.outputs import OutputManager
 from taihe.utils.sources import SourceFile, SourceLocation, SourceManager
 
 
@@ -46,18 +46,14 @@ class CompilerInvocation:
     """
 
     src_files: list[Path] = field(default_factory=lambda: [])
+    output_manager: OutputManager
     src_dirs: list[Path] = field(default_factory=lambda: [])
-    out_dir: Path | None = None
-    out_debug_level: DebugLevel = DebugLevel.NONE
     backends: list[BackendConfig] = field(default_factory=lambda: [])
-    output_manager: OutputManager | None = None
 
-    def __post_init__(self):
-        if self.output_manager is None:
-            self.output_manager = OutputManager(
-                dst_dir=self.out_dir,
-                debug_level=self.out_debug_level,
-            )
+    # TODO: refactor this to a more structured way
+    sts_keep_name: bool = False
+    arkts_module_prefix: str | None = None
+    arkts_path_prefix: str | None = None
 
     # TODO: refactor this to a more structured way
     sts_keep_name: bool = False
@@ -92,7 +88,6 @@ class CompilerInstance:
         self.analysis_manager = AnalysisManager(invocation, self.diagnostics_manager)
         self.source_manager = SourceManager()
         self.package_group = PackageGroup()
-        assert isinstance(self.invocation.output_manager, OutputManager)
         self.output_manager = self.invocation.output_manager
         self.backends = [conf.construct(self) for conf in invocation.backends]
 
@@ -168,7 +163,7 @@ class CompilerInstance:
             b.validate()
 
     def generate(self):
-        if not self.invocation.out_dir:
+        if not self.invocation.output_manager.dst_dir:
             return
 
         if self.diagnostics_manager.current_max_level >= Level.ERROR:
