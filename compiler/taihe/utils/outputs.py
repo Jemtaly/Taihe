@@ -242,12 +242,6 @@ class FileWriter(BaseWriter):
         if not exc_type and self._path is not None:
             self.save_as(self._path)
 
-            desc = FileDescriptor(
-                relative_path=self._relative_path,
-                kind=self.file_kind,
-            )
-            self.om.register(desc)
-
         # Propagate the exception if exists
         return False
 
@@ -264,6 +258,12 @@ class FileWriter(BaseWriter):
             self.write_prologue(dst)
             dst.write(self._out.getvalue())
             self.write_epilogue(dst)
+        
+        desc = FileDescriptor(
+            relative_path=self._relative_path,
+            kind=self.file_kind,
+        )
+        self.om.register(desc)
 
 
 def _format_frame(f: FrameType) -> str:
