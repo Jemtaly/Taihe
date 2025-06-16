@@ -19,6 +19,7 @@ class CMakeCodeGenerator:
             self.emit_runtime_files_list(
                 "${OHOS_SDK_NATIVE}/../toolchains/taihe", gen_cmake_target
             )
+            self.emit_generated_dir("${CMAKE_CURRENT_LIST_DIR}", gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
             self.emit_generated_sources(gen_cmake_target)
             self.emit_set_cpp_standard(gen_cmake_target)
@@ -29,10 +30,14 @@ class CMakeCodeGenerator:
         gen_cmake_target: CMakeWriter,
     ):
         with gen_cmake_target.indented(
-            f"set(TAIHE_RUNTIME_DIR",
-            f")",
+            f"if(NOT DEFINED TAIHE_RUNTIME_DIR)",
+            f"endif()",
         ):
-            gen_cmake_target.writeln(f"{runtime_path}")
+            with gen_cmake_target.indented(
+                f"set(TAIHE_RUNTIME_DIR",
+                f")",
+            ):
+                gen_cmake_target.writeln(f"{runtime_path}")
         gen_cmake_target.writeln(
             f'string(REPLACE "\\\\" "/" TAIHE_RUNTIME_DIR ${{TAIHE_RUNTIME_DIR}})'
         )
@@ -51,12 +56,27 @@ class CMakeCodeGenerator:
                 f"${{TAIHE_RUNTIME_DIR}}/src/taihe/runtime/runtime.cpp",
             )
 
+    def emit_generated_dir(
+        self,
+        generated_path: str,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_GEN_DIR)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_GEN_DIR",
+                f")",
+            ):
+                gen_cmake_target.writeln(f"{generated_path}")
+
     def emit_generated_includes(self, gen_cmake_target: CMakeWriter):
         with gen_cmake_target.indented(
             f"set(TAIHE_GEN_INCLUDE",
             f")",
         ):
-            gen_cmake_target.writeln(f"${{CMAKE_CURRENT_LIST_DIR}}/include")
+            gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/include")
 
     def emit_generated_sources(
         self,
@@ -72,9 +92,7 @@ class CMakeCodeGenerator:
             f")",
         ):
             for file in self.om.get_files_by_kind(FileKind.C_SOURCE):
-                gen_cmake_target.writeln(
-                    f"${{CMAKE_CURRENT_LIST_DIR}}/{file.relative_path}"
-                )
+                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
 
     def emit_generated_cpp_sources(self, gen_cmake_target: CMakeWriter):
         with gen_cmake_target.indented(
@@ -82,9 +100,7 @@ class CMakeCodeGenerator:
             f")",
         ):
             for file in self.om.get_files_by_kind(FileKind.CPP_SOURCE):
-                gen_cmake_target.writeln(
-                    f"${{CMAKE_CURRENT_LIST_DIR}}/{file.relative_path}"
-                )
+                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
 
     def emit_generated_merge_source(
         self,
