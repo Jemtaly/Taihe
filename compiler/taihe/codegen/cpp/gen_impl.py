@@ -141,7 +141,7 @@ class CppImplSourcesGenerator:
         with CSourceWriter(
             self.om,
             f"temp/{pkg_cpp_impl_info.source}",
-            FileKind.TEMP,
+            FileKind.TEMPLATE,
         ) as pkg_cpp_impl_target:
             pkg_cpp_impl_target.add_include(pkg_cpp_info.header)
             pkg_cpp_impl_target.add_include(pkg_cpp_impl_info.header)

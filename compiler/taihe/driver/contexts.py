@@ -28,7 +28,7 @@ from taihe.semantics.declarations import PackageGroup
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.diagnostics import ConsoleDiagnosticsManager, DiagnosticsManager, Level
 from taihe.utils.exceptions import AdhocNote
-from taihe.utils.outputs import OutputManager
+from taihe.utils.outputs import DebugLevel, OutputManager
 from taihe.utils.sources import SourceFile, SourceLocation, SourceManager
 
 
@@ -46,8 +46,9 @@ class CompilerInvocation:
     """
 
     src_files: list[Path] = field(default_factory=lambda: [])
-    output_manager: OutputManager
     src_dirs: list[Path] = field(default_factory=lambda: [])
+    out_dir: Path | None = None
+    out_debug_level: DebugLevel = DebugLevel.NONE
     backends: list[BackendConfig] = field(default_factory=lambda: [])
 
     # TODO: refactor this to a more structured way
@@ -82,13 +83,13 @@ class CompilerInstance:
 
     output_manager: OutputManager
 
-    def __init__(self, invocation: CompilerInvocation):
+    def __init__(self, invocation: CompilerInvocation, output_manager: OutputManager):
         self.invocation = invocation
         self.diagnostics_manager = ConsoleDiagnosticsManager()
         self.analysis_manager = AnalysisManager(invocation, self.diagnostics_manager)
         self.source_manager = SourceManager()
         self.package_group = PackageGroup()
-        self.output_manager = self.invocation.output_manager
+        self.output_manager = output_manager
         self.backends = [conf.construct(self) for conf in invocation.backends]
 
     ##########################
@@ -163,7 +164,7 @@ class CompilerInstance:
             b.validate()
 
     def generate(self):
-        if not self.invocation.output_manager.dst_dir:
+        if not self.output_manager.dst_dir:
             return
 
         if self.diagnostics_manager.current_max_level >= Level.ERROR:
@@ -172,7 +173,7 @@ class CompilerInstance:
         for b in self.backends:
             b.generate()
 
-        self.output_manager.post_generate(self.analysis_manager)
+        self.output_manager.post_generate()
 
     def run(self):
         self.scan()

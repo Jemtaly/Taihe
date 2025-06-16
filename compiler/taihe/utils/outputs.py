@@ -3,6 +3,7 @@
 import os
 import os.path
 import sys
+from collections import defaultdict
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -12,9 +13,7 @@ from pathlib import Path
 from types import FrameType, TracebackType
 from typing import TextIO
 
-from typing_extensions import Self
-
-from taihe.utils.analyses import AnalysisManager
+from typing_extensions import Self, override
 
 DEFAULT_INDENT = "    "  # Four spaces
 
@@ -49,7 +48,7 @@ class FileKind(str, Enum):
     CPP_SOURCE = "cpp_source"
     ETS = "ets"
     CMAKE = "cmake"
-    TEMP = "temp"
+    TEMPLATE = "template"
 
 
 @dataclass
@@ -63,11 +62,12 @@ class FileDescriptor:
 class OutputManager:
     """Manages the creation and saving of output files."""
 
-    runtime_include_dir: Path
-    runtime_src_dir: Path
     dst_dir: Path | None = None
     debug_level: DebugLevel = DebugLevel.NONE
     files: dict[str, FileDescriptor] = field(default_factory=dict[str, FileDescriptor])
+    files_by_kind: dict[FileKind, list[FileDescriptor]] = field(
+        default_factory=lambda: defaultdict(list)
+    )
 
     def register(self, desc: FileDescriptor):
         if desc.relative_path in self.files:
@@ -80,14 +80,15 @@ class OutputManager:
             return
 
         self.files[desc.relative_path] = desc
+        self.files_by_kind[desc.kind].append(desc)
 
     def get_all_files(self) -> list[FileDescriptor]:
         return list(self.files.values())
 
     def get_files_by_kind(self, kind: FileKind) -> list[FileDescriptor]:
-        return [desc for desc in self.files.values() if desc.kind == kind]
+        return self.files_by_kind.get(kind, [])
 
-    def post_generate(self, am: AnalysisManager) -> None:
+    def post_generate(self) -> None:
         pass
 
 
@@ -277,3 +278,175 @@ def _format_frame(f: FrameType) -> str:
     base_format = f"CODEGEN-DEBUG: {f.f_code.co_name} in {file_name}:{f.f_lineno}"
 
     return base_format
+
+
+#################################
+# Cmake code generation related #
+#################################
+
+
+class CMakeWriter(FileWriter):
+    """Represents a CMake file."""
+
+    @override
+    def __init__(
+        self,
+        om: OutputManager,
+        path: str,
+        file_kind: FileKind,
+        indent_unit: str = DEFAULT_INDENT,
+    ):
+        super().__init__(
+            om,
+            path=path,
+            file_kind=file_kind,
+            default_indent=indent_unit,
+            comment_prefix="# ",
+        )
+        self.headers: dict[str, None] = {}
+
+
+class CMakeOutputManager(OutputManager):
+    runtime_include_dir: Path
+    runtime_src_dir: Path
+
+    def __init__(self, dst_dir: Path, runtime_include_dir: Path, runtime_src_dir: Path):
+        super().__init__(dst_dir)
+        self.runtime_include_dir = runtime_include_dir
+        self.runtime_src_dir = runtime_src_dir
+
+    @override
+    def post_generate(self):
+        gen_taihe_cmake_file = "TaiheGenerated.cmake"
+        with CMakeWriter(
+            self,
+            f"{gen_taihe_cmake_file}",
+            FileKind.CMAKE,
+        ) as gen_cmake_target:
+            # TODO: input runtime path
+            self.emit_runtime_files_list(gen_cmake_target)
+            self.emit_generated_dir("${CMAKE_CURRENT_LIST_DIR}", gen_cmake_target)
+            self.emit_generated_includes(gen_cmake_target)
+            self.emit_generated_sources(gen_cmake_target)
+            self.emit_set_cpp_standard(gen_cmake_target)
+
+    def emit_runtime_files_list(
+        self,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_RUNTIME_INCLUDE_INNER)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_RUNTIME_INCLUDE_INNER",
+                f")",
+            ):
+                gen_cmake_target.writeln(f"{self.runtime_include_dir}")
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_RUNTIME_SRC_INNER)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_RUNTIME_SRC_INNER",
+                f")",
+            ):
+                all_runtime_source_files = [
+                    str(p.resolve())
+                    for p in self.runtime_src_dir.iterdir()
+                    if p.is_file()
+                ]
+                for runtime_source_file in all_runtime_source_files:
+                    gen_cmake_target.writeln(f"{runtime_source_file}")
+        with gen_cmake_target.indented(
+            f"set(TAIHE_RUNTIME_INCLUDE",
+            f")",
+        ):
+            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_INCLUDE_INNER}}")
+        with gen_cmake_target.indented(
+            f"set(TAIHE_RUNTIME_SRC",
+            f")",
+        ):
+            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_SRC_INNER}}")
+
+    def emit_generated_dir(
+        self,
+        generated_path: str,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_GEN_DIR)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_GEN_DIR",
+                f")",
+            ):
+                gen_cmake_target.writeln(f"{generated_path}")
+
+    def emit_generated_includes(self, gen_cmake_target: CMakeWriter):
+        with gen_cmake_target.indented(
+            f"set(TAIHE_GEN_INCLUDE",
+            f")",
+        ):
+            gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/include")
+
+    def emit_generated_sources(
+        self,
+        gen_cmake_target: CMakeWriter,
+    ):
+        self.emit_generated_c_sources(gen_cmake_target)
+        self.emit_generated_cpp_sources(gen_cmake_target)
+        self.emit_generated_merge_source(gen_cmake_target)
+
+    def emit_generated_c_sources(self, gen_cmake_target: CMakeWriter):
+        with gen_cmake_target.indented(
+            f"set(TAIHE_GEN_C_SRC",
+            f")",
+        ):
+            for file in self.get_files_by_kind(FileKind.C_SOURCE):
+                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
+
+    def emit_generated_cpp_sources(self, gen_cmake_target: CMakeWriter):
+        with gen_cmake_target.indented(
+            f"set(TAIHE_GEN_CXX_SRC",
+            f")",
+        ):
+            for file in self.get_files_by_kind(FileKind.CPP_SOURCE):
+                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
+
+    def emit_generated_merge_source(
+        self,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"set(TAIHE_GEN_SRC",
+            f")",
+        ):
+            gen_cmake_target.writelns(
+                f"${{TAIHE_GEN_C_SRC}}",
+                f"${{TAIHE_GEN_CXX_SRC}}",
+            )
+
+    def emit_set_cpp_standard(
+        self,
+        gen_cmake_target: CMakeWriter,
+    ):
+        with gen_cmake_target.indented(
+            f"set_source_files_properties(",
+            f")",
+        ):
+            runtime_cpp_files = [
+                str(p.resolve())
+                for p in self.runtime_src_dir.rglob("*.cpp")
+                if p.is_file()
+            ]
+            for runtime_cpp_file in runtime_cpp_files:
+                gen_cmake_target.writeln(f"{runtime_cpp_file}")
+            gen_cmake_target.writelns(
+                f"${{TAIHE_GEN_CXX_SRC}}",
+                # setting
+                f"PROPERTIES",
+                f"LANGUAGE CXX",
+                f'COMPILE_FLAGS "-std=c++17"',
+            )

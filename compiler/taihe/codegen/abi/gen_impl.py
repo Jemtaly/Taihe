@@ -96,7 +96,7 @@ class CImplSourcesGenerator:
         with CSourceWriter(
             self.om,
             f"temp/{pkg_c_impl_info.source}",
-            FileKind.TEMP,
+            FileKind.TEMPLATE,
         ) as pkg_c_impl_target:
             pkg_c_impl_target.add_include(pkg_c_impl_info.header)
             for func in pkg.functions:

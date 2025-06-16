@@ -55,7 +55,7 @@ class ANICodeGenerator:
         with CSourceWriter(
             self.om,
             f"src/{constructor_file}",
-            FileKind.TEMP,
+            FileKind.TEMPLATE,
         ) as constructor_target:
             constructor_target.add_include("taihe/platform/ani.hpp")
             with constructor_target.indented(

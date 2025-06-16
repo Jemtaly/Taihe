@@ -1,11 +1,11 @@
 import argparse
 import sys
+from functools import partial
 from pathlib import Path
 
-from taihe.codegen.cmake import CMakeOutputManager
 from taihe.driver.backend import BackendConfig, BackendRegistry
 from taihe.driver.contexts import CompilerInstance, CompilerInvocation
-from taihe.utils.outputs import OutputManager
+from taihe.utils.outputs import CMakeOutputManager, OutputManager
 
 
 def main():
@@ -74,18 +74,16 @@ def main():
     runtime_include_dir = taihe_root_dir / "include"
     runtime_src_dir = taihe_root_dir / "src" / "taihe" / "runtime"
 
-    if args.cmake:
-        om = CMakeOutputManager(
+    output_manager_factory = (
+        partial(
+            CMakeOutputManager,
             runtime_include_dir=runtime_include_dir,
             runtime_src_dir=runtime_src_dir,
-            dst_dir=Path(args.dst_dir),
         )
-    else:
-        om = OutputManager(
-            runtime_include_dir=runtime_include_dir,
-            runtime_src_dir=runtime_src_dir,
-            dst_dir=Path(args.dst_dir),
-        )
+        if args.cmake
+        else OutputManager
+    )
+    om = output_manager_factory(dst_dir=Path(args.dst_dir))
 
     invocation = CompilerInvocation(
         src_files=args.src_files,
@@ -106,7 +104,7 @@ def main():
         else:
             raise ValueError(f"unknown codegen config {k!r}")
 
-    instance = CompilerInstance(invocation)
+    instance = CompilerInstance(invocation, om)
     if not instance.run():
         return -1
     return 0
