@@ -6,12 +6,12 @@ import sys
 from collections import defaultdict
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
 from pathlib import Path
 from types import FrameType, TracebackType
-from typing import TextIO
+from typing import Any, TextIO
 
 from typing_extensions import Self, override
 
@@ -58,16 +58,24 @@ class FileDescriptor:
     # TODO: we may need to know which backend the file belongs to
 
 
-@dataclass
 class OutputManager:
     """Manages the creation and saving of output files."""
 
+    files: dict[str, FileDescriptor]
+    files_by_kind: dict[FileKind, list[FileDescriptor]]
     dst_dir: Path | None = None
     debug_level: DebugLevel = DebugLevel.NONE
-    files: dict[str, FileDescriptor] = field(default_factory=dict[str, FileDescriptor])
-    files_by_kind: dict[FileKind, list[FileDescriptor]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
+
+    def __init__(
+        self,
+        dst_dir: Path | None = None,
+        debug_level: DebugLevel = DebugLevel.NONE,
+        **kwargs: Any,
+    ):
+        self.dst_dir = dst_dir
+        self.debug_level = debug_level
+        self.files: dict[str, FileDescriptor] = {}
+        self.files_by_kind: dict[FileKind, list[FileDescriptor]] = defaultdict(list)
 
     def register(self, desc: FileDescriptor):
         if desc.relative_path in self.files:
@@ -258,7 +266,7 @@ class FileWriter(BaseWriter):
             self.write_prologue(dst)
             dst.write(self._out.getvalue())
             self.write_epilogue(dst)
-        
+
         desc = FileDescriptor(
             relative_path=self._relative_path,
             kind=self.file_kind,
@@ -310,8 +318,15 @@ class CMakeOutputManager(OutputManager):
     runtime_include_dir: Path
     runtime_src_dir: Path
 
-    def __init__(self, dst_dir: Path, runtime_include_dir: Path, runtime_src_dir: Path):
-        super().__init__(dst_dir)
+    def __init__(
+        self,
+        runtime_include_dir: Path,
+        runtime_src_dir: Path,
+        dst_dir: Path | None = None,
+        debug_level: DebugLevel = DebugLevel.NONE,
+        **kwargs: Any,
+    ):
+        super().__init__(dst_dir=dst_dir, debug_level=debug_level)
         self.runtime_include_dir = runtime_include_dir
         self.runtime_src_dir = runtime_src_dir
 

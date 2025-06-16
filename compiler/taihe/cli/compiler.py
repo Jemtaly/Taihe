@@ -1,6 +1,5 @@
 import argparse
 import sys
-from functools import partial
 from pathlib import Path
 
 from taihe.driver.backend import BackendConfig, BackendRegistry
@@ -74,16 +73,12 @@ def main():
     runtime_include_dir = taihe_root_dir / "include"
     runtime_src_dir = taihe_root_dir / "src" / "taihe" / "runtime"
 
-    output_manager_factory = (
-        partial(
-            CMakeOutputManager,
-            runtime_include_dir=runtime_include_dir,
-            runtime_src_dir=runtime_src_dir,
-        )
-        if args.cmake
-        else OutputManager
+    output_manager_factory = CMakeOutputManager if args.cmake else OutputManager
+    om = output_manager_factory(
+        dst_dir=Path(args.dst_dir),
+        runtime_include_dir=runtime_include_dir,
+        runtime_src_dir=runtime_src_dir,
     )
-    om = output_manager_factory(dst_dir=Path(args.dst_dir))
 
     invocation = CompilerInvocation(
         src_files=args.src_files,

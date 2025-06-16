@@ -10,7 +10,6 @@ import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
-from functools import partial
 from pathlib import Path
 
 from taihe.driver.backend import BackendConfig
@@ -370,16 +369,12 @@ class BuildSystem(BuildUtils):
 
         cmake_tag = True
 
-        output_manager_factory = (
-            partial(
-                CMakeOutputManager,
-                runtime_include_dir=self.config.runtime_include_dir,
-                runtime_src_dir=self.config.runtime_src_dir,
-            )
-            if cmake_tag
-            else OutputManager
+        output_manager_factory = CMakeOutputManager if cmake_tag else OutputManager
+        om = output_manager_factory(
+            dst_dir=self.generated_dir,
+            runtime_include_dir=self.config.runtime_include_dir,
+            runtime_src_dir=self.config.runtime_src_dir,
         )
-        om = output_manager_factory(dst_dir=self.generated_dir)
 
         instance = CompilerInstance(
             CompilerInvocation(
