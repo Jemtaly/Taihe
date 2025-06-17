@@ -373,7 +373,7 @@ class BuildSystem(BuildUtils):
         if self.cmake:
             output_config = CMakeOutputConfig(
                 dst_dir=Path(self.generated_dir),
-                runtime_include_dir= self.config.runtime_include_dir,
+                runtime_include_dir=self.config.runtime_include_dir,
                 runtime_src_dir=self.config.runtime_src_dir,
             )
         else:

@@ -55,7 +55,10 @@ class OutputConfig:
 
     def construct(self) -> "OutputManager":
         """Construct an OutputManager based on this configuration."""
-        return OutputManager(self)
+        return OutputManager(
+            dst_dir=self.dst_dir,
+            debug_level=self.debug_level,
+        )
 
 
 class OutputManager:
@@ -64,8 +67,16 @@ class OutputManager:
     files: dict[str, FileDescriptor]
     files_by_kind: dict[FileKind, list[FileDescriptor]]
 
-    def __init__(self, config: OutputConfig):
-        self.config = config
+    dst_dir: Path | None
+    debug_level: DebugLevel
+
+    def __init__(
+        self,
+        dst_dir: Path | None = None,
+        debug_level: DebugLevel = DebugLevel.NONE,
+    ):
+        self.dst_dir = dst_dir
+        self.debug_level = debug_level
         self.files: dict[str, FileDescriptor] = {}
         self.files_by_kind: dict[FileKind, list[FileDescriptor]] = defaultdict(list)
 
@@ -119,7 +130,10 @@ class BaseWriter:
         """Writes a newline character."""
         self._out.write("\n")
 
-    def writeln(self, line: str = ""):
+    def writeln(
+        self,
+        line: str = "",
+    ):
         """Writes a single-line string.
 
         Args:
@@ -144,7 +158,9 @@ class BaseWriter:
         """
         self._write_debug(skip=2)
         for line in lines:
-            self.writeln(line)
+            self.writeln(
+                line,
+            )
 
     def write_block(self, text_block: str):
         """Writes a potentially multi-line text block.
@@ -190,7 +206,9 @@ class BaseWriter:
         """
         self._write_debug(skip=3)
         if prologue is not None:
-            self.writeln(prologue)
+            self.writeln(
+                prologue,
+            )
         previous_indent = self._current_indent
         self._current_indent += self._default_indent if indent is None else indent
         try:
@@ -198,7 +216,9 @@ class BaseWriter:
         finally:
             self._current_indent = previous_indent
             if epilogue is not None:
-                self.writeln(epilogue)
+                self.writeln(
+                    epilogue,
+                )
 
     def _write_debug(self, *, skip: int):
         if self._debug_level == DebugLevel.NONE:
@@ -220,12 +240,10 @@ class FileWriter(BaseWriter):
             out=StringIO(),
             default_indent=default_indent,
             comment_prefix=comment_prefix,
-            debug_level=om.config.debug_level,
+            debug_level=om.debug_level,
         )
         self.om = om
-        self._path = (
-            None if om.config.dst_dir is None else om.config.dst_dir / relative_path
-        )
+        self._path = None if om.dst_dir is None else om.dst_dir / relative_path
         self._relative_path = relative_path
         self.file_kind = file_kind
 
@@ -323,19 +341,36 @@ class CMakeOutputConfig(OutputConfig):
         self.runtime_src_dir = runtime_src_dir
 
     def construct(self) -> "CMakeOutputManager":
-        return CMakeOutputManager(self)
+        return CMakeOutputManager(
+            dst_dir=self.dst_dir,
+            debug_level=self.debug_level,
+            runtime_include_dir=self.runtime_include_dir,
+            runtime_src_dir=self.runtime_src_dir,
+        )
 
 
 class CMakeOutputManager(OutputManager):
     """Manages the generation of CMake files for Taihe runtime."""
 
-    config: CMakeOutputConfig
+    runtime_include_dir: Path
+    runtime_src_files: list[Path]
 
     def __init__(
         self,
-        config: CMakeOutputConfig,
+        dst_dir: Path | None = None,
+        debug_level: DebugLevel = DebugLevel.NONE,
+        *,
+        runtime_include_dir: Path,
+        runtime_src_dir: Path,
     ):
-        super().__init__(config)
+        super().__init__(dst_dir=dst_dir, debug_level=debug_level)
+        self.runtime_include_dir = runtime_include_dir
+        self.runtime_c_src_files = [
+            p for p in runtime_src_dir.rglob("*.c") if p.is_file()
+        ]
+        self.runtime_cpp_src_files = [
+            p for p in runtime_src_dir.rglob("*.cpp") if p.is_file()
+        ]
 
     @override
     def post_generate(self):
@@ -363,32 +398,48 @@ class CMakeOutputManager(OutputManager):
                 f"set(TAIHE_RUNTIME_INCLUDE_INNER",
                 f")",
             ):
-                gen_cmake_target.writeln(f"{self.config.runtime_include_dir}")
+                gen_cmake_target.writelns(
+                    f"{self.runtime_include_dir}",
+                )
         with gen_cmake_target.indented(
-            f"if(NOT DEFINED TAIHE_RUNTIME_SRC_INNER)",
+            f"if(NOT DEFINED TAIHE_RUNTIME_C_SRC_INNER)",
             f"endif()",
         ):
             with gen_cmake_target.indented(
                 f"set(TAIHE_RUNTIME_SRC_INNER",
                 f")",
             ):
-                all_runtime_source_files = [
-                    str(p.resolve())
-                    for p in self.config.runtime_src_dir.iterdir()
-                    if p.is_file()
-                ]
-                for runtime_source_file in all_runtime_source_files:
-                    gen_cmake_target.writeln(f"{runtime_source_file}")
+                for runtime_src_file in self.runtime_c_src_files:
+                    gen_cmake_target.writelns(
+                        f"{runtime_src_file}",
+                    )
+        with gen_cmake_target.indented(
+            f"if(NOT DEFINED TAIHE_RUNTIME_CXX_SRC_INNER)",
+            f"endif()",
+        ):
+            with gen_cmake_target.indented(
+                f"set(TAIHE_RUNTIME_SRC_INNER",
+                f")",
+            ):
+                for runtime_src_file in self.runtime_cpp_src_files:
+                    gen_cmake_target.writelns(
+                        f"{runtime_src_file}",
+                    )
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_INCLUDE",
             f")",
         ):
-            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_INCLUDE_INNER}}")
+            gen_cmake_target.writelns(
+                f"${{TAIHE_RUNTIME_INCLUDE_INNER}}",
+            )
         with gen_cmake_target.indented(
             f"set(TAIHE_RUNTIME_SRC",
             f")",
         ):
-            gen_cmake_target.writeln(f"${{TAIHE_RUNTIME_SRC_INNER}}")
+            gen_cmake_target.writelns(
+                f"${{TAIHE_RUNTIME_C_SRC_INNER}}",
+                f"${{TAIHE_RUNTIME_CXX_SRC_INNER}}",
+            )
 
     def emit_generated_dir(
         self,
@@ -403,14 +454,18 @@ class CMakeOutputManager(OutputManager):
                 f"set(TAIHE_GEN_DIR",
                 f")",
             ):
-                gen_cmake_target.writeln(f"{generated_path}")
+                gen_cmake_target.writelns(
+                    f"{generated_path}",
+                )
 
     def emit_generated_includes(self, gen_cmake_target: CMakeWriter):
         with gen_cmake_target.indented(
             f"set(TAIHE_GEN_INCLUDE",
             f")",
         ):
-            gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/include")
+            gen_cmake_target.writelns(
+                f"${{TAIHE_GEN_DIR}}/include",
+            )
 
     def emit_generated_sources(
         self,
@@ -426,7 +481,9 @@ class CMakeOutputManager(OutputManager):
             f")",
         ):
             for file in self.get_files_by_kind(FileKind.C_SOURCE):
-                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
+                gen_cmake_target.writelns(
+                    f"${{TAIHE_GEN_DIR}}/{file.relative_path}",
+                )
 
     def emit_generated_cpp_sources(self, gen_cmake_target: CMakeWriter):
         with gen_cmake_target.indented(
@@ -434,7 +491,9 @@ class CMakeOutputManager(OutputManager):
             f")",
         ):
             for file in self.get_files_by_kind(FileKind.CPP_SOURCE):
-                gen_cmake_target.writeln(f"${{TAIHE_GEN_DIR}}/{file.relative_path}")
+                gen_cmake_target.writelns(
+                    f"${{TAIHE_GEN_DIR}}/{file.relative_path}",
+                )
 
     def emit_generated_merge_source(
         self,
@@ -457,13 +516,10 @@ class CMakeOutputManager(OutputManager):
             f"set_source_files_properties(",
             f")",
         ):
-            runtime_cpp_files = [
-                str(p.resolve())
-                for p in self.config.runtime_src_dir.rglob("*.cpp")
-                if p.is_file()
-            ]
-            for runtime_cpp_file in runtime_cpp_files:
-                gen_cmake_target.writeln(f"{runtime_cpp_file}")
+            for runtime_src_file in self.runtime_cpp_src_files:
+                gen_cmake_target.writelns(
+                    f"{runtime_src_file}",
+                )
             gen_cmake_target.writelns(
                 f"${{TAIHE_GEN_CXX_SRC}}",
                 # setting
