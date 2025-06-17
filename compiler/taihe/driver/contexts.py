@@ -56,11 +56,6 @@ class CompilerInvocation:
     arkts_module_prefix: str | None = None
     arkts_path_prefix: str | None = None
 
-    # TODO: refactor this to a more structured way
-    sts_keep_name: bool = False
-    arkts_module_prefix: str | None = None
-    arkts_path_prefix: str | None = None
-
 
 class CompilerInstance:
     """Helper class for storing key objects.
@@ -164,9 +159,6 @@ class CompilerInstance:
             b.validate()
 
     def generate(self):
-        if not self.output_manager.dst_dir:
-            return
-
         if self.diagnostics_manager.current_max_level >= Level.ERROR:
             return
 

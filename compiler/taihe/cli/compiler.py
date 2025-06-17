@@ -85,7 +85,6 @@ def main():
         src_dirs=args.src_dirs,
         out_dir=args.dst_dir,
         backends=resolved_backends,
-        output_manager=om,
     )
 
     for config in args.config:
