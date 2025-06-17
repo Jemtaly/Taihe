@@ -32,6 +32,14 @@ run-core-tests() {
     echo "Running core tests..."
     coverage run --parallel-mode --module pytest
 
+    # TODO: Will be deleted after cmake is merged into the full test
+    echo "Testing: ../test/cmake_test"
+    coverage run --parallel-mode ./run-test generate -u sts "../test/cmake_test" --cmake
+    cd ../test/cmake_test/
+    cmake -B build/generated \
+        -D EXTERNAL_INCLUDE=$(realpath ../../.panda_vm/package/ohos_arm64/include/plugins/ets/runtime/ani)
+    cmake --build build/generated
+
     # TODO: add conditional compilation and fix non-ani tests
     return
 
