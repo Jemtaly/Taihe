@@ -1,7 +1,5 @@
 """Manage output files."""
 
-import os
-import os.path
 import sys
 from collections import defaultdict
 from collections.abc import Generator
@@ -9,9 +7,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import StringIO
+from os import path, sep
 from pathlib import Path
 from types import FrameType, TracebackType
-from typing import Any, TextIO
+from typing import TextIO
 
 from typing_extensions import Self, override
 
@@ -33,14 +32,6 @@ class DebugLevel(Enum):
     """Besides CONSICE, also prints code snippet. Could be slow."""
 
 
-# @dataclass
-# class OutputConfig:
-#     """Manages the creation and saving of output files."""
-
-#     dst_dir: Path | None = None
-#     debug_level: DebugLevel = DebugLevel.NONE
-
-
 class FileKind(str, Enum):
     C_HEADER = "c_header"
     C_SOURCE = "c_source"
@@ -53,9 +44,18 @@ class FileKind(str, Enum):
 
 @dataclass
 class FileDescriptor:
-    relative_path: str  # e.g., "include/aaa.h"
+    relative_path: str  # e.g., "include/foo.h"
     kind: FileKind
-    # TODO: we may need to know which backend the file belongs to
+
+
+@dataclass
+class OutputConfig:
+    dst_dir: Path | None = None
+    debug_level: DebugLevel = DebugLevel.NONE
+
+    def construct(self) -> "OutputManager":
+        """Construct an OutputManager based on this configuration."""
+        return OutputManager(self)
 
 
 class OutputManager:
@@ -63,17 +63,9 @@ class OutputManager:
 
     files: dict[str, FileDescriptor]
     files_by_kind: dict[FileKind, list[FileDescriptor]]
-    dst_dir: Path | None = None
-    debug_level: DebugLevel = DebugLevel.NONE
 
-    def __init__(
-        self,
-        dst_dir: Path | None = None,
-        debug_level: DebugLevel = DebugLevel.NONE,
-        **kwargs: Any,
-    ):
-        self.dst_dir = dst_dir
-        self.debug_level = debug_level
+    def __init__(self, config: OutputConfig):
+        self.config = config
         self.files: dict[str, FileDescriptor] = {}
         self.files_by_kind: dict[FileKind, list[FileDescriptor]] = defaultdict(list)
 
@@ -218,7 +210,7 @@ class FileWriter(BaseWriter):
     def __init__(
         self,
         om: OutputManager,
-        path: str,
+        relative_path: str,
         file_kind: FileKind,
         *,
         default_indent: str = DEFAULT_INDENT,
@@ -228,11 +220,13 @@ class FileWriter(BaseWriter):
             out=StringIO(),
             default_indent=default_indent,
             comment_prefix=comment_prefix,
-            debug_level=om.debug_level,
+            debug_level=om.config.debug_level,
         )
         self.om = om
-        self._path = None if om.dst_dir is None else om.dst_dir / path
-        self._relative_path = path
+        self._path = (
+            None if om.config.dst_dir is None else om.config.dst_dir / relative_path
+        )
+        self._relative_path = relative_path
         self.file_kind = file_kind
 
     def __enter__(self):
@@ -266,7 +260,6 @@ class FileWriter(BaseWriter):
             self.write_prologue(dst)
             dst.write(self._out.getvalue())
             self.write_epilogue(dst)
-
         desc = FileDescriptor(
             relative_path=self._relative_path,
             kind=self.file_kind,
@@ -279,9 +272,9 @@ def _format_frame(f: FrameType) -> str:
     FILENAME_KEEP = 3
 
     file_name = f.f_code.co_filename
-    parts = file_name.split(os.sep)
+    parts = file_name.split(sep)
     if len(parts) > FILENAME_KEEP:
-        file_name = os.path.join(*parts[-FILENAME_KEEP:])
+        file_name = path.join(*parts[-FILENAME_KEEP:])
 
     base_format = f"CODEGEN-DEBUG: {f.f_code.co_name} in {file_name}:{f.f_lineno}"
 
@@ -300,13 +293,13 @@ class CMakeWriter(FileWriter):
     def __init__(
         self,
         om: OutputManager,
-        path: str,
+        relative_path: str,
         file_kind: FileKind,
         indent_unit: str = DEFAULT_INDENT,
     ):
         super().__init__(
             om,
-            path=path,
+            relative_path=relative_path,
             file_kind=file_kind,
             default_indent=indent_unit,
             comment_prefix="# ",
@@ -314,7 +307,7 @@ class CMakeWriter(FileWriter):
         self.headers: dict[str, None] = {}
 
 
-class CMakeOutputManager(OutputManager):
+class CMakeOutputConfig(OutputConfig):
     runtime_include_dir: Path
     runtime_src_dir: Path
 
@@ -324,21 +317,34 @@ class CMakeOutputManager(OutputManager):
         runtime_src_dir: Path,
         dst_dir: Path | None = None,
         debug_level: DebugLevel = DebugLevel.NONE,
-        **kwargs: Any,
     ):
         super().__init__(dst_dir=dst_dir, debug_level=debug_level)
         self.runtime_include_dir = runtime_include_dir
         self.runtime_src_dir = runtime_src_dir
+
+    def construct(self) -> "CMakeOutputManager":
+        return CMakeOutputManager(self)
+
+
+class CMakeOutputManager(OutputManager):
+    """Manages the generation of CMake files for Taihe runtime."""
+
+    config: CMakeOutputConfig
+
+    def __init__(
+        self,
+        config: CMakeOutputConfig,
+    ):
+        super().__init__(config)
 
     @override
     def post_generate(self):
         gen_taihe_cmake_file = "TaiheGenerated.cmake"
         with CMakeWriter(
             self,
-            f"{gen_taihe_cmake_file}",
+            gen_taihe_cmake_file,
             FileKind.CMAKE,
         ) as gen_cmake_target:
-            # TODO: input runtime path
             self.emit_runtime_files_list(gen_cmake_target)
             self.emit_generated_dir("${CMAKE_CURRENT_LIST_DIR}", gen_cmake_target)
             self.emit_generated_includes(gen_cmake_target)
@@ -357,7 +363,7 @@ class CMakeOutputManager(OutputManager):
                 f"set(TAIHE_RUNTIME_INCLUDE_INNER",
                 f")",
             ):
-                gen_cmake_target.writeln(f"{self.runtime_include_dir}")
+                gen_cmake_target.writeln(f"{self.config.runtime_include_dir}")
         with gen_cmake_target.indented(
             f"if(NOT DEFINED TAIHE_RUNTIME_SRC_INNER)",
             f"endif()",
@@ -368,7 +374,7 @@ class CMakeOutputManager(OutputManager):
             ):
                 all_runtime_source_files = [
                     str(p.resolve())
-                    for p in self.runtime_src_dir.iterdir()
+                    for p in self.config.runtime_src_dir.iterdir()
                     if p.is_file()
                 ]
                 for runtime_source_file in all_runtime_source_files:
@@ -453,7 +459,7 @@ class CMakeOutputManager(OutputManager):
         ):
             runtime_cpp_files = [
                 str(p.resolve())
-                for p in self.runtime_src_dir.rglob("*.cpp")
+                for p in self.config.runtime_src_dir.rglob("*.cpp")
                 if p.is_file()
             ]
             for runtime_cpp_file in runtime_cpp_files:
