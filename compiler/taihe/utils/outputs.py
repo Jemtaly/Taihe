@@ -81,16 +81,11 @@ class OutputManager:
         self.files_by_kind: dict[FileKind, list[FileDescriptor]] = defaultdict(list)
 
     def register(self, desc: FileDescriptor):
-        if desc.relative_path in self.files:
-            prev = self.files[desc.relative_path]
-            if prev.kind != desc.kind:
-                raise ValueError(
-                    f"File {desc.relative_path} is already registered as {prev.kind}, "
-                    f"cannot re-register with {desc.kind}."
-                )
-            return
-
-        self.files[desc.relative_path] = desc
+        if (prev := self.files.setdefault(desc.relative_path, desc)) != desc:
+            raise ValueError(
+                f"File {desc.relative_path} is already registered as {prev.kind}, "
+                f"cannot re-register with {desc.kind}."
+            )
         self.files_by_kind[desc.kind].append(desc)
 
     def get_all_files(self) -> list[FileDescriptor]:
