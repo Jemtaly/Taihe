@@ -1,3 +1,8 @@
+include(../../cmake/TaiheUtils.cmake)
+setup_taihe_cmake_env()
+cmake_minimum_required(VERSION 3.18)
+project(basic_abilities)
+
 set(IDL_FILES
     "${CMAKE_CURRENT_LIST_DIR}/idl/basic_abilities.taihe"
 )

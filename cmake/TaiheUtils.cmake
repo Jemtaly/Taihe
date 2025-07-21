@@ -1,4 +1,4 @@
-function(setup_taihe_defaults)
+function(setup_taihe_cmake_env)
   if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     return()  # 不是最顶层项目，跳过设置
   endif()
