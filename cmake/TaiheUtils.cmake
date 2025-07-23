@@ -309,33 +309,27 @@ function(setup_ani_header)
   endif()
 endfunction()
 
-# 编译动态库
-function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir gen_abi_c_files gen_ani_cpp_files)
-  add_library(${demo_name} SHARED ${gen_abi_c_files} ${gen_ani_cpp_files} ${user_cpp_files})
+# 将生成文件编译为静态库
+function(compile_gen_lib gen_demo_name gen_include_dir gen_abi_c_files gen_ani_cpp_files)
+  add_library(${gen_demo_name} STATIC ${gen_abi_c_files} ${gen_ani_cpp_files})
+
+  target_compile_options(${gen_demo_name} PRIVATE "-Wno-attributes")
+  set_target_properties(${gen_demo_name} PROPERTIES LINKER_LANGUAGE CXX)
+  target_link_libraries(${gen_demo_name} PRIVATE taihe_runtime taihe_stdlib)
+  target_link_options(${gen_demo_name} PRIVATE "-Wl,--no-undefined")
+  target_include_directories(${gen_demo_name} PUBLIC ${gen_include_dir} ${TH_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
+endfunction()
+
+# 将用户文件编译为动态库
+function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir link_gen_lib)
+  add_library(${demo_name} SHARED ${user_cpp_files})
 
   target_compile_options(${demo_name} PRIVATE "-Wno-attributes")
   set_target_properties(${demo_name} PROPERTIES LINKER_LANGUAGE CXX)
-  target_link_libraries(${demo_name} PRIVATE taihe_runtime taihe_stdlib)
+  target_link_libraries(${demo_name} PRIVATE taihe_runtime taihe_stdlib ${link_gen_lib})
   target_link_options(${demo_name} PRIVATE "-Wl,--no-undefined")
   target_include_directories(${demo_name} PUBLIC ${user_include_dir} ${gen_include_dir} ${TH_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
 endfunction()
-
-# function(add_taihe_library target_name lib_type idl_files gen_ets_files taihe_configs user_include_dir user_cpp_files)
-#   execute_and_set_variable(TH_STDLIB_DIR "--print-stdlib-path")
-#   add_taihe_runtime()
-#   set(GEN_DIR "${CMAKE_BINARY_DIR}/${target_name}/generated")
-#   set(GEN_INCLUDE_DIR "${GEN_DIR}/include")
-#   set(AUTHOR_INCLUDE_DIRS ${GEN_INCLUDE_DIR} ${user_include_dir})
-#   set(IDL_FILES ${idl_files} "${TH_STDLIB_DIR}/taihe.platform.ani.taihe")
-#   set(GEN_ETS_NAMES ${gen_ets_names} "taihe.platform.ani.ets")
-#   set(GEN_ETS_FILES "")
-#   foreach(ETS_NAME ${GEN_ETS_NAMES})
-#     set(ETS_FILE "${GEN_DIR}/${ETS_NAME}")
-#     list(APPEND GEN_ETS_FILES "${ETS_FILE}")
-#   endforeach()
-#   generate_code_from_idl(${target_name} "${IDL_FILES}" "${GEN_ETS_FILES}" ${GEN_DIR} "${taihe_configs}")
-#   compile_lib(${target_name} ${lib_type} "${AUTHOR_INCLUDE_DIRS}" "${user_cpp_files}")
-# endfunction()
 
 function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_files user_include_dir user_cpp_files)
   if (NOT DEFINED TH_STDLIB_DIR)  
@@ -355,8 +349,10 @@ function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_f
   
   # 生成代码
   generate_code_from_idl(${demo_name} "${idl_files}" "${gen_ets_names}" "${taihe_configs}" GEN_INCLUDE_DIR GEN_ABI_C_FILES GEN_ANI_CPP_FILES GEN_ETS_FILES)
+  # 生成代码静态库编译
+  compile_gen_lib("taihe_gen_${demo_name}" "${GEN_INCLUDE_DIR}" "${GEN_ABI_C_FILES}" "${GEN_ANI_CPP_FILES}")
   # 动态库编译
-  compile_dylib(${demo_name} "${user_include_dir}" "${user_cpp_files}" "${GEN_INCLUDE_DIR}" "${GEN_ABI_C_FILES}" "${GEN_ANI_CPP_FILES}")
+  compile_dylib(${demo_name} "${user_include_dir}" "${user_cpp_files}" "${GEN_INCLUDE_DIR}" "taihe_gen_${demo_name}")
   # 链接为 main.abc
   set(ALL_ETS_FILES ${user_ets_files} ${GEN_ETS_FILES})
   abc_link(${demo_name} ${MAIN_ABC} "${ALL_ETS_FILES}")
