@@ -1,4 +1,4 @@
-include(../../cmake/TaiheUtils.cmake)
+include(../../cmake/TaiheWorkflows.cmake)
 setup_taihe_cmake_env()
 cmake_minimum_required(VERSION 3.18)
 project(ani_fixedarray)
