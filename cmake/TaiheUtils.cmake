@@ -47,7 +47,7 @@ function(execute_and_set_variable OUTPUT_VAR_NAME)
     OUTPUT_VARIABLE _output
     OUTPUT_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE _result
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../compiler
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..
   )
 
   if(_result EQUAL 0)
@@ -95,7 +95,7 @@ function(generate_code_from_idl demo_name idl_files gen_ets_names taihe_configs 
     -O${GEN_DIR}
     -Gani-bridge -Gcpp-author -Gpretty-print
     ${taihe_configs}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../../compiler
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..
     DEPENDS ${idl_files} ${CMAKE_CURRENT_SOURCE_DIR}/../../compiler/taihe/parse/antlr/TaiheAST.py
     COMMENT "Generating Taihe C++ header and source files... ${GEN_DIR}"
     VERBATIM
