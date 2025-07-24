@@ -59,22 +59,59 @@ function(execute_and_set_variable OUTPUT_VAR_NAME)
 endfunction()
 
 # taihe 代码生成
-function(generate_code_from_idl demo_name idl_files gen_ets_names taihe_configs gen_include_dir gen_abi_c_files gen_ani_cpp_files gen_ets_files)
+function(generate_code_from_idl demo_name idl_files gen_ets_names author_bridge user_bridge taihe_configs gen_include_dir gen_abi_c_files gen_bridge_cpp_files gen_ets_files)
   set(GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
   set(GEN_INCLUDE_DIR "${GEN_DIR}/include")
 
   set(GEN_ABI_C_FILES)
-  set(GEN_ANI_CPP_FILES)
+  set(GEN_AUTHOR_CPP_FILES)
+  set(GEN_USER_CPP_FILES)
+
+  
+  # config为字符串时需要拆分为字符串列表
+  string(REGEX MATCH " " HAS_SPACE "${taihe_configs}")
+
+  if(HAS_SPACE)
+    separate_arguments(TAIHE_CONFIGS_LIST UNIX_COMMAND "${taihe_configs}")
+  else()
+    set(TAIHE_CONFIGS_LIST ${taihe_configs})
+  endif()
+
   foreach(TAIHE_FILE ${idl_files})
     # 替换扩展名
     get_filename_component(TAIHE_FILE_NAME ${TAIHE_FILE} NAME)
     # 将修改后的文件名添加到新的列表中
     string(REGEX REPLACE "\\.taihe$" ".abi.c" GEN_ABI_C_FILE ${TAIHE_FILE_NAME})
     list(APPEND GEN_ABI_C_FILES "${GEN_DIR}/src/${GEN_ABI_C_FILE}")
-    string(REGEX REPLACE "\\.taihe$" ".ani.cpp" GEN_ANI_CPP_FILE ${TAIHE_FILE_NAME})
-    list(APPEND GEN_ANI_CPP_FILES "${GEN_DIR}/src/${GEN_ANI_CPP_FILE}")
+
+    # author bridge
+    if(author_bridge STREQUAL "kn-author")
+      string(REGEX REPLACE "\\.taihe$" ".knapi.cpp" GEN_AUTHOR_FILE ${TAIHE_FILE_NAME})
+      list(APPEND GEN_AUTHOR_CPP_FILES "${GEN_DIR}/src/${GEN_AUTHOR_FILE}")
+      # TODO: kn_author config
+      # list(APPEND TAIHE_CONFIGS_LIST "-Gkn_author")
+    elseif(author_bridge STREQUAL "cpp-author")
+      list(APPEND TAIHE_CONFIGS_LIST "-Gcpp-author")
+    endif()
+
+    # user bridge
+    if(user_bridge STREQUAL "cpp-user")
+      list(APPEND TAIHE_CONFIGS_LIST "-Gcpp-user")
+    elseif(user_bridge STREQUAL "napi-bridge")
+      string(REGEX REPLACE "\\.taihe$" ".napi.cpp" GEN_USER_FILE ${TAIHE_FILE_NAME})
+      list(APPEND GEN_USER_CPP_FILES "${GEN_DIR}/src/${GEN_USER_FILE}")
+      list(APPEND TAIHE_CONFIGS_LIST "-Gnapi-bridge")
+      # TODO: napi_bridge config
+      # list(APPEND TAIHE_CONFIGS_LIST "-Gnapi-bridge")
+    elseif(user_bridge STREQUAL "ani-bridge")
+      string(REGEX REPLACE "\\.taihe$" ".ani.cpp" GEN_USER_FILE ${TAIHE_FILE_NAME})
+      list(APPEND GEN_USER_CPP_FILES "${GEN_DIR}/src/${GEN_USER_FILE}")
+      list(APPEND TAIHE_CONFIGS_LIST "-Gani-bridge")
+    endif()
   endforeach()
+
+  set(GEN_BRIDGE_CPP_FILES ${GEN_AUTHOR_CPP_FILES} ${GEN_USER_CPP_FILES})
 
   set(GEN_ETS_FILES)
   foreach(ETS_NAME ${gen_ets_names})
@@ -89,12 +126,11 @@ function(generate_code_from_idl demo_name idl_files gen_ets_names taihe_configs 
   endif()
 
   add_custom_command(
-    OUTPUT ${GEN_INCLUDE_DIR} ${GEN_ABI_C_FILES} ${GEN_ANI_CPP_FILES} ${GEN_ETS_FILES}
+    OUTPUT ${GEN_INCLUDE_DIR} ${GEN_ABI_C_FILES} ${GEN_BRIDGE_CPP_FILES} ${GEN_ETS_FILES}
     COMMAND ${COMMAND_TO_RUN}
     ${idl_files}
     -O${GEN_DIR}
-    -Gani-bridge -Gcpp-author -Gpretty-print
-    ${taihe_configs}
+    ${TAIHE_CONFIGS_LIST}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../..
     DEPENDS ${idl_files} ${CMAKE_CURRENT_SOURCE_DIR}/../../compiler/taihe/parse/antlr/TaiheAST.py
     COMMENT "Generating Taihe C++ header and source files... ${GEN_DIR}"
@@ -103,7 +139,7 @@ function(generate_code_from_idl demo_name idl_files gen_ets_names taihe_configs 
 
   set(${gen_ets_files} ${GEN_ETS_FILES} PARENT_SCOPE)
   set(${gen_abi_c_files} ${GEN_ABI_C_FILES} PARENT_SCOPE)
-  set(${gen_ani_cpp_files} ${GEN_ANI_CPP_FILES} PARENT_SCOPE)
+  set(${gen_bridge_cpp_files} ${GEN_BRIDGE_CPP_FILES} PARENT_SCOPE)
   set(${gen_include_dir} ${GEN_INCLUDE_DIR} PARENT_SCOPE)
 endfunction()
 
@@ -322,8 +358,13 @@ endfunction()
 
 # 将用户文件编译为动态库
 function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir link_gen_lib)
-  add_library(${demo_name} SHARED ${user_cpp_files})
-
+  if (user_cpp_files)
+    add_library(${demo_name} SHARED ${user_cpp_files})
+  else()
+    set(dummy_cpp "${CMAKE_CURRENT_BINARY_DIR}/${demo_name}_dummy.cpp")
+    file(WRITE "${dummy_cpp}" "extern \"C\" void __taihe_dummy_symbol__() {}\n")
+    add_library(${demo_name} SHARED "${dummy_cpp}")
+  endif()
   target_compile_options(${demo_name} PRIVATE "-Wno-attributes")
   set_target_properties(${demo_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(${demo_name} PRIVATE taihe_runtime taihe_stdlib ${link_gen_lib})
