@@ -1,4 +1,4 @@
-function(setup_taihe_cmake_env)
+function(setup_taihe_cmake_test_env)
   if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     return()  # 不是最顶层项目，跳过设置
   endif()
@@ -112,6 +112,13 @@ function(generate_code_from_idl demo_name idl_files gen_ets_names author_bridge 
   endforeach()
 
   set(GEN_BRIDGE_CPP_FILES ${GEN_AUTHOR_CPP_FILES} ${GEN_USER_CPP_FILES})
+
+  set_source_files_properties(
+    ${GEN_BRIDGE_CPP_FILES}
+    PROPERTIES
+    LANGUAGE CXX
+    COMPILE_FLAGS "-std=c++17"
+  )
 
   set(GEN_ETS_FILES)
   foreach(ETS_NAME ${gen_ets_names})

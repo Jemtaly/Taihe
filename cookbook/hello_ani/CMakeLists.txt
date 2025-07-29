@@ -1,5 +1,5 @@
 include(../../cmake/TaiheWorkflows.cmake)
-setup_taihe_cmake_env()
+setup_taihe_cmake_test_env()
 cmake_minimum_required(VERSION 3.18)
 project(hello_ani)
 
