@@ -16,10 +16,6 @@ if (NOT DEFINED TH_STDLIB_DIR)
 execute_and_set_variable(TH_STDLIB_DIR "--print-stdlib-path")
 endif()
 
-if (NOT DEFINED TH_RUNTIME_HEADER_DIR)  
-execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
-endif()
-
 # TODO: need to remove, stdlib should not take user as input
 set(IDL_FILES_WITH_STDLIB ${IDL_FILES} "${TH_STDLIB_DIR}/taihe.platform.ani.taihe")
 
@@ -31,25 +27,18 @@ setup_panda_sdk()
 # ani 头文件
 setup_ani_header()
 
-add_taihe_library(rgb_taihegen "${IDL_FILES_WITH_STDLIB}" "cpp-author" "cpp-user" "" GEN_HEADER_DIR)
+add_taihe_library(rgb_taihegen "${IDL_FILES_WITH_STDLIB}" "cpp-author" "cpp-user" "")
 
 add_library(rgb SHARED ${AUTHOR_CPP_FILES})
 target_compile_options(rgb PRIVATE "-Wno-attributes")
 set_target_properties(rgb PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(rgb PRIVATE rgb_taihegen)
+target_link_libraries(rgb PUBLIC rgb_taihegen)
 target_link_options(rgb PRIVATE "-Wl,--no-undefined")
-target_include_directories(rgb
-    PUBLIC
-        ${GEN_HEADER_DIR}
-        ${TH_RUNTIME_HEADER_DIR}
-)
 
 add_executable(rgb_program ${USER_CPP_FILES})
 target_include_directories(rgb_program
     PRIVATE
-        ${GEN_HEADER_DIR}
         ${USER_INCLUDE}
-        ${TH_RUNTIME_HEADER_DIR}
 )
 target_link_libraries(rgb_program PRIVATE rgb)
 

@@ -1,6 +1,6 @@
 include(${CMAKE_CURRENT_LIST_DIR}/TaiheUtils.cmake)
 
-function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs output_gen_include_dir)
+function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs)
   execute_and_set_variable(TH_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
   execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
   set(TAIHE_RUNTIME_SOURCES
@@ -17,11 +17,10 @@ function(add_taihe_library target_name idl_files author_bridge user_bridge taihe
   set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_options(${target_name} PRIVATE "-Wl,--no-undefined")
   target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TH_RUNTIME_HEADER_DIR})
-  set(${output_gen_include_dir} ${GEN_INCLUDE_DIR} PARENT_SCOPE)
 endfunction()
 
 function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_files user_include_dir user_cpp_files)
-  if (NOT DEFINED TH_STDLIB_DIR)  
+  if (NOT DEFINED TH_STDLIB_DIR)
     execute_and_set_variable(TH_STDLIB_DIR "--print-stdlib-path")
   endif()
 
