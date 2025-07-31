@@ -1,22 +1,11 @@
 include(${CMAKE_CURRENT_LIST_DIR}/TaiheUtils.cmake)
 
-function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs)
-  execute_and_set_variable(TH_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
-  execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
-  set(TAIHE_RUNTIME_SOURCES
-    "${TH_RUNTIME_SOURCE_DIR}/string.cpp"
-    "${TH_RUNTIME_SOURCE_DIR}/object.cpp"
-    "${TH_RUNTIME_SOURCE_DIR}/runtime.cpp"
-  )
-  # Temporarily add taihe.platform.ani.taihe to all compilation processes
-  generate_code_from_idl(${target_name} "${idl_files}" "" "${author_bridge}" "${user_bridge}" "${taihe_configs}" GEN_INCLUDE_DIR GEN_ABI_C_FILES GEN_BRIDGE_CPP_FILES GEN_ETS_FILES)
+function(add_taihe_ani_library target_name idl_files taihe_configs)
+  add_taihe_library(${target_name} "${idl_files}" "cpp-author" "ani-bridge" "${taihe_configs}")
+endfunction()
 
-  # compile static library
-  add_library(${target_name} STATIC ${TAIHE_RUNTIME_SOURCES} ${GEN_ABI_C_FILES} ${GEN_BRIDGE_CPP_FILES})
-  target_compile_options(${target_name} PRIVATE "-Wno-attributes")
-  set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE CXX)
-  target_link_options(${target_name} PRIVATE "-Wl,--no-undefined")
-  target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TH_RUNTIME_HEADER_DIR})
+function(add_taihe_cpp_library target_name idl_files taihe_configs)
+  add_taihe_library(${target_name} "${idl_files}" "cpp-author" "cpp-user" "${taihe_configs}")
 endfunction()
 
 function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_files user_include_dir user_cpp_files)

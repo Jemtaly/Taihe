@@ -378,3 +378,22 @@ function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir
   target_link_options(${demo_name} PRIVATE "-Wl,--no-undefined")
   target_include_directories(${demo_name} PUBLIC ${user_include_dir} ${gen_include_dir} ${TH_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
 endfunction()
+
+function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs)
+  execute_and_set_variable(TH_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
+  execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
+  set(TAIHE_RUNTIME_SOURCES
+    "${TH_RUNTIME_SOURCE_DIR}/string.cpp"
+    "${TH_RUNTIME_SOURCE_DIR}/object.cpp"
+    "${TH_RUNTIME_SOURCE_DIR}/runtime.cpp"
+  )
+  # Temporarily add taihe.platform.ani.taihe to all compilation processes
+  generate_code_from_idl(${target_name} "${idl_files}" "" "${author_bridge}" "${user_bridge}" "${taihe_configs}" GEN_INCLUDE_DIR GEN_ABI_C_FILES GEN_BRIDGE_CPP_FILES GEN_ETS_FILES)
+
+  # compile static library
+  add_library(${target_name} STATIC ${TAIHE_RUNTIME_SOURCES} ${GEN_ABI_C_FILES} ${GEN_BRIDGE_CPP_FILES})
+  target_compile_options(${target_name} PRIVATE "-Wno-attributes")
+  set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE CXX)
+  target_link_options(${target_name} PRIVATE "-Wl,--no-undefined")
+  target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TH_RUNTIME_HEADER_DIR})
+endfunction()
