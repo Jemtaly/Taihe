@@ -379,7 +379,21 @@ function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir
   target_include_directories(${demo_name} PUBLIC ${user_include_dir} ${gen_include_dir} ${TAIHE_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
 endfunction()
 
-function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs)
+function(add_taihe_library target_name idl_files)
+  set(options "")
+  set(oneValueArgs "AUTHOR_BRIDGE" "USER_BRIDGE" "TAIHE_CONFIGS")
+  set(multiValueArgs "")
+  cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(NOT ARGS_AUTHOR_BRIDGE)
+    set(ARGS_AUTHOR_BRIDGE "cpp-author")
+  endif()
+  if(NOT ARGS_USER_BRIDGE)
+    set(ARGS_USER_BRIDGE "ani-bridge")
+  endif()
+  if(NOT ARGS_TAIHE_CONFIGS)
+    set(ARGS_TAIHE_CONFIGS "")
+  endif()
+
   execute_and_set_variable(TAIHE_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
   execute_and_set_variable(TAIHE_RUNTIME_HEADER_DIR "--print-runtime-header-path")
   set(TAIHE_RUNTIME_SOURCES
@@ -388,7 +402,18 @@ function(add_taihe_library target_name idl_files author_bridge user_bridge taihe
     "${TAIHE_RUNTIME_SOURCE_DIR}/runtime.cpp"
   )
   # Temporarily add taihe.platform.ani.taihe to all compilation processes
-  generate_code_from_idl(${target_name} "${idl_files}" "" "${author_bridge}" "${user_bridge}" "${taihe_configs}" GEN_INCLUDE_DIR GEN_ABI_C_FILES GEN_BRIDGE_CPP_FILES GEN_ETS_FILES)
+  generate_code_from_idl(
+    ${target_name}
+    "${idl_files}"
+    ""
+    "${ARGS_AUTHOR_BRIDGE}"
+    "${ARGS_USER_BRIDGE}"
+    "${ARGS_TAIHE_CONFIGS}"
+    GEN_INCLUDE_DIR
+    GEN_ABI_C_FILES
+    GEN_BRIDGE_CPP_FILES
+    GEN_ETS_FILES
+  )
 
   # compile static library
   add_library(${target_name} STATIC ${TAIHE_RUNTIME_SOURCES} ${GEN_ABI_C_FILES} ${GEN_BRIDGE_CPP_FILES})

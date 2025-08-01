@@ -25,7 +25,7 @@ setup_ani_header()
 #########################################################
 ############# TEST add_taihe_cpp_library ################
 #########################################################
-add_taihe_cpp_library(compile_cpp_lib_taihegen "${IDL_FILES_WITAIHE_STDLIB}" "")
+add_taihe_cpp_library(compile_cpp_lib_taihegen "${IDL_FILES_WITAIHE_STDLIB}")
 
 add_library(compile_cpp_lib SHARED ${AUTHOR_CPP_FILES})
 target_compile_options(compile_cpp_lib PRIVATE "-Wno-attributes")

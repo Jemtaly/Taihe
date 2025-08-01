@@ -1,11 +1,35 @@
 include(${CMAKE_CURRENT_LIST_DIR}/TaiheUtils.cmake)
 
-function(add_taihe_ani_library target_name idl_files taihe_configs)
-  add_taihe_library(${target_name} "${idl_files}" "cpp-author" "ani-bridge" "${taihe_configs}")
+function(add_taihe_ani_library target_name idl_files)
+  set(options "")
+  set(oneValueArgs "TAIHE_CONFIGS")
+  set(multiValueArgs "")
+  cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(NOT ARGS_TAIHE_CONFIGS)
+    set(ARGS_TAIHE_CONFIGS "")
+  endif()
+
+  add_taihe_library(${target_name} "${idl_files}"
+    AUTHOR_BRIDGE "cpp-author"
+    USER_BRIDGE "ani-bridge"
+    TAIHE_CONFIGS "${ARGS_TAIHE_CONFIGS}"
+  )
 endfunction()
 
-function(add_taihe_cpp_library target_name idl_files taihe_configs)
-  add_taihe_library(${target_name} "${idl_files}" "cpp-author" "cpp-user" "${taihe_configs}")
+function(add_taihe_cpp_library target_name idl_files)
+  set(options "")
+  set(oneValueArgs "TAIHE_CONFIGS")
+  set(multiValueArgs "")
+  cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(NOT ARGS_TAIHE_CONFIGS)
+    set(ARGS_TAIHE_CONFIGS "")
+  endif()
+
+  add_taihe_library(${target_name} "${idl_files}"
+    AUTHOR_BRIDGE "cpp-author"
+    USER_BRIDGE "cpp-user"
+    TAIHE_CONFIGS "${ARGS_TAIHE_CONFIGS}"
+  )
 endfunction()
 
 function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_files user_include_dir user_cpp_files)

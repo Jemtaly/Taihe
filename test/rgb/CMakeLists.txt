@@ -27,7 +27,9 @@ setup_panda_sdk()
 # ani 头文件
 setup_ani_header()
 
-add_taihe_library(rgb_taihegen "${IDL_FILES_WITAIHE_STDLIB}" "cpp-author" "cpp-user" "")
+add_taihe_library(rgb_taihegen "${IDL_FILES_WITAIHE_STDLIB}"
+  USER_BRIDGE "cpp-user"
+)
 
 add_library(rgb SHARED ${AUTHOR_CPP_FILES})
 target_compile_options(rgb PRIVATE "-Wno-attributes")
