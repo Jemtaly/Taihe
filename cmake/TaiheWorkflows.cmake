@@ -9,8 +9,8 @@ function(add_taihe_cpp_library target_name idl_files taihe_configs)
 endfunction()
 
 function(add_ani_demo demo_name idl_files taihe_configs gen_ets_names user_ets_files user_include_dir user_cpp_files)
-  if (NOT DEFINED TH_STDLIB_DIR)
-    execute_and_set_variable(TH_STDLIB_DIR "--print-stdlib-path")
+  if (NOT DEFINED TAIHE_STDLIB_DIR)
+    execute_and_set_variable(TAIHE_STDLIB_DIR "--print-stdlib-path")
   endif()
 
   set(MAIN_ABC "${CMAKE_CURRENT_BINARY_DIR}/main.abc")

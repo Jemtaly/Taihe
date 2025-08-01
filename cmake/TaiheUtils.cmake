@@ -153,13 +153,13 @@ endfunction()
 # 编译 taihe runtime 为 静态库
 function(add_taihe_runtime)
   if (NOT TARGET taihe_runtime)
-    execute_and_set_variable(TH_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
-    execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
+    execute_and_set_variable(TAIHE_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
+    execute_and_set_variable(TAIHE_RUNTIME_HEADER_DIR "--print-runtime-header-path")
 
     set(TAIHE_RUNTIME_SOURCES
-      "${TH_RUNTIME_SOURCE_DIR}/string.cpp"
-      "${TH_RUNTIME_SOURCE_DIR}/object.cpp"
-      "${TH_RUNTIME_SOURCE_DIR}/runtime.cpp"
+      "${TAIHE_RUNTIME_SOURCE_DIR}/string.cpp"
+      "${TAIHE_RUNTIME_SOURCE_DIR}/object.cpp"
+      "${TAIHE_RUNTIME_SOURCE_DIR}/runtime.cpp"
     )
 
     add_library(taihe_runtime STATIC
@@ -170,7 +170,7 @@ function(add_taihe_runtime)
       ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     )
 
-    target_include_directories(taihe_runtime PUBLIC ${TH_RUNTIME_HEADER_DIR})
+    target_include_directories(taihe_runtime PUBLIC ${TAIHE_RUNTIME_HEADER_DIR})
   endif()
 endfunction()
 
@@ -190,7 +190,7 @@ function(add_taihe_stdlib)
       "${TAIHE_STDLIB_GEN_SRC_DIR}/taihe.platform.ani.abi.c"
     )
 
-    execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
+    execute_and_set_variable(TAIHE_RUNTIME_HEADER_DIR "--print-runtime-header-path")
 
     if(ENABLE_COVERAGE)
       list(APPEND COMMAND_TO_RUN "coverage" "run" "--parallel-mode" "-m" "taihe.cli.compiler")
@@ -216,7 +216,7 @@ function(add_taihe_stdlib)
       ARCHIVE_OUTPUT_DIRECTORY ${TAIHE_STDLIB_BUILD_DIR}
     )
 
-    target_include_directories(taihe_stdlib PUBLIC ${TAIHE_STDLIB_GEN_INCLUDE_DIR} ${TH_RUNTIME_HEADER_DIR})
+    target_include_directories(taihe_stdlib PUBLIC ${TAIHE_STDLIB_GEN_INCLUDE_DIR} ${TAIHE_RUNTIME_HEADER_DIR})
   endif()
 endfunction()
 
@@ -360,7 +360,7 @@ function(compile_gen_lib gen_demo_name gen_include_dir gen_abi_c_files gen_ani_c
   set_target_properties(${gen_demo_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(${gen_demo_name} PRIVATE taihe_runtime taihe_stdlib)
   target_link_options(${gen_demo_name} PRIVATE "-Wl,--no-undefined")
-  target_include_directories(${gen_demo_name} PUBLIC ${gen_include_dir} ${TH_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
+  target_include_directories(${gen_demo_name} PUBLIC ${gen_include_dir} ${TAIHE_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
 endfunction()
 
 # 将用户文件编译为动态库
@@ -376,16 +376,16 @@ function(compile_dylib demo_name user_include_dir user_cpp_files gen_include_dir
   set_target_properties(${demo_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(${demo_name} PRIVATE taihe_runtime taihe_stdlib ${link_gen_lib})
   target_link_options(${demo_name} PRIVATE "-Wl,--no-undefined")
-  target_include_directories(${demo_name} PUBLIC ${user_include_dir} ${gen_include_dir} ${TH_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
+  target_include_directories(${demo_name} PUBLIC ${user_include_dir} ${gen_include_dir} ${TAIHE_RUNTIME_HEADER_DIR} ${TAIHE_STDLIB_GEN_INCLUDE_DIR})
 endfunction()
 
 function(add_taihe_library target_name idl_files author_bridge user_bridge taihe_configs)
-  execute_and_set_variable(TH_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
-  execute_and_set_variable(TH_RUNTIME_HEADER_DIR "--print-runtime-header-path")
+  execute_and_set_variable(TAIHE_RUNTIME_SOURCE_DIR "--print-runtime-source-path")
+  execute_and_set_variable(TAIHE_RUNTIME_HEADER_DIR "--print-runtime-header-path")
   set(TAIHE_RUNTIME_SOURCES
-    "${TH_RUNTIME_SOURCE_DIR}/string.cpp"
-    "${TH_RUNTIME_SOURCE_DIR}/object.cpp"
-    "${TH_RUNTIME_SOURCE_DIR}/runtime.cpp"
+    "${TAIHE_RUNTIME_SOURCE_DIR}/string.cpp"
+    "${TAIHE_RUNTIME_SOURCE_DIR}/object.cpp"
+    "${TAIHE_RUNTIME_SOURCE_DIR}/runtime.cpp"
   )
   # Temporarily add taihe.platform.ani.taihe to all compilation processes
   generate_code_from_idl(${target_name} "${idl_files}" "" "${author_bridge}" "${user_bridge}" "${taihe_configs}" GEN_INCLUDE_DIR GEN_ABI_C_FILES GEN_BRIDGE_CPP_FILES GEN_ETS_FILES)
@@ -395,5 +395,5 @@ function(add_taihe_library target_name idl_files author_bridge user_bridge taihe
   target_compile_options(${target_name} PRIVATE "-Wno-attributes")
   set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_options(${target_name} PRIVATE "-Wl,--no-undefined")
-  target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TH_RUNTIME_HEADER_DIR})
+  target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TAIHE_RUNTIME_HEADER_DIR})
 endfunction()
