@@ -42,6 +42,7 @@ class FileKind(str, Enum):
     CPP_SOURCE = "cpp_source"
     TEMPLATE = "template"
     ETS = "ets"
+    CJ = "cj"
     OTHER = "other"
 
 

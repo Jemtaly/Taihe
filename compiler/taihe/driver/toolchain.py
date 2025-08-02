@@ -348,3 +348,86 @@ class ArkToolchain:
             command,
             env={"LD_LIBRARY_PATH": ld_lib_path},
         )
+
+class CJToolChain:
+    """Utility class for Cangjie toolchain operations."""
+
+    def __init__(self):
+        self.cangjie_home = os.getenv("CANGJIE_HOME", "")
+        if self.cangjie_home == "":
+            raise FileNotFoundError(f"Cangjie tool chain not found, please download and config it first.")
+        self.cjc = self.cangjie_home + "/bin/cjc"
+
+    def compile_cffi_so(
+        self,
+        output_dir: Path,
+        input_files: Iterable[Path],
+        dylib_name: str,
+        dylib_path: Path,
+    ) -> list[Path]:
+        """Compile cangjie files to dynamic library file."""
+        name = "local"
+        output_file = output_dir / f"lib{name}.so"
+        compiler = self.cjc
+
+        gen_cj_command = [compiler] + list(input_files) + [
+            "-l",
+            dylib_name,
+            "-L",
+            dylib_path,
+            "--output-type=dylib",
+            "-o",
+            output_file,
+        ]
+        print(gen_cj_command)
+        run_command(gen_cj_command)
+
+        return [output_file]
+
+    def compile(
+        self,
+        output_dir: Path,
+        input_files: Iterable[Path],
+        c_dylib_name: str,
+        cj_dylib_name: str,
+        dylib_path: Path,
+    ) -> list[Path]:
+        """Compile cangjie files to executable file."""
+        name = "main"
+        output_file = output_dir / f"{name}"
+        compiler = self.cjc
+
+        gen_cj_command = [compiler] + list(input_files) + [
+            "-l",
+            c_dylib_name,
+            "-l",
+            cj_dylib_name,
+            "-L",
+            dylib_path,
+            "--import-path",
+            dylib_path,
+            "-o",
+            output_file
+        ]
+        print(gen_cj_command)
+        run_command(gen_cj_command)
+
+        return [output_file]
+
+    def run(
+        self,
+        excutable_target: Path,
+        ld_lib_path: Path,
+    ) -> float:
+
+        command = [
+            excutable_target,
+        ]
+
+        current_ld_library_path = os.getenv('LD_LIBRARY_PATH', '')
+        new_ld_library_path = f"{ld_lib_path}:{current_ld_library_path}" if current_ld_library_path else f"{ld_lib_path}"
+
+        return run_command(
+            command,
+            env={"LD_LIBRARY_PATH": new_ld_library_path},
+        )

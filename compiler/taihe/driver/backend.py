@@ -105,6 +105,7 @@ class BackendRegistry:
             CppUserHeadersBackendConfig,
         )
         from taihe.semantics import PrettyPrintBackendConfig
+        from taihe.codegen.cj import CJBridgeBackendConfig
 
         backends = [
             # abi
@@ -119,6 +120,8 @@ class BackendRegistry:
             AniBridgeBackendConfig,
             # pretty print
             PrettyPrintBackendConfig,
+            # cj
+            CJBridgeBackendConfig,
         ]
 
         for b in backends:

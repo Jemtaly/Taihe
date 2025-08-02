@@ -7,6 +7,7 @@ from pathlib import Path
 from taihe.driver.toolchain import (
     ArkToolchain,
     CppToolchain,
+    CJToolChain,
     clean_directory,
     create_directory,
     extract_file,
@@ -397,10 +398,104 @@ class StsBuildSystem(BuildSystem):
 
         logger.info("Done, time = %f s", elapsed_time)
 
+class CJBuildSystem(BuildSystem):
+    def __init__(self, target_dir: str, verbosity: int = logging.INFO):
+        super().__init__(target_dir, verbosity)
+        self.cj_toolchain = CJToolChain()
+
+        self.user_dir = self.target_path / "user"
+
+        self.build_generated_dir = self.build_dir / "generated"
+        self.build_user_dir = self.build_dir / "user"
+
+        # taihe runtime part
+        self.runtime_includes = [RuntimeHeader.resolve_path()]
+        runtime_src_dir = RuntimeSource.resolve_path()
+        self.runtime_sources = [
+            runtime_src_dir / "string.cpp",
+            runtime_src_dir / "object.cpp",
+        ]
+
+        # include part
+        self.generated_includes = [*self.runtime_includes, self.generated_include_dir]
+        self.author_includes = [*self.generated_includes, self.author_include_dir]
+
+        self.generated_cj_dir = self.generated_dir / "cj"
+
+        self.exe_target = self.build_dir / "main"
+        self.lib_files = []
+        self.user_backend_names = ["cj-bridge"]
+
+
+    def generate(self, buildsys_name: str | None, extra: dict[str, str | None]) -> None:
+        """Generate code from IDL files."""
+        if not self.idl_dir.is_dir():
+            raise FileNotFoundError(f"IDL directory not found: '{self.idl_dir}'")
+
+        clean_directory(self.generated_dir)
+
+        logger.info("Generating author and cj-bridge codes...")
+
+        # Generate taihe stdlib codes
+        taihec(
+            dst_dir=self.generated_dir,
+            src_files=self.lib_files,
+            backend_names=["abi-source", "cpp-common"],
+        )
+        # Generate author and user codes
+        backend_names: list[str] = []
+        backend_names.extend(self.author_backend_names)
+        backend_names.extend(self.user_backend_names)
+        if self.should_run_pretty_print:
+            backend_names.append("pretty-print")
+        taihec(
+            dst_dir=self.generated_dir,
+            src_files=list(self.idl_dir.glob("*.taihe")),
+            backend_names=backend_names,
+            buildsys_name=buildsys_name,
+            extra=extra,
+        )
+
+    def _create_user_files(self) -> None:
+        """Create a simple example user source file."""
+        create_directory(self.user_dir)
+        with open(self.user_dir / "main.cj", "w") as f:
+            f.write(
+                f"import local.*\n"
+                f"main() {{\n"
+                f"    sayHello()\n"
+                f"    return 0\n"
+                f"}}\n"
+            )
+
+    def _compile_user_executable(self, opt_level: str) -> None:
+        """Compile and link the user executable."""
+        self.cj_toolchain.compile_cffi_so(
+            self.build_dir,
+            self.generated_cj_dir.glob("*.cj"),
+            self.lib_name,
+            self.build_dir
+        )
+
+        self.cj_toolchain.compile(
+            self.build_dir,
+            self.user_dir.glob("*.cj"),
+            self.lib_name,
+            "local",
+            self.build_dir
+        )
+
+    def _run_user_executable(self) -> None:
+        """Run the user executable."""
+        self.cj_toolchain.run(
+            self.exe_target,
+            self.build_dir
+        )
 
 BUILD_MODES = {
     "cpp": CppBuildSystem,
     "sts": StsBuildSystem,
+    "cj": CJBuildSystem,
 }
 
 
@@ -454,7 +549,7 @@ class TaiheTryitParser(argparse.ArgumentParser):
             "--user",
             choices=BUILD_MODES.keys(),
             required=True,
-            help="User type for the build system (ani/cpp)",
+            help="User type for the build system (ani/cpp/cj)",
         )
 
     def register_build_configs(self) -> None:
