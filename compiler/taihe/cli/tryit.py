@@ -461,7 +461,7 @@ class CJBuildSystem(BuildSystem):
         create_directory(self.user_dir)
         with open(self.user_dir / "main.cj", "w") as f:
             f.write(
-                f"import local.*\n"
+                f"import hello.*\n"
                 f"main() {{\n"
                 f"    sayHello()\n"
                 f"    return 0\n"

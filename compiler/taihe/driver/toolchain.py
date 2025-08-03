@@ -379,7 +379,6 @@ class CJToolChain:
             "-o",
             output_file,
         ]
-        print(gen_cj_command)
         run_command(gen_cj_command)
 
         return [output_file]
@@ -409,7 +408,6 @@ class CJToolChain:
             "-o",
             output_file
         ]
-        print(gen_cj_command)
         run_command(gen_cj_command)
 
         return [output_file]
