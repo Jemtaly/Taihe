@@ -12,6 +12,7 @@ from taihe.semantics.declarations import (
     UnionDecl,
     UnionFieldDecl,
 )
+
 from taihe.semantics.types import (
     ArrayType,
     CallbackType,
@@ -28,6 +29,16 @@ from taihe.semantics.types import (
     Type,
     UnionType,
     VectorType,
+)
+
+from taihe.codegen.abi.analyses import (
+    GlobFuncAbiInfo,
+    IfaceAbiInfo,
+    IfaceMethodAbiInfo,
+    PackageAbiInfo,
+    StructAbiInfo,
+    TypeAbiInfo,
+    UnionAbiInfo,
 )
 from typing_extensions import override
 from abc import ABC
@@ -78,6 +89,14 @@ class ScalarTypeCJInfo(TypeCJInfo):
         self.as_param = res
         self.as_owner = res
 
+class StructTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: StructType):
+        struct_abi_info = StructAbiInfo.get(am, t.ty_decl)
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_owner = struct_abi_info.mangled_name
+        self.as_param = struct_abi_info.mangled_name
+
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):
         self.am = am
@@ -85,3 +104,7 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_scalar_type(self, t: ScalarType) -> TypeCJInfo:
         return ScalarTypeCJInfo(self.am, t)
+    
+    @override
+    def visit_struct_type(self, t: StructType) -> TypeCJInfo:
+        return StructTypeCJInfo(self.am, t)

@@ -42,8 +42,11 @@ class CJCodeGenerator:
             FileKind.CJ,
         ) as pkg_cj_target:
             pkg_cj_target.writeln(f"package {pkg.name}")
+            for struct in pkg.structs:
+                self.gen_struct(struct, pkg_cj_target)
             for func in pkg.functions:
                 self.gen_func(func, pkg_cj_target)
+
 
     def gen_func(
         self,
@@ -72,3 +75,18 @@ class CJCodeGenerator:
             f"    }}",
             f"}}"
         )
+
+    def gen_struct(
+        self,
+        struct: StructDecl,
+        pkg_cj_target: CJSourceWriter,
+    ):
+        struct_abi_info = StructAbiInfo.get(self.am, struct)
+        pkg_cj_target.writelns(
+            f"@C",
+            f"struct {struct_abi_info.mangled_name} {{",
+        )
+        for field in struct.fields:
+            type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
+            pkg_cj_target.writeln(f"    {field.name}: {type_cj_info.as_param}")
+        pkg_cj_target.writeln(f"}}")
