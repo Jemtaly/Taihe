@@ -480,7 +480,6 @@ class CJBuildSystem(BuildSystem):
         self.cj_toolchain.compile(
             self.build_dir,
             self.user_dir.glob("*.cj"),
-            self.lib_name,
             "local",
             self.build_dir
         )

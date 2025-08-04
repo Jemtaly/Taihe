@@ -387,7 +387,6 @@ class CJToolChain:
         self,
         output_dir: Path,
         input_files: Iterable[Path],
-        c_dylib_name: str,
         cj_dylib_name: str,
         dylib_path: Path,
     ) -> list[Path]:
@@ -398,13 +397,13 @@ class CJToolChain:
 
         gen_cj_command = [compiler] + list(input_files) + [
             "-l",
-            c_dylib_name,
-            "-l",
             cj_dylib_name,
             "-L",
             dylib_path,
             "--import-path",
             dylib_path,
+            "--link-options",
+            f"-rpath-link={dylib_path}",
             "-o",
             output_file
         ]
