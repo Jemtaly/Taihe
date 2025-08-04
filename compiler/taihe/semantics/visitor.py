@@ -41,6 +41,8 @@ if TYPE_CHECKING:
     )
     from taihe.semantics.types import (
         ArrayType,
+        AsyncResultType,
+        AsyncSetterType,
         BuiltinType,
         CallbackType,
         EnumType,
@@ -138,6 +140,16 @@ class SetTypeVisitor(Generic[_R]):
         raise NotImplementedError
 
 
+class AsyncSetterTypeVisitor(Generic[_R]):
+    def visit_async_setter_type(self, t: "AsyncSetterType") -> _R:
+        raise NotImplementedError
+
+
+class AsyncResultTypeVisitor(Generic[_R]):
+    def visit_async_result_type(self, t: "AsyncResultType") -> _R:
+        raise NotImplementedError
+
+
 class GenericTypeVisitor(
     Generic[_R],
     OptionalTypeVisitor[_R],
@@ -145,6 +157,8 @@ class GenericTypeVisitor(
     VectorTypeVisitor[_R],
     MapTypeVisitor[_R],
     SetTypeVisitor[_R],
+    AsyncSetterTypeVisitor[_R],
+    AsyncResultTypeVisitor[_R],
 ):
     def visit_generic_type(self, t: "GenericType") -> _R:
         raise NotImplementedError
@@ -167,6 +181,14 @@ class GenericTypeVisitor(
 
     @override
     def visit_set_type(self, t: "SetType") -> _R:
+        return self.visit_generic_type(t)
+
+    @override
+    def visit_async_setter_type(self, t: "AsyncSetterType") -> _R:
+        return self.visit_generic_type(t)
+
+    @override
+    def visit_async_result_type(self, t: "AsyncResultType") -> _R:
         return self.visit_generic_type(t)
 
 
