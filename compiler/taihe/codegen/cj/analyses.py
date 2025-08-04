@@ -95,7 +95,7 @@ class StructTypeCJInfo(TypeCJInfo):
         self.defn_headers = []
         self.impl_headers = []
         self.as_owner = struct_abi_info.mangled_name
-        self.as_param = struct_abi_info.mangled_name
+        self.as_param = "CPointer<" + struct_abi_info.mangled_name + ">"
 
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):

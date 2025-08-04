@@ -88,5 +88,15 @@ class CJCodeGenerator:
         )
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
-            pkg_cj_target.writeln(f"    {field.name}: {type_cj_info.as_param}")
+            pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
+        pkg_cj_target.writeln(f"    init ()")
+        pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
+        pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
+        pkg_cj_target.writeln(f"}}")
+        pkg_cj_target.writeln(
+            f"public struct {struct.name} {{",
+        )
+        for field in struct.fields:
+            type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
+            pkg_cj_target.writeln(f"    public let {field.name}: {type_cj_info.as_param}")
         pkg_cj_target.writeln(f"}}")
