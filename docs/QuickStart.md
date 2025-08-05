@@ -35,7 +35,7 @@ taihec [taihe_files ...] [options ...]
 | 参数 | 简写 | 说明 |
 | ---- | ---- | ---- |
 | `--output <path>` | `-O<path>` | 指定生成的目标文件存放目录（默认：`taihe-generated`） |
-| `--generate <backend>` | `-G<backend>` | 指定要启用的代码生成后端，如 `abi-header`、`abi-source`、`c-author` 等 |
+| `--generate <backend>` | `-G<backend>` | 指定要启用的代码生成后端，如 `abi-header`、`abi-source`、`c-author`、`cj-bridge` 等 |
 | `--build <build-system>` | `-B<build-system>` | 指定构建系统类型，目前支持 `cmake`（生成 `CMakeLists.txt`） |
 | `--codegen <namespace>:<config>[=<value>]` | `-C<namespace>:<config>[=<value>]` | 额外的代码生成配置项，例如 `sts:keep-name`、`arkts:module-prefix=prefix` 等 |
 | `--version` | | 打印版本信息 |
@@ -53,6 +53,7 @@ taihec [taihe_files ...] [options ...]
 | `cpp-user` | 生成 C++ 接口消费者侧的所需代码 |
 | `ani-bridge` | 生成 ANI 相关的桥接代码 |
 | `pretty-print` | 将 Taihe IDL 文件格式化输出 |
+| `cj-bridge` | 生成 Cangjie 相关的桥接代码 |
 
 #### 代码生成配置
 
@@ -113,7 +114,7 @@ taihe-tryit [mode] [test_dir] [options ...]
 | 参数 | 简写 | 说明 | 可用模式 |
 | ---- | ---- | ---- | -------- |
 | `--verbose` | `-v` | 输出详细的日志信息，便于调试 | 所有模式 |
-| `--user <user>` | `-u <user>` | 必要，选择消费者侧的语言类型，支持 `sts`（ArkTS 1.2）、`cpp`（C++） | 所有模式 |
+| `--user <user>` | `-u <user>` | 必要，选择消费者侧的语言类型，支持 `sts`（ArkTS 1.2）、`cpp`（C++）、`cj`（Cangjie） | 所有模式 |
 | `--optimization {0,1,2,3}` | `-O{0,1,2,3}` | 指定编译器的优化级别，默认为 `0` | `build`、`test` |
 | `--codegen <namespace>:<config>[=<value>]` | `-C<namespace>:<config>[=<value>]` | 同 `taihec`，额外的代码生成配置项，例如 `sts:keep-name` 等 | `generate`、`test` |
 

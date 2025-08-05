@@ -1,0 +1,2 @@
+# 太和仓颉使用注意事项
+需要从官网下载仓颉工具链，[下载链接](https://cangjie-lang.cn/download/1.0.0)，下载之后需要到太和项目目录下先`source .venv/bin/activate` 来激活虚拟环境，之后`source xxx/cangjie/envsetup.sh`，可以尝试在命令行`echo $CANGJIE_HOME`来验证仓颉工具链是否正常配置。之后就可以正常使用taihe-tryit和taihec工具啦。
