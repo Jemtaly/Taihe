@@ -1,6 +1,5 @@
 from taihe.codegen.abi.analyses import (
     GlobFuncAbiInfo,
-    StructAbiInfo,
 )
 from taihe.codegen.cj.analyses import (
     PackageCJInfo,
@@ -13,6 +12,7 @@ from taihe.semantics.declarations import (
     PackageGroup,
     StructDecl,
 )
+from taihe.semantics.types import StructType
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import FileKind, OutputManager
 
@@ -45,24 +45,48 @@ class CJCodeGenerator:
         pkg_cj_target: CJSourceWriter,
     ):
         func_abi_info = GlobFuncAbiInfo.get(self.am, func)
-        params = []
+        c_params = []
+        cj_params = []
         param_names = []
+        struct_mallocs = []
+        struct_frees = []
         for param in func.params:
             type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
-            params.append(f"{param.name}: {type_cj_info.as_param}")
-            param_names.append(f"{param.name}")
-        params_str = ", ".join(params)
+            c_params.append(f"{param.name}: {type_cj_info.as_c_param}")
+            cj_params.append(f"{param.name}: {type_cj_info.as_cj_param}")
+            if isinstance(param.ty_ref.resolved_ty, StructType):
+                struct_mallocs.append(
+                    f"        let p{type_cj_info.as_cj_param} = LibC.malloc<{type_cj_info.as_cj_param}>()"
+                )
+                struct_mallocs.append(
+                    f"        p{type_cj_info.as_cj_param}.write({param.name})"
+                )
+                struct_frees.append(f"        LibC.free(p{type_cj_info.as_cj_param})")
+                param_names.append(f"p{type_cj_info.as_cj_param}")
+            else:
+                param_names.append(f"{param.name}")
+        c_params_str = ", ".join(c_params)
+        cj_params_str = ", ".join(cj_params)
         param_names_str = ", ".join(param_names)
         if return_ty_ref := func.return_ty_ref:
             type_abi_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
-            return_ty_name = type_abi_info.as_owner
+            return_c_ty_name = type_abi_info.as_c_owner
         else:
-            return_ty_name = "Unit"
+            return_c_ty_name = "Unit"
         pkg_cj_target.writelns(
-            f"foreign func {func_abi_info.mangled_name}({params_str}): {return_ty_name}",
-            f"public func {func.name}({params_str}): {return_ty_name} {{",
-            f"    return unsafe {{",
-            f"        {func_abi_info.mangled_name}({param_names_str})",
+            f"foreign func {func_abi_info.mangled_name}({c_params_str}): {return_c_ty_name}",
+            f"public func {func.name}({cj_params_str}): {return_c_ty_name} {{",
+            f"    unsafe {{",
+        )
+        for struct_malloc in struct_mallocs:
+            pkg_cj_target.writeln(struct_malloc)
+        pkg_cj_target.writeln(
+            f"        let res = {func_abi_info.mangled_name}({param_names_str})"
+        )
+        for struct_free in struct_frees:
+            pkg_cj_target.writeln(struct_free)
+        pkg_cj_target.writelns(
+            f"        return res",
             f"    }}",
             f"}}",
         )
@@ -72,24 +96,11 @@ class CJCodeGenerator:
         struct: StructDecl,
         pkg_cj_target: CJSourceWriter,
     ):
-        struct_abi_info = StructAbiInfo.get(self.am, struct)
-        pkg_cj_target.writelns(
-            f"@C",
-            f"struct {struct_abi_info.mangled_name} {{",
-        )
+        pkg_cj_target.writelns(f"@C", f"public struct {struct.name} {{")
+        params = []
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
-            pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
-        pkg_cj_target.writeln(f"    init ()")
-        pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
-        pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_param}")
-        pkg_cj_target.writeln(f"}}")
-        pkg_cj_target.writeln(
-            f"public struct {struct.name} {{",
-        )
-        for field in struct.fields:
-            type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
-            pkg_cj_target.writeln(
-                f"    public let {field.name}: {type_cj_info.as_param}"
-            )
+            params.append(f"public let {field.name}: {type_cj_info.as_c_param}")
+        params_str = ", ".join(params)
+        pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{}}")
         pkg_cj_target.writeln(f"}}")

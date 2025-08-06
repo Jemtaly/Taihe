@@ -2,9 +2,6 @@ from abc import ABC
 
 from typing_extensions import override
 
-from taihe.codegen.abi.analyses import (
-    StructAbiInfo,
-)
 from taihe.semantics.declarations import (
     PackageDecl,
 )
@@ -32,9 +29,11 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
     defn_headers: list[str]
     impl_headers: list[str]
     # type as struct field / union field / return value
-    as_owner: str
+    as_c_owner: str
     # type as parameter
-    as_param: str
+    as_c_param: str
+    as_cj_owner: str
+    as_cj_param: str
 
     @classmethod
     @override
@@ -61,17 +60,20 @@ class ScalarTypeCJInfo(TypeCJInfo):
             raise ValueError
         self.defn_headers = []
         self.impl_headers = []
-        self.as_param = res
-        self.as_owner = res
+        self.as_c_param = res
+        self.as_c_owner = res
+        self.as_cj_owner = res
+        self.as_cj_param = res
 
 
 class StructTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: StructType):
-        struct_abi_info = StructAbiInfo.get(am, t.ty_decl)
         self.defn_headers = []
         self.impl_headers = []
-        self.as_owner = struct_abi_info.mangled_name
-        self.as_param = "CPointer<" + struct_abi_info.mangled_name + ">"
+        self.as_c_owner = t.ty_decl.name
+        self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
+        self.as_cj_owner = t.ty_decl.name
+        self.as_cj_param = t.ty_decl.name
 
 
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
