@@ -6,8 +6,8 @@ from pathlib import Path
 
 from taihe.driver.toolchain import (
     ArkToolchain,
-    CppToolchain,
     CJToolChain,
+    CppToolchain,
     clean_directory,
     create_directory,
     extract_file,
@@ -398,6 +398,7 @@ class StsBuildSystem(BuildSystem):
 
         logger.info("Done, time = %f s", elapsed_time)
 
+
 class CJBuildSystem(BuildSystem):
     def __init__(self, target_dir: str, verbosity: int = logging.INFO):
         super().__init__(target_dir, verbosity)
@@ -425,7 +426,6 @@ class CJBuildSystem(BuildSystem):
         self.exe_target = self.build_dir / "main"
         self.lib_files = []
         self.user_backend_names = ["cj-bridge"]
-
 
     def generate(self, buildsys_name: str | None, extra: dict[str, str | None]) -> None:
         """Generate code from IDL files."""
@@ -460,36 +460,24 @@ class CJBuildSystem(BuildSystem):
         """Create a simple example user source file."""
         create_directory(self.user_dir)
         with open(self.user_dir / "main.cj", "w") as f:
-            f.write(
-                f"import hello.*\n"
-                f"main() {{\n"
-                f"    sayHello()\n"
-                f"    return 0\n"
-                f"}}\n"
-            )
+            f.write(f"import hello.*\nmain() {{\n    sayHello()\n    return 0\n}}\n")
 
     def _compile_user_executable(self, opt_level: str) -> None:
         """Compile and link the user executable."""
-        self.cj_toolchain.compile_cffi_so(
-            self.build_dir,
-            self.generated_cj_dir.glob("*.cj"),
-            self.lib_name,
-            self.build_dir
+        cffi_so = self.cj_toolchain.compile_cffi_so(
+            self.build_dir, self.generated_cj_dir.glob("*.cj"), self.lib_name
         )
 
         self.cj_toolchain.compile(
             self.build_dir,
             self.user_dir.glob("*.cj"),
-            "local",
-            self.build_dir
+            cffi_so,
         )
 
     def _run_user_executable(self) -> None:
         """Run the user executable."""
-        self.cj_toolchain.run(
-            self.exe_target,
-            self.build_dir
-        )
+        self.cj_toolchain.run(self.exe_target, self.build_dir)
+
 
 BUILD_MODES = {
     "cpp": CppBuildSystem,

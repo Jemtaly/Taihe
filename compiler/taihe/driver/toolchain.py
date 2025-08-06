@@ -349,80 +349,91 @@ class ArkToolchain:
             env={"LD_LIBRARY_PATH": ld_lib_path},
         )
 
+
 class CJToolChain:
     """Utility class for Cangjie toolchain operations."""
 
     def __init__(self):
         self.cangjie_home = os.getenv("CANGJIE_HOME", "")
         if self.cangjie_home == "":
-            raise FileNotFoundError(f"Cangjie tool chain not found, please download and config it first.")
+            raise FileNotFoundError(
+                f"Cangjie tool chain not found, please download and config it first."
+            )
         self.cjc = self.cangjie_home + "/bin/cjc"
 
     def compile_cffi_so(
-        self,
-        output_dir: Path,
-        input_files: Iterable[Path],
-        dylib_name: str,
-        dylib_path: Path,
-    ) -> list[Path]:
+        self, output_dir: Path, input_files: Iterable[Path], c_dylib_name: str
+    ) -> list[str]:
         """Compile cangjie files to dynamic library file."""
-        name = "local"
-        output_file = output_dir / f"lib{name}.so"
-        compiler = self.cjc
+        cj_dylib_names: list[str] = []
 
-        gen_cj_command = [compiler] + list(input_files) + [
-            "-l",
-            dylib_name,
-            "-L",
-            dylib_path,
-            "--output-type=dylib",
-            "-o",
-            output_file,
-        ]
-        run_command(gen_cj_command)
+        for input_file in input_files:
+            name = input_file.name
+            output_file = output_dir / f"lib{name}.so"
+            compiler = self.cjc
 
-        return [output_file]
+            gen_cj_command = [
+                compiler,
+                input_file,
+                "-l",
+                c_dylib_name,
+                "-L",
+                output_dir,
+                "--output-type=dylib",
+                "-o",
+                output_file,
+            ]
+
+            run_command(gen_cj_command)
+            cj_dylib_names.append(name)
+
+        return cj_dylib_names
 
     def compile(
         self,
         output_dir: Path,
         input_files: Iterable[Path],
-        cj_dylib_name: str,
-        dylib_path: Path,
-    ) -> list[Path]:
+        cj_dylib_names: list[str],
+    ) -> Path:
         """Compile cangjie files to executable file."""
         name = "main"
         output_file = output_dir / f"{name}"
         compiler = self.cjc
 
-        gen_cj_command = [compiler] + list(input_files) + [
-            "-l",
-            cj_dylib_name,
+        gen_cj_command = [compiler, *list(input_files)]
+
+        for cj_dylib_name in cj_dylib_names:
+            gen_cj_command += ["-l", cj_dylib_name]
+
+        gen_cj_command += [
             "-L",
-            dylib_path,
+            output_dir,
             "--import-path",
-            dylib_path,
+            output_dir,
             "--link-options",
-            f"-rpath-link={dylib_path}",
+            f"-rpath-link={output_dir}",
             "-o",
-            output_file
+            output_file,
         ]
         run_command(gen_cj_command)
 
-        return [output_file]
+        return output_file
 
     def run(
         self,
         excutable_target: Path,
         ld_lib_path: Path,
     ) -> float:
-
         command = [
             excutable_target,
         ]
 
-        current_ld_library_path = os.getenv('LD_LIBRARY_PATH', '')
-        new_ld_library_path = f"{ld_lib_path}:{current_ld_library_path}" if current_ld_library_path else f"{ld_lib_path}"
+        current_ld_library_path = os.getenv("LD_LIBRARY_PATH", "")
+        new_ld_library_path = (
+            f"{ld_lib_path}:{current_ld_library_path}"
+            if current_ld_library_path
+            else f"{ld_lib_path}"
+        )
 
         return run_command(
             command,

@@ -1,49 +1,22 @@
-from taihe.semantics.declarations import (
-    EnumDecl,
-    GlobFuncDecl,
-    IfaceDecl,
-    IfaceMethodDecl,
-    IfaceParentDecl,
-    PackageDecl,
-    PackageGroup,
-    ParamDecl,
-    StructDecl,
-    StructFieldDecl,
-    UnionDecl,
-    UnionFieldDecl,
-)
+from abc import ABC
 
-from taihe.semantics.types import (
-    ArrayType,
-    CallbackType,
-    EnumType,
-    IfaceType,
-    MapType,
-    OpaqueType,
-    OptionalType,
-    ScalarKind,
-    ScalarType,
-    SetType,
-    StringType,
-    StructType,
-    Type,
-    UnionType,
-    VectorType,
-)
+from typing_extensions import override
 
 from taihe.codegen.abi.analyses import (
-    GlobFuncAbiInfo,
-    IfaceAbiInfo,
-    IfaceMethodAbiInfo,
-    PackageAbiInfo,
     StructAbiInfo,
-    TypeAbiInfo,
-    UnionAbiInfo,
 )
-from typing_extensions import override
-from abc import ABC
+from taihe.semantics.declarations import (
+    PackageDecl,
+)
+from taihe.semantics.types import (
+    ScalarKind,
+    ScalarType,
+    StructType,
+    Type,
+)
 from taihe.semantics.visitor import TypeVisitor
 from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
+
 
 class PackageCJInfo(AbstractAnalysis[PackageDecl]):
     def __init__(self, am: AnalysisManager, p: PackageDecl) -> None:
@@ -53,6 +26,7 @@ class PackageCJInfo(AbstractAnalysis[PackageDecl]):
     @override
     def _create(cls, am: AnalysisManager, p: PackageDecl) -> "PackageCJInfo":
         return PackageCJInfo(am, p)
+
 
 class TypeCJInfo(AbstractAnalysis[Type], ABC):
     defn_headers: list[str]
@@ -66,6 +40,7 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
     @override
     def _create(cls, am: AnalysisManager, t: Type) -> "TypeCJInfo":
         return TypeCJInfoDispatcher(am).handle_type(t)
+
 
 class ScalarTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: ScalarType):
@@ -89,6 +64,7 @@ class ScalarTypeCJInfo(TypeCJInfo):
         self.as_param = res
         self.as_owner = res
 
+
 class StructTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: StructType):
         struct_abi_info = StructAbiInfo.get(am, t.ty_decl)
@@ -97,6 +73,7 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_owner = struct_abi_info.mangled_name
         self.as_param = "CPointer<" + struct_abi_info.mangled_name + ">"
 
+
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):
         self.am = am
@@ -104,7 +81,7 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_scalar_type(self, t: ScalarType) -> TypeCJInfo:
         return ScalarTypeCJInfo(self.am, t)
-    
+
     @override
     def visit_struct_type(self, t: StructType) -> TypeCJInfo:
         return StructTypeCJInfo(self.am, t)

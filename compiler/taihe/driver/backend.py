@@ -99,13 +99,13 @@ class BackendRegistry:
             CAuthorBackendConfig,
         )
         from taihe.codegen.ani import AniBridgeBackendConfig
+        from taihe.codegen.cj import CJBridgeBackendConfig
         from taihe.codegen.cpp import (
             CppAuthorBackendConfig,
             CppCommonHeadersBackendConfig,
             CppUserHeadersBackendConfig,
         )
         from taihe.semantics import PrettyPrintBackendConfig
-        from taihe.codegen.cj import CJBridgeBackendConfig
 
         backends = [
             # abi
