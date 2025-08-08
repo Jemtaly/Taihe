@@ -1,0 +1,4 @@
+struct in_string{
+    s:String;
+}
+function getNewString(origin: in_string):String ;

@@ -1,0 +1,7 @@
+struct Color {
+    r: i32;
+    g: i32;
+    b: i32;
+}
+
+function getNewColor(origina: i32,origing: i32,originb: i32): Color;
