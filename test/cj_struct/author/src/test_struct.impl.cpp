@@ -1,14 +1,20 @@
 #include "test_struct.proj.hpp"
 #include "test_struct.impl.hpp"
+
 #include "stdexcept"
 
-::test_struct::Color getNewColor(::test_struct::Color const& origin) {
+
+namespace {
+// To be implemented.
+
+::test_struct::Color getNewColor(::test_struct::Color const& origin, ::test_struct::Color const& another) {
     ::test_struct::Color res;
-    res.r = origin.r + 1;
-    res.g = origin.g + 2;
-    res.b = origin.b + 3;
+    res.r = origin.r + another.r;
+    res.g = origin.g + another.g;
+    res.b = origin.b + another.b;
     return res;
 }
+}  // namespace
 
 // Since these macros are auto-generate, lint will cause false positive.
 // NOLINTBEGIN

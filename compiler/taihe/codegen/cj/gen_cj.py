@@ -46,7 +46,16 @@ class CJCodeGenerator:
     def gen_TString(self, pkg_cj_target: CJSourceWriter):
         pkg_cj_target.writeln("@C")
         pkg_cj_target.writeln("public struct TString {")
-        pkg_cj_target.writeln("    public TString (public let flags: UInt32, public let length: UInt32, public let ptr: CPointer<UInt8>){}")
+        pkg_cj_target.writeln("    public let flags: UInt32 = 0")
+        pkg_cj_target.writeln("    public let length: UInt32 ")
+        pkg_cj_target.writeln("    public let ptr: CPointer<UInt8>")
+        pkg_cj_target.writeln("    public TString(str: String) {") 
+        pkg_cj_target.writeln("     unsafe{")
+        pkg_cj_target.writeln("        let cstr = LibC.mallocCString(str)")
+        pkg_cj_target.writeln("        length = UInt32(cstr.size())")
+        pkg_cj_target.writeln("        ptr = cstr.getChars()")
+        pkg_cj_target.writeln("     }")
+        pkg_cj_target.writeln("  }")
         pkg_cj_target.writeln("}")
 
     def gen_func(
@@ -74,18 +83,17 @@ class CJCodeGenerator:
                 # struct_frees.append(f"        LibC.free(p{type_cj_info.as_cj_param})")
                 param_names.append(f"p{param.name}")
             elif isinstance(param.ty_ref.resolved_ty, StringType):
+                # struct_mallocs.append(
+                #     f"        let p{param.name} = LibC.mallocCString({param.name})"
+                # )
                 struct_mallocs.append(
-                    f"        let p{param.name} = LibC.mallocCString({param.name})"
-                )
-                struct_mallocs.append(
-                    f"        let middle{param.name} =TString( 0,  UInt32(p{param.name}.size()),  p{param.name}.getChars())"
+                    f"        let middle{param.name} =TString({param.name})"
                 )
                 # struct_frees.append(f"        LibC.free(p{param.name})")
                 param_names.append(f"middle{param.name}")
                 self.TString=True
 
             else:
-
                 param_names.append(f"{param.name}")
         c_params_str = ", ".join(c_params)
         cj_params_str = ", ".join(cj_params)
