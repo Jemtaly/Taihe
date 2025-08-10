@@ -133,11 +133,24 @@ class CJCodeGenerator:
         pkg_cj_target: CJSourceWriter,
     ):
         pkg_cj_target.writelns(f"@C", f"public struct {struct.name} {{")
-        params = []
+        paramsInit = []
+        param_name = []
+        str_param_name = []
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
-            params.append(f"public let {field.name}: {type_cj_info.as_c_param}")
-        params_str = ", ".join(params)
-        pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{}}")
+            pkg_cj_target.writeln(f"public let {field.name}: {type_cj_info.as_c_param}")
+            paramsInit.append(f"{field.name}:{type_cj_info.as_cj_param}")
+            if isinstance ( field.ty_ref.resolved_ty , StringType ) :
+                str_param_name.append(f"{field.name}")
+            else:
+                param_name.append(f"{field.name}")
+        params_str = ", ".join(paramsInit)
+        pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{")
+        for name in param_name:
+            pkg_cj_target.writeln(f"        this.{name}={name}")
+        for name in str_param_name:
+            pkg_cj_target.writeln(f"        this.{name}=TString({name})")
+        pkg_cj_target.writeln(f"    }}")
+        pkg_cj_target.writeln(f"    ")
         pkg_cj_target.writeln(f"}}")
         

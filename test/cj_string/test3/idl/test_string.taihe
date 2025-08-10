@@ -1,4 +1,5 @@
 struct in_string{
+    n:i32;
     s:String;
 }
 function getNewString(origin: in_string):String ;
