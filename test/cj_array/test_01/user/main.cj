@@ -1,5 +1,18 @@
 import testArray
 
-main() {
-    
+@Test
+class ArrayTests {
+    @TestCase
+    func sumArrayTest() {
+        let numbers: Array<Int32> = [1, 2, 3, 4, 5];
+        let sum = testArray.SumArray(numbers, 100)
+        @Expect(sum, 115)
+    }
+
+    @TestCase
+    func getArrayValueTest() {
+        let nums: Array<Int64> = [35, 45, 55];
+        let res = testArray.GetArrayValue(nums, 2)
+        @Expect(res, 55)
+    }
 }
