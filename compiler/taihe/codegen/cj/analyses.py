@@ -1,22 +1,22 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from typing_extensions import override
 
+from taihe.codegen.cj.writer import CJSourceWriter
 from taihe.semantics.declarations import (
     PackageDecl,
 )
 from taihe.semantics.types import (
+    ArrayType,
     ScalarKind,
     ScalarType,
+    StringType,
     StructType,
     Type,
-    StringType,
 )
-
 from taihe.semantics.visitor import TypeVisitor
 from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
 
-from taihe.codegen.cj.writer import CJSourceWriter
 
 class PackageCJInfo(AbstractAnalysis[PackageDecl]):
     def __init__(self, am: AnalysisManager, p: PackageDecl) -> None:
@@ -31,17 +31,37 @@ class PackageCJInfo(AbstractAnalysis[PackageDecl]):
 class TypeCJInfo(AbstractAnalysis[Type], ABC):
     defn_headers: list[str]
     impl_headers: list[str]
-    # type as struct field / union field / return value
+    # type as struct field / union field / return value in @C/foreign function
     as_c_owner: str
-    # type as parameter
+    # type as parameter in @C/foreign function
     as_c_param: str
+    # type as struct field / union field / return value in CJ function
     as_cj_owner: str
+    # type as parameter in CJ function
     as_cj_param: str
 
     @classmethod
     @override
     def _create(cls, am: AnalysisManager, t: Type) -> "TypeCJInfo":
         return TypeCJInfoDispatcher(am).handle_type(t)
+
+    @abstractmethod
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    @abstractmethod
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
 
 
 class ScalarTypeCJInfo(TypeCJInfo):
@@ -68,6 +88,22 @@ class ScalarTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = res
         self.as_cj_param = res
 
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
 
 class StructTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: StructType):
@@ -77,6 +113,24 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
 class StringTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: StringType):
         self.defn_headers = []
@@ -85,7 +139,52 @@ class StringTypeCJInfo(TypeCJInfo):
         self.as_c_param = "TString"
         self.as_cj_owner = "String"
         self.as_cj_param = "String"
-class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):    
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class ArrayTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: ArrayType):
+        self.defn_headers = []
+        self.impl_headers = []
+        arg_ty_abi_info = TypeCJInfo.get(am, t.item_ty)
+        self.as_c_owner = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
+        self.as_c_param = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
+        self.as_cj_owner = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
+        self.as_cj_param = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):
         self.am = am
 
@@ -96,7 +195,11 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_struct_type(self, t: StructType) -> TypeCJInfo:
         return StructTypeCJInfo(self.am, t)
-    
+
     @override
     def visit_string_type(self, t: StringType) -> TypeCJInfo:
         return StringTypeCJInfo(self.am, t)
+
+    @override
+    def visit_array_type(self, t: ArrayType) -> TypeCJInfo:
+        return ArrayTypeCJInfo(self.am, t)

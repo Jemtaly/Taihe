@@ -12,9 +12,9 @@ from taihe.semantics.declarations import (
     PackageGroup,
     StructDecl,
 )
-from taihe.semantics.types import ( 
-    StructType,
+from taihe.semantics.types import (
     StringType,
+    StructType,
 )
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import FileKind, OutputManager
@@ -25,11 +25,12 @@ class CJCodeGenerator:
         self.om = om
         self.am = am
         self.TString = False
+
     def generate(self, pg: PackageGroup):
         for pkg in pg.packages:
-            self.gen_package_files(pkg)
+            self.gen_package(pkg)
 
-    def gen_package_files(self, pkg: PackageDecl):
+    def gen_package(self, pkg: PackageDecl):
         pkg_cj_info = PackageCJInfo.get(self.am, pkg)
         with CJSourceWriter(
             self.om,
@@ -37,25 +38,27 @@ class CJCodeGenerator:
             FileKind.CJ,
         ) as pkg_cj_target:
             pkg_cj_target.writeln(f"package {pkg.name}")
-            self.gen_TString(pkg_cj_target)
+            self.gen_builtinType(pkg_cj_target)
             for struct in pkg.structs:
                 self.gen_struct(struct, pkg_cj_target)
             for func in pkg.functions:
                 self.gen_func(func, pkg_cj_target)
 
-    def gen_TString(self, pkg_cj_target: CJSourceWriter):
-        pkg_cj_target.writeln("@C")
-        pkg_cj_target.writeln("struct TString {")
-        pkg_cj_target.writeln("    public let flags: UInt32 = 0")
-        pkg_cj_target.writeln("    public let length: UInt32 ")
-        pkg_cj_target.writeln("    public let ptr: CString")
-        pkg_cj_target.writeln("    public TString(str: String) {") 
-        pkg_cj_target.writeln("     unsafe{")
-        pkg_cj_target.writeln("        ptr = LibC.mallocCString(str)")
-        pkg_cj_target.writeln("        length = UInt32(str.size)")
-        pkg_cj_target.writeln("     }")
-        pkg_cj_target.writeln("  }")
-        pkg_cj_target.writeln("}")
+    def gen_builtinType(self, pkg_cj_target: CJSourceWriter):
+        pkg_cj_target.writelns(
+            f"@C",
+            f"public struct TString {{",
+            f"    public let flags: UInt32 = 0",
+            f"    public let length: UInt32 ",
+            f"    public let ptr: CString",
+            f"    public TString(str: String) {{",
+            f"        unsafe{{",
+            f"            ptr = LibC.mallocCString(str)",
+            f"            length = UInt32(str.size)",
+            f"        }}",
+            f"    }}",
+            f"}}",
+        )
 
     def gen_func(
         self,
@@ -76,18 +79,16 @@ class CJCodeGenerator:
                 struct_mallocs.append(
                     f"        let p{param.name} = LibC.malloc<{type_cj_info.as_cj_param}>()"
                 )
-                struct_mallocs.append(
-                    f"        p{param.name}.write({param.name})"
-                )
+                struct_mallocs.append(f"        p{param.name}.write({param.name})")
                 struct_frees.append(f"        LibC.free(p{param.name})")
                 param_names.append(f"p{param.name}")
             elif isinstance(param.ty_ref.resolved_ty, StringType):
                 struct_mallocs.append(
                     f"        let middle{param.name} =TString({param.name})"
                 )
-                struct_frees.append(f"        LibC.free(p{param.name})")
+                #                struct_frees.append(f"        LibC.free(p{param.name})")
                 param_names.append(f"middle{param.name}")
-                self.TString=True
+                self.TString = True
 
             else:
                 param_names.append(f"{param.name}")
@@ -107,7 +108,7 @@ class CJCodeGenerator:
         )
         for struct_malloc in struct_mallocs:
             pkg_cj_target.writeln(struct_malloc)
-        if not return_cj_ty_name == "String":
+        if return_cj_ty_name != "String":
             pkg_cj_target.writeln(
                 f"        let res = {func_abi_info.mangled_name}({param_names_str})"
             )
@@ -123,11 +124,7 @@ class CJCodeGenerator:
             f"}}",
         )
 
-    def gen_struct(
-        self,
-        struct: StructDecl,
-        pkg_cj_target: CJSourceWriter,
-    ):
+    def gen_struct(self, struct: StructDecl, pkg_cj_target: CJSourceWriter):
         pkg_cj_target.writelns(f"@C", f"public struct {struct.name} {{")
         paramsInit = []
         param_name = []
@@ -135,11 +132,15 @@ class CJCodeGenerator:
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
             paramsInit.append(f"{field.name}:{type_cj_info.as_cj_param}")
-            if isinstance ( field.ty_ref.resolved_ty , StringType ) :
-                pkg_cj_target.writeln(f"    let {field.name}: {type_cj_info.as_c_param}")
+            if isinstance(field.ty_ref.resolved_ty, StringType):
+                pkg_cj_target.writeln(
+                    f"    let {field.name}: {type_cj_info.as_c_param}"
+                )
                 str_param_name.append(f"{field.name}")
             else:
-                pkg_cj_target.writeln(f"public let {field.name}: {type_cj_info.as_c_param}")
+                pkg_cj_target.writeln(
+                    f"public let {field.name}: {type_cj_info.as_c_param}"
+                )
                 param_name.append(f"{field.name}")
         params_str = ", ".join(paramsInit)
         pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{")
@@ -150,4 +151,3 @@ class CJCodeGenerator:
         pkg_cj_target.writeln(f"    }}")
         pkg_cj_target.writeln(f"    ")
         pkg_cj_target.writeln(f"}}")
-        
