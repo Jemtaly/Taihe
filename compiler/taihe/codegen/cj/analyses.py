@@ -10,10 +10,13 @@ from taihe.semantics.types import (
     ScalarType,
     StructType,
     Type,
+    StringType,
 )
+
 from taihe.semantics.visitor import TypeVisitor
 from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
 
+from taihe.codegen.cj.writer import CJSourceWriter
 
 class PackageCJInfo(AbstractAnalysis[PackageDecl]):
     def __init__(self, am: AnalysisManager, p: PackageDecl) -> None:
@@ -74,9 +77,15 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
-
-
-class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
+class StringTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: StringType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "TString"
+        self.as_c_param = "TString"
+        self.as_cj_owner = "String"
+        self.as_cj_param = "String"
+class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):    
     def __init__(self, am: AnalysisManager):
         self.am = am
 
@@ -87,3 +96,7 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_struct_type(self, t: StructType) -> TypeCJInfo:
         return StructTypeCJInfo(self.am, t)
+    
+    @override
+    def visit_string_type(self, t: StringType) -> TypeCJInfo:
+        return StringTypeCJInfo(self.am, t)

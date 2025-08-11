@@ -4,4 +4,4 @@ struct Color {
     b: i32;
 }
 
-function getNewColor(origin: Color): Color;
+function getNewColor(origin: Color,another:Color): Color;
