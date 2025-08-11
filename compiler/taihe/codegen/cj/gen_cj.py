@@ -58,6 +58,19 @@ class CJCodeGenerator:
             f"        }}",
             f"    }}",
             f"}}",
+            f"",
+            f"@C",
+            f"public struct TArray {{",
+            f"    public let m_size: IntNative",
+            f"    public let m_data: CPointer<Unit> ",
+            f"    public TArray(arrSize: IntNative, arrPtr: CPointer<Unit>) {{",
+            f"        unsafe{{",
+            f"            m_size = arrSize",
+            f"            m_data = arrPtr",
+            f"        }}",
+            f"    }}",
+            f"}}",
+            f""
         )
 
     def gen_func(

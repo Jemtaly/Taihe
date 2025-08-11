@@ -1,6 +1,9 @@
 import test_string
 
-main() {
-    let newString = test_string.getNewString("hello","仓颉")
-    println(newString)
+@Test
+class StringTests {
+    @TestCase
+    func stringTest01() {
+        @Expect(test_string.getNewString("hello","仓颉"), "hello仓颉")
+    }
 }

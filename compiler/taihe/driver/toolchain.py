@@ -412,6 +412,7 @@ class CJToolChain:
             output_dir,
             "--link-options",
             f"-rpath-link={output_dir}",
+            "--test",
             "-o",
             output_file,
         ]

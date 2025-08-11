@@ -1,7 +1,10 @@
 import test_string
 
-main() {
-    let str = "123"
-    let newStr = test_string.getNewString(str)
-    println(newStr)
+@Test
+class StringTests {
+    @TestCase
+    func stringTest01() {
+        let str = "123"
+        @Expect(test_string.getNewString(str), "taihestring123")
+    }
 }
