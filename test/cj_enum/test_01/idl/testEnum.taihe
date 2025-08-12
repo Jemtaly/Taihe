@@ -1,0 +1,13 @@
+enum Weekday: i32 {
+    SUNDAY = 0,
+    MONDAY,
+    TUESDAY,
+    WEDNESDAY,
+    THURSDAY,
+    FRIDAY,
+    SATURDAY,
+}
+
+function nextEnumWeekday(day: Weekday): Weekday;
+function getValueOfEnumWeekday(day: Weekday): i32;
+function fromValueToEnumWeekday(str: i32): Weekday;

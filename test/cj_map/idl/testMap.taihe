@@ -1,0 +1,1 @@
+function getMapValue(a: Map<i64,String>, key: i64): String;

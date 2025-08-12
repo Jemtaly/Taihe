@@ -70,7 +70,7 @@ class CJCodeGenerator:
             f"        }}",
             f"    }}",
             f"}}",
-            f""
+            f"",
         )
 
     def gen_func(
@@ -113,6 +113,7 @@ class CJCodeGenerator:
             return_c_ty_name = type_abi_info.as_c_owner
             return_cj_ty_name = type_abi_info.as_cj_owner
         else:
+            return_c_ty_name = "Unit"
             return_cj_ty_name = "Unit"
         pkg_cj_target.writelns(
             f"foreign func {func_abi_info.mangled_name}({c_params_str}): {return_c_ty_name}",

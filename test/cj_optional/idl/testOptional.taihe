@@ -1,0 +1,3 @@
+function ShowOptionalInt(x: Optional<i32>): void;
+
+function MakeOptionalInt(b: bool): Optional<i32>;

@@ -1,0 +1,1 @@
+function getSetValue(a: Set<i64>): i64;

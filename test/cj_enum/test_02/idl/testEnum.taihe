@@ -1,0 +1,13 @@
+enum Weekday: String {
+    SUNDAY = "day0",
+    MONDAY = "day1",
+    TUESDAY = "day2",
+    WEDNESDAY = "day3",
+    THURSDAY = "day4",
+    FRIDAY = "day5",
+    SATURDAY = "day6",
+}
+
+function nextEnumWeekday(day: Weekday): Weekday;
+function getValueOfEnumWeekday(day: Weekday): String;
+function fromValueToEnumWeekday(str: String): Weekday;

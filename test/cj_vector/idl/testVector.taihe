@@ -1,0 +1,2 @@
+function makeVec(src: Array<i64>): Vector<i64>;
+function fillVec(src: Array<i64>, dst: Vector<i64>): void;

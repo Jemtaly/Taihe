@@ -2,17 +2,21 @@ from abc import ABC, abstractmethod
 
 from typing_extensions import override
 
+from taihe.codegen.abi.analyses import EnumAbiInfo
 from taihe.codegen.cj.writer import CJSourceWriter
 from taihe.semantics.declarations import (
     PackageDecl,
 )
 from taihe.semantics.types import (
     ArrayType,
+    EnumType,
+    OptionalType,
     ScalarKind,
     ScalarType,
     StringType,
     StructType,
     Type,
+    UnionType,
 )
 from taihe.semantics.visitor import TypeVisitor
 from taihe.utils.analyses import AbstractAnalysis, AnalysisManager
@@ -184,6 +188,85 @@ class ArrayTypeCJInfo(TypeCJInfo):
         pass
 
 
+class EnumTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: EnumType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "UInt32"
+        self.as_c_param = "UInt32"
+        enum_abi_info = EnumAbiInfo.get(am, t.ty_decl)
+        self.as_cj_owner = enum_abi_info.abi_type
+        self.as_cj_param = enum_abi_info.abi_type
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class OptionalTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: OptionalType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "TOptional"
+        self.as_c_param = "TOptional"
+        self.as_cj_owner = "TOptional"
+        self.as_cj_param = "TOptional"
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class UnionTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: UnionType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "Union"
+        self.as_c_param = "Union"
+        self.as_cj_owner = "Union"
+        self.as_cj_param = "Union"
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):
         self.am = am
@@ -203,3 +286,15 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_array_type(self, t: ArrayType) -> TypeCJInfo:
         return ArrayTypeCJInfo(self.am, t)
+
+    @override
+    def visit_enum_type(self, t: EnumType) -> TypeCJInfo:
+        return EnumTypeCJInfo(self.am, t)
+
+    @override
+    def visit_optional_type(self, t: OptionalType) -> TypeCJInfo:
+        return OptionalTypeCJInfo(self.am, t)
+
+    @override
+    def visit_union_type(self, t: UnionType) -> TypeCJInfo:
+        return UnionTypeCJInfo(self.am, t)

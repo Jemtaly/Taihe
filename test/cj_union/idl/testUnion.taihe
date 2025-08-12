@@ -1,0 +1,7 @@
+union MyUnion {
+  boolValue: bool;
+  floatValue: f32;
+}
+
+function PrintMyUnion(data: MyUnion): String;
+function MakeMyUnion(kind: String): MyUnion;
