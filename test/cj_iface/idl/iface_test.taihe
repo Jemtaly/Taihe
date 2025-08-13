@@ -1,0 +1,8 @@
+interface Noo {
+    Bar(): void;
+    GetName(): String;
+    GetAge(): i32;
+}
+
+function GetNooIface(): Noo;
+function PrintNooName(noo: Noo): String;

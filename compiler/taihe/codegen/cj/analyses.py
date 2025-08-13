@@ -9,6 +9,7 @@ from taihe.semantics.declarations import (
 )
 from taihe.semantics.types import (
     ArrayType,
+    CallbackType,
     EnumType,
     OptionalType,
     ScalarKind,
@@ -266,6 +267,31 @@ class UnionTypeCJInfo(TypeCJInfo):
     ):
         pass
 
+class CallbackTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: CallbackType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "LAMBDA"
+        self.as_c_param = "LAMBDA"
+        self.as_cj_owner = "LAMBDA"
+        self.as_cj_param = "LAMBDA"
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
 
 class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     def __init__(self, am: AnalysisManager):
@@ -298,3 +324,7 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
     @override
     def visit_union_type(self, t: UnionType) -> TypeCJInfo:
         return UnionTypeCJInfo(self.am, t)
+    
+    @override
+    def visit_callback_type(self, t: CallbackType):
+        return CallbackTypeCJInfo(self.am, t)
