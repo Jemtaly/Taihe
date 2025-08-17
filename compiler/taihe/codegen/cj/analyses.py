@@ -11,9 +11,13 @@ from taihe.semantics.types import (
     ArrayType,
     CallbackType,
     EnumType,
+    IfaceType,
+    MapType,
+    OpaqueType,
     OptionalType,
     ScalarKind,
     ScalarType,
+    SetType,
     StringType,
     StructType,
     Type,
@@ -69,29 +73,41 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
         pass
 
 
-class ScalarTypeCJInfo(TypeCJInfo):
-    def __init__(self, am: AnalysisManager, t: ScalarType):
-        res = {
-            ScalarKind.BOOL: "Bool",
-            ScalarKind.F32: "Float32",
-            ScalarKind.F64: "Float64",
-            ScalarKind.I8: "Int8",
-            ScalarKind.I16: "Int16",
-            ScalarKind.I32: "Int32",
-            ScalarKind.I64: "Int64",
-            ScalarKind.U8: "UInt8",
-            ScalarKind.U16: "UInt16",
-            ScalarKind.U32: "UInt32",
-            ScalarKind.U64: "UInt64",
-        }.get(t.kind)
-        if res is None:
-            raise ValueError
+class EnumTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: EnumType):
         self.defn_headers = []
         self.impl_headers = []
-        self.as_c_param = res
-        self.as_c_owner = res
-        self.as_cj_owner = res
-        self.as_cj_param = res
+        self.as_c_owner = "UInt32"
+        self.as_c_param = "UInt32"
+        enum_abi_info = EnumAbiInfo.get(am, t.ty_decl)
+        self.as_cj_owner = enum_abi_info.abi_type
+        self.as_cj_param = enum_abi_info.abi_type
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class UnionTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: UnionType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = "Union"
+        self.as_c_param = "Union"
+        self.as_cj_owner = "Union"
+        self.as_cj_param = "Union"
 
     def from_cj(
         self,
@@ -118,6 +134,73 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class IfaceTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: IfaceType):
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_owner = t.ty_decl.name
+        self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
+        self.as_cj_owner = t.ty_decl.name
+        self.as_cj_param = t.ty_decl.name
+
+    def from_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+    def into_cj(
+        self,
+        target: CJSourceWriter,
+        abi_type: str,
+        cj_type: str,
+    ):
+        pass
+
+
+class ScalarTypeCJInfo(TypeCJInfo):
+    def __init__(self, am: AnalysisManager, t: ScalarType):
+        res = {
+            ScalarKind.BOOL: "Bool",
+            ScalarKind.F32: "Float32",
+            ScalarKind.F64: "Float64",
+            ScalarKind.I8: "Int8",
+            ScalarKind.I16: "Int16",
+            ScalarKind.I32: "Int32",
+            ScalarKind.I64: "Int64",
+            ScalarKind.U8: "UInt8",
+            ScalarKind.U16: "UInt16",
+            ScalarKind.U32: "UInt32",
+            ScalarKind.U64: "UInt64",
+        }.get(t.kind)
+        if res is None:
+            raise ValueError
+        self.defn_headers = []
+        self.impl_headers = []
+        self.as_c_param = res
+        self.as_c_owner = res
+        self.as_cj_owner = res
+        self.as_cj_param = res
 
     def from_cj(
         self,
@@ -189,33 +272,6 @@ class ArrayTypeCJInfo(TypeCJInfo):
         pass
 
 
-class EnumTypeCJInfo(TypeCJInfo):
-    def __init__(self, am: AnalysisManager, t: EnumType):
-        self.defn_headers = []
-        self.impl_headers = []
-        self.as_c_owner = "UInt32"
-        self.as_c_param = "UInt32"
-        enum_abi_info = EnumAbiInfo.get(am, t.ty_decl)
-        self.as_cj_owner = enum_abi_info.abi_type
-        self.as_cj_param = enum_abi_info.abi_type
-
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
-
-    def into_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
-
-
 class OptionalTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: OptionalType):
         self.defn_headers = []
@@ -241,31 +297,6 @@ class OptionalTypeCJInfo(TypeCJInfo):
     ):
         pass
 
-
-class UnionTypeCJInfo(TypeCJInfo):
-    def __init__(self, am: AnalysisManager, t: UnionType):
-        self.defn_headers = []
-        self.impl_headers = []
-        self.as_c_owner = "Union"
-        self.as_c_param = "Union"
-        self.as_cj_owner = "Union"
-        self.as_cj_param = "Union"
-
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
-
-    def into_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
 
 class CallbackTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: CallbackType):
@@ -298,12 +329,24 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
         self.am = am
 
     @override
-    def visit_scalar_type(self, t: ScalarType) -> TypeCJInfo:
-        return ScalarTypeCJInfo(self.am, t)
+    def visit_enum_type(self, t: EnumType) -> TypeCJInfo:
+        return EnumTypeCJInfo(self.am, t)
+
+    @override
+    def visit_union_type(self, t: UnionType) -> TypeCJInfo:
+        return UnionTypeCJInfo(self.am, t)
 
     @override
     def visit_struct_type(self, t: StructType) -> TypeCJInfo:
         return StructTypeCJInfo(self.am, t)
+
+    @override
+    def visit_iface_type(self, t: IfaceType) -> TypeCJInfo:
+        return IfaceTypeCJInfo(self.am, t)
+
+    @override
+    def visit_scalar_type(self, t: ScalarType) -> TypeCJInfo:
+        return ScalarTypeCJInfo(self.am, t)
 
     @override
     def visit_string_type(self, t: StringType) -> TypeCJInfo:
@@ -314,17 +357,21 @@ class TypeCJInfoDispatcher(TypeVisitor[TypeCJInfo]):
         return ArrayTypeCJInfo(self.am, t)
 
     @override
-    def visit_enum_type(self, t: EnumType) -> TypeCJInfo:
-        return EnumTypeCJInfo(self.am, t)
-
-    @override
     def visit_optional_type(self, t: OptionalType) -> TypeCJInfo:
         return OptionalTypeCJInfo(self.am, t)
 
     @override
-    def visit_union_type(self, t: UnionType) -> TypeCJInfo:
-        return UnionTypeCJInfo(self.am, t)
-    
+    def visit_opaque_type(self, t: OpaqueType) -> TypeCJInfo:
+        raise NotImplementedError("OpaqueType is not supported in CJ yet.")
+
+    @override
+    def visit_map_type(self, t: MapType) -> TypeCJInfo:
+        raise NotImplementedError("MapType is not supported in CJ yet.")
+
+    @override
+    def visit_set_type(self, t: SetType) -> TypeCJInfo:
+        raise NotImplementedError("SetType is not supported in CJ yet.")
+
     @override
     def visit_callback_type(self, t: CallbackType):
         return CallbackTypeCJInfo(self.am, t)
