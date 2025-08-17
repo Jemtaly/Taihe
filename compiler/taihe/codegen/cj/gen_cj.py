@@ -14,7 +14,6 @@ from taihe.semantics.declarations import (
 )
 from taihe.semantics.types import (
     StringType,
-    StructType,
 )
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import FileKind, OutputManager
@@ -81,33 +80,12 @@ class CJCodeGenerator:
         func_abi_info = GlobFuncAbiInfo.get(self.am, func)
         c_params = []
         cj_params = []
-        param_names = []
-        struct_mallocs = []
-        struct_frees = []
         for param in func.params:
             type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
             c_params.append(f"{param.name}: {type_cj_info.as_c_param}")
             cj_params.append(f"{param.name}: {type_cj_info.as_cj_param}")
-            if isinstance(param.ty_ref.resolved_ty, StructType):
-                struct_mallocs.append(
-                    f"        let p{param.name} = LibC.malloc<{type_cj_info.as_cj_param}>()"
-                )
-                struct_mallocs.append(f"        p{param.name}.write({param.name})")
-                struct_frees.append(f"        LibC.free(p{param.name})")
-                param_names.append(f"p{param.name}")
-            elif isinstance(param.ty_ref.resolved_ty, StringType):
-                struct_mallocs.append(
-                    f"        let middle{param.name} =TString({param.name})"
-                )
-                #                struct_frees.append(f"        LibC.free(p{param.name})")
-                param_names.append(f"middle{param.name}")
-                self.TString = True
-
-            else:
-                param_names.append(f"{param.name}")
         c_params_str = ", ".join(c_params)
         cj_params_str = ", ".join(cj_params)
-        param_names_str = ", ".join(param_names)
         if return_ty_ref := func.return_ty_ref:
             type_abi_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
             return_c_ty_name = type_abi_info.as_c_owner
@@ -120,20 +98,27 @@ class CJCodeGenerator:
             f"public func {func.name}({cj_params_str}): {return_cj_ty_name} {{",
             f"    unsafe {{",
         )
-        for struct_malloc in struct_mallocs:
-            pkg_cj_target.writeln(struct_malloc)
-        if return_cj_ty_name != "String":
-            pkg_cj_target.writeln(
-                f"        let res = {func_abi_info.mangled_name}({param_names_str})"
+        param_names = []
+        for param in func.params:
+            type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
+            param_cj_name = type_cj_info.from_cj(
+                pkg_cj_target, param.name, type_cj_info.as_cj_owner
             )
+            param_names.append(f"{param_cj_name}")
+        param_names_str = ", ".join(param_names)
+        pkg_cj_target.writeln(
+            f"        let cRes = {func_abi_info.mangled_name}({param_names_str})"
+        )
+        if return_ty_ref := func.return_ty_ref:
+            type_abi_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
+            type_abi_info.into_cj(pkg_cj_target)
         else:
-            pkg_cj_target.writeln(
-                f"        let res = {func_abi_info.mangled_name}({param_names_str}).ptr.toString()"
-            )
-        for struct_free in struct_frees:
-            pkg_cj_target.writeln(struct_free)
+            pkg_cj_target.writeln(f"        let cjRes = cRes")
+        for param in func.params:
+            type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
+            type_cj_info.free(pkg_cj_target, param.name, type_cj_info.as_cj_owner)
         pkg_cj_target.writelns(
-            f"        return res",
+            f"        return cjRes",
             f"    }}",
             f"}}",
         )

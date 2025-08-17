@@ -55,19 +55,21 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
         return TypeCJInfoDispatcher(am).handle_type(t)
 
     @abstractmethod
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
         pass
 
     @abstractmethod
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        pass
+
+    @abstractmethod
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -86,15 +88,21 @@ class EnumTypeCJInfo(TypeCJInfo):
     def from_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+        c_name: str,
         cj_type: str,
-    ):
-        pass
+    ) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -109,18 +117,19 @@ class UnionTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "Union"
         self.as_cj_param = "Union"
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -135,21 +144,26 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        target.writelns(
+            f"        let p{c_name} = LibC.malloc<{cj_type}>()",
+            f"        p{c_name}.write({c_name})",
+        )
+        return f"p{c_name}"
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
-        pass
+        target.writelns(f"        LibC.free(p{name})")
 
 
 class IfaceTypeCJInfo(TypeCJInfo):
@@ -161,18 +175,19 @@ class IfaceTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -202,18 +217,19 @@ class ScalarTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = res
         self.as_cj_param = res
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -228,18 +244,22 @@ class StringTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "String"
         self.as_cj_param = "String"
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        target.writelns(
+            f"        let middle{c_name} = TString({c_name})",
+        )
+        return f"middle{c_name}"
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes.ptr.toString()")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -255,18 +275,19 @@ class ArrayTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
         self.as_cj_param = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -281,18 +302,19 @@ class OptionalTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "TOptional"
         self.as_cj_param = "TOptional"
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
@@ -307,18 +329,19 @@ class CallbackTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "LAMBDA"
         self.as_cj_param = "LAMBDA"
 
-    def from_cj(
-        self,
-        target: CJSourceWriter,
-        abi_type: str,
-        cj_type: str,
-    ):
-        pass
+    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+        return c_name
 
     def into_cj(
         self,
         target: CJSourceWriter,
-        abi_type: str,
+    ):
+        target.writeln(f"        let cjRes = cRes")
+
+    def free(
+        self,
+        target: CJSourceWriter,
+        name: str,
         cj_type: str,
     ):
         pass
