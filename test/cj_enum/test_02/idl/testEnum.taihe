@@ -1,8 +1,0 @@
-enum Weekday : String {
-    SUNDAY (bool, i32),
-    MONDAY(i32),
-}
-
-function nextEnumWeekday(day: Weekday): Weekday;
-function getValueOfEnumWeekday(day: Weekday): String;
-function fromValueToEnumWeekday(str: String): Weekday;

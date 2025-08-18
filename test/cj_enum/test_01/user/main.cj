@@ -12,15 +12,21 @@ class EnumTests {
     func enumTest02() {
         let day = testEnum.Weekday.WEDNESDAY;
         let nextDay = testEnum.nextEnumWeekday(day);
-        println(nextDay.getValue())
+        @Expect(nextDay.toString(), "4")
     }
     @TestCase
     func enumTest03() {
         let first = testEnum.fromValueToEnumWeekday(0);
-        println(first.getValue())
+        @Expect(first.toString(), "0")
         try {
             testEnum.fromValueToEnumWeekday(8);
         } catch (e: Exception) {
+            @Expect(e.message.toString(), "illegal enum value")
         }
+    }
+    @TestCase
+    func enumTest04() {
+        let nextRgb = testEnum.calRGB(testEnum.RGB.RED);
+        @Expect(nextRgb.toString(), "GREEN")
     }
 }

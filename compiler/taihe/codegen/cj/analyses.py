@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 
 from typing_extensions import override
 
-from taihe.codegen.abi.analyses import EnumAbiInfo
 from taihe.codegen.cj.writer import CJSourceWriter
 from taihe.semantics.declarations import (
     PackageDecl,
@@ -77,13 +76,13 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
 
 class EnumTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: EnumType):
+        self.t = t
         self.defn_headers = []
         self.impl_headers = []
-        self.as_c_owner = "UInt32"
-        self.as_c_param = "UInt32"
-        enum_abi_info = EnumAbiInfo.get(am, t.ty_decl)
-        self.as_cj_owner = enum_abi_info.abi_type
-        self.as_cj_param = enum_abi_info.abi_type
+        self.as_c_owner = "Int32"
+        self.as_c_param = "Int32"
+        self.as_cj_owner = t.ty_decl.name
+        self.as_cj_param = t.ty_decl.name
 
     def from_cj(
         self,
@@ -91,13 +90,14 @@ class EnumTypeCJInfo(TypeCJInfo):
         c_name: str,
         cj_type: str,
     ) -> str:
-        return c_name
+        target.writeln(f"        let idx = {c_name}.getIdx()")
+        return "idx"
 
     def into_cj(
         self,
         target: CJSourceWriter,
     ):
-        target.writeln(f"        let cjRes = cRes")
+        target.writeln(f"        let cjRes = {self.t.ty_decl.name}.parse(cRes)")
 
     def free(
         self,

@@ -7,13 +7,11 @@ from taihe.codegen.cj.analyses import (
 )
 from taihe.codegen.cj.writer import CJSourceWriter
 from taihe.semantics.declarations import (
+    EnumDecl,
     GlobFuncDecl,
     PackageDecl,
     PackageGroup,
     StructDecl,
-)
-from taihe.semantics.types import (
-    StringType,
 )
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import FileKind, OutputManager
@@ -40,6 +38,8 @@ class CJCodeGenerator:
             self.gen_builtinType(pkg_cj_target)
             for struct in pkg.structs:
                 self.gen_struct(struct, pkg_cj_target)
+            for enum in pkg.enums:
+                self.gen_enum(enum, pkg_cj_target)
             for func in pkg.functions:
                 self.gen_func(func, pkg_cj_target)
 
@@ -48,7 +48,7 @@ class CJCodeGenerator:
             f"@C",
             f"public struct TString {{",
             f"    public let flags: UInt32 = 0",
-            f"    public let length: UInt32 ",
+            f"    public let length: UInt32",
             f"    public let ptr: CString",
             f"    public TString(str: String) {{",
             f"        unsafe{{",
@@ -72,7 +72,7 @@ class CJCodeGenerator:
             f"",
             f"@C",
             f"public struct TOptional {{",
-            f"    public let m_data: CPointer<Unit> ",
+            f"    public let m_data: CPointer<Unit>",
             f"    public TOptional(data: CPointer<Unit>) {{",
             f"        unsafe{{",
             f"            m_data = data",
@@ -97,9 +97,9 @@ class CJCodeGenerator:
         c_params_str = ", ".join(c_params)
         cj_params_str = ", ".join(cj_params)
         if return_ty_ref := func.return_ty_ref:
-            type_abi_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
-            return_c_ty_name = type_abi_info.as_c_owner
-            return_cj_ty_name = type_abi_info.as_cj_owner
+            type_cj_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
+            return_c_ty_name = type_cj_info.as_c_owner
+            return_cj_ty_name = type_cj_info.as_cj_owner
         else:
             return_c_ty_name = "Unit"
             return_cj_ty_name = "Unit"
@@ -127,11 +127,7 @@ class CJCodeGenerator:
         for param in func.params:
             type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
             type_cj_info.free(pkg_cj_target, param.name, type_cj_info.as_cj_owner)
-        pkg_cj_target.writelns(
-            f"        return cjRes",
-            f"    }}",
-            f"}}",
-        )
+        pkg_cj_target.writelns(f"        return cjRes", f"    }}", f"}}", f"")
 
     def gen_struct(self, struct: StructDecl, pkg_cj_target: CJSourceWriter):
         pkg_cj_target.writelns(f"@C", f"public struct {struct.name} {{")
@@ -141,22 +137,53 @@ class CJCodeGenerator:
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
             paramsInit.append(f"{field.name}:{type_cj_info.as_cj_param}")
-            if isinstance(field.ty_ref.resolved_ty, StringType):
-                pkg_cj_target.writeln(
-                    f"    let {field.name}: {type_cj_info.as_c_param}"
-                )
-                str_param_name.append(f"{field.name}")
-            else:
-                pkg_cj_target.writeln(
-                    f"public let {field.name}: {type_cj_info.as_c_param}"
-                )
-                param_name.append(f"{field.name}")
+            pkg_cj_target.writeln(f"public let {field.name}: {type_cj_info.as_c_param}")
+            param_name.append(f"{field.name}")
         params_str = ", ".join(paramsInit)
         pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{")
         for name in param_name:
             pkg_cj_target.writeln(f"        this.{name}={name}")
         for name in str_param_name:
             pkg_cj_target.writeln(f"        this.{name}=TString({name})")
-        pkg_cj_target.writeln(f"    }}")
-        pkg_cj_target.writeln(f"    ")
-        pkg_cj_target.writeln(f"}}")
+        pkg_cj_target.writelns(f"    }}", f"    ", f"}}")
+
+    def gen_enum(self, enum: EnumDecl, pkg_cj_target: CJSourceWriter):
+        pkg_cj_target.writeln(f"public enum {enum.name} {{")
+        for ctor in enum.items:
+            pkg_cj_target.writeln(f"    | {ctor.name}")
+        pkg_cj_target.writeln(f"")
+        pkg_cj_target.writelns(
+            f"    public func getIdx() : Int32 {{", f"        match(this) {{"
+        )
+        for idx, ctor in enumerate(enum.items):
+            pkg_cj_target.writeln(f"            case {ctor.name} => {idx}")
+        pkg_cj_target.writelns(
+            f'            case _ => throw Exception("illegal enum value")',
+            f"        }}",
+            f"    }}",
+            f"",
+        )
+        pkg_cj_target.writelns(
+            f"    static func parse(val: Int32) : {enum.name} {{",
+            f"        match(val) {{",
+        )
+        for idx, ctor in enumerate(enum.items):
+            pkg_cj_target.writeln(f"            case {idx} => {ctor.name}")
+        pkg_cj_target.writelns(
+            f'            case _ => throw Exception("illegal enum value")',
+            f"        }}",
+            f"    }}",
+            f"",
+        )
+        pkg_cj_target.writelns(
+            f"    public func toString() : String {{", f"        match(this) {{"
+        )
+        for ctor in enum.items:
+            pkg_cj_target.writeln(f'            case {ctor.name} => "{ctor.value}"')
+        pkg_cj_target.writelns(
+            f'            case _ => throw Exception("illegal enum value")',
+            f"        }}",
+            f"    }}",
+            f"}}",
+            f"",
+        )

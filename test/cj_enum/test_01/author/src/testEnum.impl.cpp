@@ -3,6 +3,7 @@
 #include "stdexcept"
 
 static constexpr std::size_t WEEKDAY_COUNT = 7;
+static constexpr std::size_t RGB_COUNT = 3;
 
 ::testEnum::Weekday nextEnumWeekday(::testEnum::Weekday day) {
   return (::testEnum::Weekday::key_t)(((int)day.get_key() + 1) %
@@ -18,9 +19,15 @@ int32_t getValueOfEnumWeekday(::testEnum::Weekday day) {
   return weekday;
 }
 
+::testEnum::RGB calRGB(::testEnum::RGB a) {
+  return (::testEnum::RGB::key_t)(((int)a.get_key() + 1) %
+                                      RGB_COUNT);
+}
+
 // Since these macros are auto-generate, lint will cause false positive.
 // NOLINTBEGIN
 TH_EXPORT_CPP_API_nextEnumWeekday(nextEnumWeekday);
 TH_EXPORT_CPP_API_getValueOfEnumWeekday(getValueOfEnumWeekday);
 TH_EXPORT_CPP_API_fromValueToEnumWeekday(fromValueToEnumWeekday);
+TH_EXPORT_CPP_API_calRGB(calRGB);
 // NOLINTEND
