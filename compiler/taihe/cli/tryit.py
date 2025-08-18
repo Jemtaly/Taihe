@@ -456,6 +456,21 @@ class CJBuildSystem(BuildSystem):
             extra=extra,
         )
 
+    def build(self, opt_level: str) -> None:
+        """Run the complete build process."""
+        logger.info("Starting CJ compilation...")
+
+        # Clean and prepare the build directory
+        clean_directory(self.build_dir)
+        create_directory(self.build_dir)
+
+        # Compile the shared library
+        self._compile_shared_library(opt_level=opt_level)
+        self._compile_user_executable(opt_level=opt_level)
+        self._run_user_executable()
+
+        logger.info("Build and execution completed successfully")
+
     def _create_user_files(self) -> None:
         """Create a simple example user source file."""
         create_directory(self.user_dir)
