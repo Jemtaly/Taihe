@@ -15,8 +15,8 @@ void cb_i_void(::taihe::callback_view<void(int32_t a)> f) {
 }
 
 ::taihe::string cb_str_str(::taihe::callback_view<::taihe::string(::taihe::string_view a)> f) {
-    taihe::string out = f("hello");
-    return "hello" + out;
+    taihe::string out = f("abc");
+    return "hello: " + out;
 }
 }  // namespace
 

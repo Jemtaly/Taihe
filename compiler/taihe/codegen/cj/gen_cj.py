@@ -70,6 +70,16 @@ class CJCodeGenerator:
             f"    }}",
             f"}}",
             f"",
+            f"@C",
+            f"public struct TOptional {{",
+            f"    public let m_data: CPointer<Unit> ",
+            f"    public TOptional(data: CPointer<Unit>) {{",
+            f"        unsafe{{",
+            f"            m_data = data",
+            f"        }}",
+            f"    }}",
+            f"}}",
+            f"",
         )
 
     def gen_func(

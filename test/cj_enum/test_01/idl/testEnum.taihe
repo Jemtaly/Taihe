@@ -8,6 +8,14 @@ enum Weekday: i32 {
     SATURDAY,
 }
 
+enum RGB: String {
+    RED,
+    GREEN,
+    BLUE,
+}
+
 function nextEnumWeekday(day: Weekday): Weekday;
 function getValueOfEnumWeekday(day: Weekday): i32;
 function fromValueToEnumWeekday(str: i32): Weekday;
+
+function calRGB(a: RGB): RGB;

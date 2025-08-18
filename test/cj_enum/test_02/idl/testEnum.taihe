@@ -1,11 +1,6 @@
-enum Weekday: String {
-    SUNDAY = "day0",
-    MONDAY = "day1",
-    TUESDAY = "day2",
-    WEDNESDAY = "day3",
-    THURSDAY = "day4",
-    FRIDAY = "day5",
-    SATURDAY = "day6",
+enum Weekday : String {
+    SUNDAY (bool, i32),
+    MONDAY(i32),
 }
 
 function nextEnumWeekday(day: Weekday): Weekday;

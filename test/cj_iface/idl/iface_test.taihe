@@ -1,7 +1,7 @@
 interface Noo {
     Bar(): void;
     GetName(): String;
-    GetAge(): i32;
+    GetAge(): Optional<i32>;
 }
 
 function GetNooIface(): Noo;

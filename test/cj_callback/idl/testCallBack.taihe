@@ -1,3 +1,4 @@
 function cb_void_void(f: () => void): void;
 function cb_i_void(f: (a: i32) => void): void;
 function cb_str_str(f: (a: String) => String): String;
+function recb_str_str(): (a: String) => String;

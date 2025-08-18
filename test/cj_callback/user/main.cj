@@ -12,8 +12,10 @@ func f2(para: Int32): Unit{
 
 @C
 func f3(str: TString): TString {
-    return TString("This function is defined in Cangjie 3333." + str.ptr.toString())
+    return TString("This function is defined in Cangjie 3333.")
 }
+
+func f4()
 
 @Test
 class testCallback {

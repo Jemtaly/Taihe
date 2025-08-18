@@ -269,11 +269,11 @@ class ArrayTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: ArrayType):
         self.defn_headers = []
         self.impl_headers = []
-        arg_ty_abi_info = TypeCJInfo.get(am, t.item_ty)
-        self.as_c_owner = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
-        self.as_c_param = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
-        self.as_cj_owner = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
-        self.as_cj_param = "VArray<" + arg_ty_abi_info.as_cj_param + ">"
+        arg_ty_info = TypeCJInfo.get(am, t.item_ty)
+        self.as_c_owner = "VArray<" + arg_ty_info.as_cj_param + ">"
+        self.as_c_param = "VArray<" + arg_ty_info.as_cj_param + ">"
+        self.as_cj_owner = "VArray<" + arg_ty_info.as_cj_param + ">"
+        self.as_cj_param = "VArray<" + arg_ty_info.as_cj_param + ">"
 
     def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
         return c_name
@@ -295,12 +295,15 @@ class ArrayTypeCJInfo(TypeCJInfo):
 
 class OptionalTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: OptionalType):
+        self.am = am
+        self.t = t
         self.defn_headers = []
         self.impl_headers = []
+        option_arg_info = TypeCJInfo.get(am, t.item_ty)
         self.as_c_owner = "TOptional"
         self.as_c_param = "TOptional"
-        self.as_cj_owner = "TOptional"
-        self.as_cj_param = "TOptional"
+        self.as_cj_owner = "Option<" + option_arg_info.as_cj_param + ">"
+        self.as_cj_param = "Option<" + option_arg_info.as_cj_param + ">"
 
     def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
         return c_name
