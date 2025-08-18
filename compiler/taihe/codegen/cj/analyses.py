@@ -299,20 +299,36 @@ class OptionalTypeCJInfo(TypeCJInfo):
         self.t = t
         self.defn_headers = []
         self.impl_headers = []
-        option_arg_info = TypeCJInfo.get(am, t.item_ty)
+        self.option_arg_info = TypeCJInfo.get(am, t.item_ty)
         self.as_c_owner = "TOptional"
         self.as_c_param = "TOptional"
-        self.as_cj_owner = "Option<" + option_arg_info.as_cj_param + ">"
-        self.as_cj_param = "Option<" + option_arg_info.as_cj_param + ">"
+        self.as_cj_owner = "Option<" + self.option_arg_info.as_cj_param + ">"
+        self.as_cj_param = "Option<" + self.option_arg_info.as_cj_param + ">"
 
     def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+        target.writelns(
+            f"        let temp1_{c_name} = LibC.malloc<{self.option_arg_info.as_cj_param}>()",
+            f"        match ({c_name}) {{",
+            f"            case Some(opt) => temp1_{c_name}.write(opt)",
+            f"            case None => temp1_{c_name}",
+            f"        }}",
+            f"        let temp2_{c_name} = TOptional(CPointer<Unit>(temp1_{c_name}))",
+        )
+        return f"temp2_{c_name}"
 
     def into_cj(
         self,
         target: CJSourceWriter,
     ):
-        target.writeln(f"        let cjRes = cRes")
+        target.writelns(
+            f"        let cjRes: ?{self.option_arg_info.as_cj_param}",
+            f"        if (cRes.m_data.isNull()) {{",
+            f"            cjRes = None",
+            f"        }} else {{",
+            f"            let data = CPointer<{self.option_arg_info.as_cj_param}>(cRes.m_data)",
+            f"            cjRes = Option<{self.option_arg_info.as_cj_param}>.Some(data.read())",
+            f"        }}",
+        )
 
     def free(
         self,

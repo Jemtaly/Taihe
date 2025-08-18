@@ -11,6 +11,6 @@ class OptionalTest {
     @TestCase
     func optionalTest02() {
         let res = testOptional.MakeOptionalInt(true)
-        println(res.getOrThrow())
+        @Expect(res.getOrThrow(), 10)
     }
 }
