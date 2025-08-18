@@ -54,7 +54,7 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
         return TypeCJInfoDispatcher(am).handle_type(t)
 
     @abstractmethod
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         pass
 
     @abstractmethod
@@ -87,10 +87,10 @@ class EnumTypeCJInfo(TypeCJInfo):
     def from_cj(
         self,
         target: CJSourceWriter,
-        c_name: str,
+        name: str,
         cj_type: str,
     ) -> str:
-        target.writeln(f"        let idx = {c_name}.getIdx()")
+        target.writeln(f"        let idx = {name}.getIdx()")
         return "idx"
 
     def into_cj(
@@ -117,8 +117,8 @@ class UnionTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "Union"
         self.as_cj_param = "Union"
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
+        return name
 
     def into_cj(
         self,
@@ -144,12 +144,12 @@ class StructTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         target.writelns(
-            f"        let p{c_name} = LibC.malloc<{cj_type}>()",
-            f"        p{c_name}.write({c_name})",
+            f"        let p{name} = LibC.malloc<{cj_type}>()",
+            f"        p{name}.write({name})",
         )
-        return f"p{c_name}"
+        return f"p{name}"
 
     def into_cj(
         self,
@@ -175,8 +175,8 @@ class IfaceTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = t.ty_decl.name
         self.as_cj_param = t.ty_decl.name
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
+        return name
 
     def into_cj(
         self,
@@ -217,8 +217,8 @@ class ScalarTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = res
         self.as_cj_param = res
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
+        return name
 
     def into_cj(
         self,
@@ -244,11 +244,11 @@ class StringTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "String"
         self.as_cj_param = "String"
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         target.writelns(
-            f"        let middle{c_name} = TString({c_name})",
+            f"        let middle{name} = TString({name})",
         )
-        return f"middle{c_name}"
+        return f"middle{name}"
 
     def into_cj(
         self,
@@ -269,20 +269,30 @@ class ArrayTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: ArrayType):
         self.defn_headers = []
         self.impl_headers = []
-        arg_ty_info = TypeCJInfo.get(am, t.item_ty)
-        self.as_c_owner = "VArray<" + arg_ty_info.as_cj_param + ">"
-        self.as_c_param = "VArray<" + arg_ty_info.as_cj_param + ">"
-        self.as_cj_owner = "VArray<" + arg_ty_info.as_cj_param + ">"
-        self.as_cj_param = "VArray<" + arg_ty_info.as_cj_param + ">"
+        self.arg_ty_info = TypeCJInfo.get(am, t.item_ty)
+        self.as_c_owner = "TArray"
+        self.as_c_param = "TArray"
+        self.as_cj_owner = "Array<" + self.arg_ty_info.as_cj_param + ">"
+        self.as_cj_param = "Array<" + self.arg_ty_info.as_cj_param + ">"
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
+        target.writelns(
+            f"        let temp1_{name}: CPointerHandle<{self.arg_ty_info.as_cj_param}> = acquireArrayRawData({name})",
+            f"        let temp2_{name} = temp1_{name}.pointer",
+            f"        let temp3_{name} = TArray(IntNative({name}.size), CPointer<Unit>(temp2_{name}))",
+        )
+        return f"temp3_{name}"
 
     def into_cj(
         self,
         target: CJSourceWriter,
     ):
-        target.writeln(f"        let cjRes = cRes")
+        target.writelns(
+            f"        var cjRes = Array<{self.arg_ty_info.as_cj_param}>(Int64(cRes.m_size), repeat: zeroValue<{self.arg_ty_info.as_cj_param}>())",
+            f"        for (i in 0..Int64(cRes.m_size)) {{",
+            f"            cjRes[i] = CPointer<{self.arg_ty_info.as_cj_param}>(cRes.m_data).read(i)",
+            f"        }}",
+        )
 
     def free(
         self,
@@ -290,7 +300,9 @@ class ArrayTypeCJInfo(TypeCJInfo):
         name: str,
         cj_type: str,
     ):
-        pass
+        target.writeln(
+            f"        releaseArrayRawData<{self.arg_ty_info.as_cj_param}>(temp1_{name})"
+        )
 
 
 class OptionalTypeCJInfo(TypeCJInfo):
@@ -305,16 +317,16 @@ class OptionalTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "Option<" + self.option_arg_info.as_cj_param + ">"
         self.as_cj_param = "Option<" + self.option_arg_info.as_cj_param + ">"
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         target.writelns(
-            f"        let temp1_{c_name} = LibC.malloc<{self.option_arg_info.as_cj_param}>()",
-            f"        match ({c_name}) {{",
-            f"            case Some(opt) => temp1_{c_name}.write(opt)",
-            f"            case None => temp1_{c_name}",
+            f"        let temp1_{name} = LibC.malloc<{self.option_arg_info.as_cj_param}>()",
+            f"        match ({name}) {{",
+            f"            case Some(opt) => temp1_{name}.write(opt)",
+            f"            case None => temp1_{name}",
             f"        }}",
-            f"        let temp2_{c_name} = TOptional(CPointer<Unit>(temp1_{c_name}))",
+            f"        let temp2_{name} = TOptional(CPointer<Unit>(temp1_{name}))",
         )
-        return f"temp2_{c_name}"
+        return f"temp2_{name}"
 
     def into_cj(
         self,
@@ -348,8 +360,8 @@ class CallbackTypeCJInfo(TypeCJInfo):
         self.as_cj_owner = "LAMBDA"
         self.as_cj_param = "LAMBDA"
 
-    def from_cj(self, target: CJSourceWriter, c_name: str, cj_type: str) -> str:
-        return c_name
+    def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
+        return name
 
     def into_cj(
         self,

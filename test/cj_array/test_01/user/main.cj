@@ -10,6 +10,12 @@ class ArrayTests {
     }
 
     @TestCase
+    func getArrayTest() {
+        let res: Array<Int64> = testArray.GetArray()
+        println(res[1])
+    }
+
+    @TestCase
     func getArrayValueTest() {
         let nums: Array<Int64> = [35, 45, 55];
         let res = testArray.GetArrayValue(nums, 2)
