@@ -82,16 +82,29 @@ class SourceManager:
     """Manages all input files throughout the compilation."""
 
     _source_collection: set[SourceBase]
+    _include_dirs: list[Path]
 
     def __init__(self):
         self._source_collection = set()
+        self._include_dirs = []
 
     @property
     def sources(self) -> Iterable[SourceBase]:
         return self._source_collection
 
-    def add_source(self, sb: SourceBase):
-        self._source_collection.add(sb)
+    def find_include(self, pkg_name: str) -> SourceBase | None:
+        for include_dir in self._include_dirs:
+            for ext in IDL_FILE_EXTS:
+                pkg_path = include_dir / f"{pkg_name}{ext}"
+                if pkg_path.exists():
+                    return SourceFile(pkg_path)
+        return None
+
+    def add_source(self, src: SourceBase):
+        self._source_collection.add(src)
+
+    def add_include(self, include_dir: Path):
+        self._include_dirs.append(include_dir)
 
 
 class TextPosition(NamedTuple):

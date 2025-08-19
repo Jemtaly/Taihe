@@ -23,7 +23,6 @@ from taihe.semantics.declarations import (
     PackageDecl,
     PackageGroup,
     PackageLevelDecl,
-    PackageRefDecl,
     ParamDecl,
     ShortTypeRefDecl,
     StructDecl,
@@ -60,7 +59,6 @@ from taihe.utils.exceptions import (
     EmptyStructOrUnionError,
     EnumValueError,
     NotATypeError,
-    PackageNotExistError,
     PackageNotInScopeError,
     RecursiveReferenceError,
     SymbolConflictWithNamespaceError,
@@ -117,28 +115,6 @@ class _ResolveImportsPass(RecursiveDeclVisitor):
 
     def __init__(self, dm: DiagnosticsManager):
         self.dm = dm
-        self._curr_pg = None
-
-    @property
-    def curr_pg(self) -> PackageGroup:
-        assert self._curr_pg
-        return self._curr_pg
-
-    @override
-    def visit_package_group(self, g: PackageGroup) -> None:
-        self._curr_pg = g
-        try:
-            super().visit_package_group(g)
-        finally:
-            self._curr_pg = None
-
-    @override
-    def visit_package_ref(self, d: PackageRefDecl) -> None:
-        super().visit_package_ref(d)
-        if d.is_resolved:
-            return
-        d.is_resolved = True
-        d.resolved_pkg_or_none = self.resolve_package_ref(d)
 
     @override
     def visit_declaration_ref(self, d: DeclarationRefDecl) -> None:
@@ -147,15 +123,6 @@ class _ResolveImportsPass(RecursiveDeclVisitor):
             return
         d.is_resolved = True
         d.resolved_decl_or_none = self.resolve_declaration_ref(d)
-
-    def resolve_package_ref(self, d: PackageRefDecl) -> PackageDecl | None:
-        pkg = self.curr_pg.lookup(d.symbol)
-
-        if pkg is not None:
-            return pkg
-
-        self.dm.emit(PackageNotExistError(d.symbol, loc=d.loc))
-        return None
 
     def resolve_declaration_ref(self, d: DeclarationRefDecl) -> PackageLevelDecl | None:
         pkg = d.pkg_ref.resolved_pkg_or_none

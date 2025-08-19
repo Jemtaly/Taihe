@@ -34,8 +34,8 @@ from taihe.semantics.declarations import (
     UnionDecl,
     UnionFieldDecl,
 )
-from taihe.utils.diagnostics import DiagnosticsManager
-from taihe.utils.exceptions import InvalidPackageNameError
+from taihe.utils.diagnostics import DiagError, DiagnosticsManager
+from taihe.utils.exceptions import InvalidPackageNameError, PackageNotExistError
 from taihe.utils.sources import SourceBase, SourceLocation, SourceManager
 
 
@@ -52,6 +52,12 @@ def float_div(a: float, b: float) -> float:
 
 
 class ExprEvaluator(Visitor):
+    """Base class for evaluating expressions."""
+
+    @override
+    def visit_any_expr(self, node: ast.AnyExpr) -> Any:
+        return node.expr.accept(self)
+
     # Bool Expr
 
     @override
@@ -246,12 +252,6 @@ class ExprEvaluator(Visitor):
             else node.else_expr.accept(self)
         )
 
-    # Any Expr
-
-    @override
-    def visit_any_expr(self, node: ast.AnyExpr) -> Any:
-        return node.expr.accept(self)
-
 
 def id2str(id_name: ast.IdName) -> str:
     return id_name.val.text.lstrip("#")
@@ -273,17 +273,56 @@ def is_valid_pkg_name(name: str) -> bool:
     return True
 
 
+class PackageCollector:
+    """Collects packages and converts them to IR."""
+
+    def __init__(self, sm: SourceManager, pg: PackageGroup, dm: DiagnosticsManager):
+        self.sm = sm
+        self.pg = pg
+        self.dm = dm
+
+        self._converters: list[AstConverter] = []
+
+    def add_package(self, src: SourceBase) -> PackageDecl | None:
+        try:
+            if not is_valid_pkg_name(src.pkg_name):
+                raise InvalidPackageNameError(src.pkg_name, loc=SourceLocation(src))
+            pkg = PackageDecl(SourceLocation(src), src.pkg_name, src.is_stdlib)
+            self.pg.add(pkg)
+            self._converters.append(AstConverter(src, pkg, self, self.dm))
+            return pkg
+        except DiagError as e:
+            self.dm.emit(e)
+            return None
+
+    def find_package(self, pkg_name: str) -> PackageDecl | None:
+        if pkg := self.pg.lookup(pkg_name):
+            return pkg
+        if src := self.sm.find_include(pkg_name):
+            return self.add_package(src)
+        return None
+
+    def parse_all(self):
+        for src in self.sm.sources:
+            self.add_package(src)
+
+        while self._converters:
+            self._converters.pop().convert()
+
+
 class AstConverter(ExprEvaluator):
-    """Converts a node on AST to the intermetiade representation.
+    """Converts a node on AST to the intermetiade representation."""
 
-    Note that declerations with errors are discarded.
-    """
-
-    source: SourceBase
-    dm: DiagnosticsManager
-
-    def __init__(self, source: SourceBase, dm: DiagnosticsManager):
-        self.source = source
+    def __init__(
+        self,
+        src: SourceBase,
+        pkg: PackageDecl,
+        parser: PackageCollector,
+        dm: DiagnosticsManager,
+    ):
+        self.src = src
+        self.pkg = pkg
+        self.parser = parser
         self.dm = dm
 
     # Attributes
@@ -342,9 +381,18 @@ class AstConverter(ExprEvaluator):
 
     # Uses
 
+    def get_resolved_package_ref(self, node: ast.PkgName) -> PackageRefDecl:
+        p_ref = PackageRefDecl(node.loc, pkg2str(node))
+        if pkg := self.parser.find_package(p_ref.symbol):
+            p_ref.resolved_pkg_or_none = pkg
+        else:
+            self.dm.emit(PackageNotExistError(p_ref.symbol, loc=p_ref.loc))
+        p_ref.is_resolved = True
+        return p_ref
+
     @override
     def visit_use_package(self, node: ast.UsePackage) -> Iterable[PackageImportDecl]:
-        p_ref = PackageRefDecl(node.pkg_name.loc, pkg2str(node.pkg_name))
+        p_ref = self.get_resolved_package_ref(node.pkg_name)
         if node.pkg_alias:
             d = PackageImportDecl(
                 p_ref,
@@ -359,7 +407,7 @@ class AstConverter(ExprEvaluator):
 
     @override
     def visit_use_symbol(self, node: ast.UseSymbol) -> Iterable[DeclarationImportDecl]:
-        p_ref = PackageRefDecl(node.pkg_name.loc, pkg2str(node.pkg_name))
+        p_ref = self.get_resolved_package_ref(node.pkg_name)
         for p in node.decl_alias_pairs:
             d_ref = DeclarationRefDecl(p.decl_name.loc, id2str(p.decl_name), p_ref)
             if p.decl_alias:
@@ -464,46 +512,9 @@ class AstConverter(ExprEvaluator):
         self.dm.for_each(node.forward_attrs, lambda a: self.add_attr(d, a))
         return d
 
-    # Package
-
-    @override
-    def visit_spec(self, node: ast.Spec) -> PackageDecl:
-        pkg = PackageDecl(
-            SourceLocation(self.source),
-            self.source.pkg_name,
-            self.source.is_stdlib,
-        )
+    def convert(self):
+        node = generate_ast(self.src, self.dm)
         for u in node.uses:
-            self.dm.for_each(u.accept(self), pkg.add_import)
-        self.dm.for_each(node.decls, lambda n: pkg.add_declaration(n.accept(self)))
-        self.dm.for_each(node.inner_attrs, lambda a: self.add_attr(pkg, a))
-        return pkg
-
-    def convert(self) -> PackageDecl:
-        """Converts the whole source code buffer to a package.
-
-        Returns:
-            PackageDecl: The package declaration containing all declarations
-            and imports from the source code.
-
-        Raises:
-            InvalidPackageNameError: If the package name is invalid.
-        """
-        if not is_valid_pkg_name(self.source.pkg_name):
-            raise InvalidPackageNameError(
-                self.source.pkg_name,
-                loc=SourceLocation(self.source),
-            )
-        node = generate_ast(self.source, self.dm)
-        return node.accept(self)
-
-
-def convert_ast(sm: SourceManager, pg: PackageGroup, dm: DiagnosticsManager) -> None:
-    """Converts all sources in the source manager to a package group.
-
-    Args:
-        sm (SourceManager): The source manager containing all sources.
-        pg (PackageGroup): The package group to add the converted packages to.
-        dm (DiagnosticsManager): The diagnostics manager for error handling.
-    """
-    dm.for_each(sm.sources, lambda src: pg.add(AstConverter(src, dm).convert()))
+            self.dm.for_each(u.accept(self), self.pkg.add_import)
+        self.dm.for_each(node.decls, lambda n: self.pkg.add_declaration(n.accept(self)))
+        self.dm.for_each(node.inner_attrs, lambda a: self.add_attr(self.pkg, a))
