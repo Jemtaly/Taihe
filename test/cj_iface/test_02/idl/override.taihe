@@ -1,0 +1,10 @@
+interface UIAbility {
+    onForeground(): void;
+    onBackground(): void;
+}
+
+function getUIAbility(): UIAbility;
+
+function useUIAbility(a: UIAbility): void;
+
+function logLifecycle(str: String): void;
