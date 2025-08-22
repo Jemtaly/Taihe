@@ -154,10 +154,10 @@ class CJCodeGenerator:
         param_names = []
         for param in func.params:
             type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
-            param_cj_name = type_cj_info.from_cj(
+            param_c_name = type_cj_info.from_cj(
                 pkg_cj_target, param.name, type_cj_info.as_cj_owner
             )
-            param_names.append(f"{param_cj_name}")
+            param_names.append(f"{param_c_name}")
         param_names_str = ", ".join(param_names)
         pkg_cj_target.writeln(
             f"        let cRes = {func_abi_info.mangled_name}({param_names_str})"
@@ -186,10 +186,10 @@ class CJCodeGenerator:
         pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{")
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
-            param_cj_name = type_cj_info.from_cj(
+            param_c_name = type_cj_info.from_cj(
                 pkg_cj_target, field.name, type_cj_info.as_cj_owner
             )
-            pkg_cj_target.writeln(f"        this.{field.name}={param_cj_name}")
+            pkg_cj_target.writeln(f"        this.{field.name} = {param_c_name}")
         pkg_cj_target.writelns(f"    }}", f"    ", f"}}")
 
     def gen_enum(self, enum: EnumDecl, pkg_cj_target: CJSourceWriter):

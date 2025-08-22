@@ -67,8 +67,9 @@ Taihe 将 API 的发布方和消费方在二进制级别隔离，允许二者在
   - [Taihe C++ 使用文档](docs/CppUsageGuide.md)
 
 - 深入理解 Taihe 生成的代码
-  - [深入解析 Taihe 生成的代码（ABI 曾与 C++ 层）](docs/CppGeneratedCode.md)
-  - [深入解析 Taihe 生成的代码（ANI 桥接层）](docs/AniGeneratedCode.md)
+  - [深入解析 Taihe 生成的代码（ABI 层与 C++ 层）](docs/CppGeneratedCode.md)
+  - [深入解析 Taihe 生成的代码（ANI 桥接层）](docs/AniGeneratedCode.md)\
+  - [深入解析 Taihe 生成的代码（Cangjie 桥接层）](docs/CJGeneratedCode.md)
 
 关于 ANI 开发的更多教程可以参考 [Taihe ANI CookBook](cookbook/README.md).
 
