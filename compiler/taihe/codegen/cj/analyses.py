@@ -246,9 +246,9 @@ class StringTypeCJInfo(TypeCJInfo):
 
     def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         target.writelns(
-            f"        let middle{name} = TString({name})",
+            f"        let temp1_{name} = TString({name})",
         )
-        return f"middle{name}"
+        return f"temp1_{name}"
 
     def into_cj(
         self,

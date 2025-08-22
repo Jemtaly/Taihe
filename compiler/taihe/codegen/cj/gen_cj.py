@@ -184,10 +184,12 @@ class CJCodeGenerator:
             param_name.append(f"{field.name}")
         params_str = ", ".join(paramsInit)
         pkg_cj_target.writeln(f"    public {struct.name} ({params_str}){{")
-        for name in param_name:
-            pkg_cj_target.writeln(f"        this.{name}={name}")
-        for name in str_param_name:
-            pkg_cj_target.writeln(f"        this.{name}=TString({name})")
+        for field in struct.fields:
+            type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
+            param_cj_name = type_cj_info.from_cj(
+                pkg_cj_target, field.name, type_cj_info.as_cj_owner
+            )
+            pkg_cj_target.writeln(f"        this.{field.name}={param_cj_name}")
         pkg_cj_target.writelns(f"    }}", f"    ", f"}}")
 
     def gen_enum(self, enum: EnumDecl, pkg_cj_target: CJSourceWriter):
