@@ -51,7 +51,7 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
     @classmethod
     @override
     def _create(cls, am: AnalysisManager, t: Type) -> "TypeCJInfo":
-        return TypeCJInfoDispatcher(am).handle_type(t)
+        return t.accept(TypeCJInfoDispatcher(am))
 
     @abstractmethod
     def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
@@ -81,8 +81,8 @@ class EnumTypeCJInfo(TypeCJInfo):
         self.impl_headers = []
         self.as_c_owner = "Int32"
         self.as_c_param = "Int32"
-        self.as_cj_owner = t.ty_decl.name
-        self.as_cj_param = t.ty_decl.name
+        self.as_cj_owner = t.decl.name
+        self.as_cj_param = t.decl.name
 
     def from_cj(
         self,
@@ -97,7 +97,7 @@ class EnumTypeCJInfo(TypeCJInfo):
         self,
         target: CJSourceWriter,
     ):
-        target.writeln(f"        let cjRes = {self.t.ty_decl.name}.parse(cRes)")
+        target.writeln(f"        let cjRes = {self.t.decl.name}.parse(cRes)")
 
     def free(
         self,
@@ -139,10 +139,10 @@ class StructTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: StructType):
         self.defn_headers = []
         self.impl_headers = []
-        self.as_c_owner = t.ty_decl.name
-        self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
-        self.as_cj_owner = t.ty_decl.name
-        self.as_cj_param = t.ty_decl.name
+        self.as_c_owner = t.decl.name
+        self.as_c_param = "CPointer<" + t.decl.name + ">"
+        self.as_cj_owner = t.decl.name
+        self.as_cj_param = t.decl.name
 
     def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         target.writelns(
@@ -170,10 +170,10 @@ class IfaceTypeCJInfo(TypeCJInfo):
     def __init__(self, am: AnalysisManager, t: IfaceType):
         self.defn_headers = []
         self.impl_headers = []
-        self.as_c_owner = t.ty_decl.name
-        self.as_c_param = "CPointer<" + t.ty_decl.name + ">"
-        self.as_cj_owner = t.ty_decl.name
-        self.as_cj_param = t.ty_decl.name
+        self.as_c_owner = t.decl.name
+        self.as_c_param = "CPointer<" + t.decl.name + ">"
+        self.as_cj_owner = t.decl.name
+        self.as_cj_param = t.decl.name
 
     def from_cj(self, target: CJSourceWriter, name: str, cj_type: str) -> str:
         return name
