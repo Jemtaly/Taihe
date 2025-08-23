@@ -47,11 +47,12 @@ class CJCodeGenerator:
         pkg_cj_target.writelns(
             f"@C",
             f"public struct TString {{",
-            f"    public let flags: UInt32 = 0",
+            f"    public let flags: UInt32",
             f"    public let length: UInt32",
             f"    public let ptr: CString",
             f"    public TString(str: String) {{",
             f"        unsafe{{",
+            f"            flags = 0",
             f"            ptr = LibC.mallocCString(str)",
             f"            length = UInt32(str.size)",
             f"        }}",
@@ -123,6 +124,7 @@ class CJCodeGenerator:
             f"    }}",
             f"}}",
             f"",
+            f"foreign func tstr_drop(tstr: TString): Unit",
         )
 
     def gen_func(
@@ -165,18 +167,18 @@ class CJCodeGenerator:
         if return_ty_ref := func.return_ty_ref:
             type_abi_info = TypeCJInfo.get(self.am, return_ty_ref.resolved_ty)
             type_abi_info.into_cj(pkg_cj_target)
+            type_abi_info.free_c(pkg_cj_target, "cRes", type_abi_info.as_cj_owner)
         else:
             pkg_cj_target.writeln(f"        let cjRes = cRes")
         for param in func.params:
             type_cj_info = TypeCJInfo.get(self.am, param.ty_ref.resolved_ty)
-            type_cj_info.free(pkg_cj_target, param.name, type_cj_info.as_cj_owner)
+            type_cj_info.free_cj(pkg_cj_target, param.name, type_cj_info.as_cj_owner)
         pkg_cj_target.writelns(f"        return cjRes", f"    }}", f"}}", f"")
 
     def gen_struct(self, struct: StructDecl, pkg_cj_target: CJSourceWriter):
         pkg_cj_target.writelns(f"@C", f"public struct {struct.name} {{")
         paramsInit = []
         param_name = []
-        str_param_name = []
         for field in struct.fields:
             type_cj_info = TypeCJInfo.get(self.am, field.ty_ref.resolved_ty)
             paramsInit.append(f"{field.name}:{type_cj_info.as_cj_param}")

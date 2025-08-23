@@ -65,7 +65,16 @@ class TypeCJInfo(AbstractAnalysis[Type], ABC):
         pass
 
     @abstractmethod
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    @abstractmethod
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -99,7 +108,15 @@ class EnumTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = {self.t.decl.name}.parse(cRes)")
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -126,7 +143,15 @@ class UnionTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes")
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -157,13 +182,21 @@ class StructTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes")
 
-    def free(
+    def free_cj(
         self,
         target: CJSourceWriter,
         name: str,
         cj_type: str,
     ):
         target.writelns(f"        LibC.free(p{name})")
+
+    def free_c(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
 
 
 class IfaceTypeCJInfo(TypeCJInfo):
@@ -184,7 +217,15 @@ class IfaceTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes")
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -226,7 +267,15 @@ class ScalarTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes")
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -256,13 +305,21 @@ class StringTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes.ptr.toString()")
 
-    def free(
+    def free_cj(
         self,
         target: CJSourceWriter,
         name: str,
         cj_type: str,
     ):
         pass
+
+    def free_c(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        target.writeln(f"        tstr_drop({name})")
 
 
 class ArrayTypeCJInfo(TypeCJInfo):
@@ -294,7 +351,7 @@ class ArrayTypeCJInfo(TypeCJInfo):
             f"        }}",
         )
 
-    def free(
+    def free_cj(
         self,
         target: CJSourceWriter,
         name: str,
@@ -303,6 +360,14 @@ class ArrayTypeCJInfo(TypeCJInfo):
         target.writeln(
             f"        releaseArrayRawData<{self.arg_ty_info.as_cj_param}>(temp1_{name})"
         )
+
+    def free_c(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
 
 
 class OptionalTypeCJInfo(TypeCJInfo):
@@ -342,7 +407,15 @@ class OptionalTypeCJInfo(TypeCJInfo):
             f"        }}",
         )
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
@@ -369,7 +442,15 @@ class CallbackTypeCJInfo(TypeCJInfo):
     ):
         target.writeln(f"        let cjRes = cRes")
 
-    def free(
+    def free_cj(
+        self,
+        target: CJSourceWriter,
+        name: str,
+        cj_type: str,
+    ):
+        pass
+
+    def free_c(
         self,
         target: CJSourceWriter,
         name: str,
