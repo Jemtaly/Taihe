@@ -13,8 +13,11 @@ class CJBridgeBackendConfig(BackendConfig):
     keep_name: bool = False
     """Use the original function name (instead of "camelCase") in exported Cangjie sources."""
 
-    def construct(self, instance: "CompilerInstance") -> Backend:
+    def construct(self, instance: CompilerInstance) -> Backend:
+        from taihe.codegen.cj.attributes import all_attr_types
         from taihe.codegen.cj.gen_cj import CJCodeGenerator
+
+        instance.attribute_registry.register(*all_attr_types)
 
         class CJBackendImpl(Backend):
             def __init__(self, ci: "CompilerInstance"):
