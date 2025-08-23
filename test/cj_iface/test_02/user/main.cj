@@ -1,9 +1,9 @@
 import override.*
 
 class MyUIAbility <: UIAbility{
-    public func onForeground() {
-        println("in cangjie onForeground")
-    }
+    // public func onForeground() {
+    //     println("in cangjie onForeground")
+    // }
     public func onBackground() {
         println("in cangjie onBackground")
     }
