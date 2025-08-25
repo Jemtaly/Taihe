@@ -307,7 +307,7 @@ class PackageCollector:
             self.add_package(src)
 
         while self._converters:
-            self._converters.pop().convert()
+            self._converters.pop(0).convert()
 
 
 class AstConverter(ExprEvaluator):
