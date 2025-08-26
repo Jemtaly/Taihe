@@ -69,6 +69,8 @@ from taihe.semantics.declarations import (
 )
 from taihe.semantics.types import (
     ArrayType,
+    AsyncResultType,
+    AsyncSetterType,
     CallbackType,
     EnumType,
     IfaceType,
@@ -2328,6 +2330,144 @@ class CallbackTypeAniInfo(TypeAniInfo):
                 )
 
 
+class AsyncSetterTypeAniInfo(TypeAniInfo):
+    def __init__(self, am: AnalysisManager, t: AsyncSetterType) -> None:
+        super().__init__(am, t)
+        self.am = am
+        self.t = t
+        self.ani_type = ANI_FN_OBJECT
+        self.sig_type = AniRuntimeClassType("std.core.Function1")
+
+    @override
+    def sts_type_in(self, target: StsWriter) -> str:
+        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.item_ty)
+        item_sts_type = item_ty_ani_info.sts_type_in(target)
+        return f"_taihe_AsyncCallback<({item_sts_type})>"
+
+    @override
+    def from_ani(
+        self,
+        target: CSourceWriter,
+        env: str,
+        ani_value: str,
+        cpp_after: str,
+    ):
+        item_ty_cpp_info = TypeCppInfo.get(self.am, self.t.item_ty)
+        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.item_ty)
+        cpp_promise = f"{cpp_after}_cpp_promise"
+        cpp_handler_t = f"{cpp_after}_cpp_handler_t"
+        with target.indented(
+            f"struct {cpp_handler_t} : ::taihe::dref_guard {{",
+            f"}};",
+        ):
+            target.writelns(
+                f"{cpp_handler_t}(ani_env* env, ani_ref val) : ::taihe::dref_guard(env, val) {{}}",
+            )
+            with target.indented(
+                f"void handle_result({item_ty_cpp_info.as_owner} cpp_result) const {{",
+                f"}}",
+            ):
+                target.writelns(
+                    f"::taihe::env_guard guard;",
+                    f"ani_env *env = guard.get_env();",
+                )
+                item_ty_ani_info.into_ani_boxed(
+                    target,
+                    "env",
+                    "cpp_result",
+                    "ani_result",
+                )
+                target.writelns(
+                    f"ani_ref ani_err = {{}};",
+                    f"env->GetNull(&ani_err);",
+                    f"ani_ref ani_argv[] = {{ani_err, ani_result}};",
+                    f"ani_ref ani_dummy = {{}};",
+                    f"env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), 2, ani_argv, &ani_dummy);",
+                )
+        target.writelns(
+            f"auto [{cpp_after}, {cpp_promise}] = ::taihe::make_async_pair<{item_ty_cpp_info.as_owner}>();",
+            f"{cpp_promise}.emplace_handler<{cpp_handler_t}>({env}, {ani_value});",
+        )
+
+    @override
+    def into_ani(
+        self,
+        target: CSourceWriter,
+        env: str,
+        cpp_value: str,
+        ani_after: str,
+    ):
+        raise NotImplementedError("AsyncSetterType is not supported in ANI yet.")
+
+
+class AsyncResultTypeAniInfo(TypeAniInfo):
+    def __init__(self, am: AnalysisManager, t: AsyncResultType) -> None:
+        super().__init__(am, t)
+        self.am = am
+        self.t = t
+        self.ani_type = ANI_OBJECT
+        self.sig_type = AniRuntimeClassType("std.core.Promise")
+
+    @override
+    def sts_type_in(self, target: StsWriter) -> str:
+        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.item_ty)
+        item_sts_type = item_ty_ani_info.sts_type_in(target)
+        return f"Promise<{item_sts_type}>"
+
+    @override
+    def from_ani(
+        self,
+        target: CSourceWriter,
+        env: str,
+        ani_value: str,
+        cpp_after: str,
+    ):
+        raise NotImplementedError("AsyncResultType is not supported in ANI yet.")
+
+    @override
+    def into_ani(
+        self,
+        target: CSourceWriter,
+        env: str,
+        cpp_value: str,
+        ani_after: str,
+    ):
+        item_ty_cpp_info = TypeCppInfo.get(self.am, self.t.item_ty)
+        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.item_ty)
+        ani_resolver = f"{ani_after}_ani_resolver"
+        cpp_handler_t = f"{ani_after}_cpp_handler_t"
+        with target.indented(
+            f"struct {cpp_handler_t} : ::taihe::dref_guard {{",
+            f"}};",
+        ):
+            target.writelns(
+                f"{cpp_handler_t}(ani_env* env, ani_ref val) : ::taihe::dref_guard(env, val) {{}}",
+            )
+            with target.indented(
+                f"void handle_result({item_ty_cpp_info.as_owner} cpp_result) const {{",
+                f"}}",
+            ):
+                target.writelns(
+                    f"::taihe::env_guard guard;",
+                    f"ani_env *env = guard.get_env();",
+                )
+                item_ty_ani_info.into_ani_boxed(
+                    target,
+                    "env",
+                    "cpp_result",
+                    "ani_result",
+                )
+                target.writelns(
+                    f"env->PromiseResolver_Resolve(reinterpret_cast<ani_resolver>(this->ref), ani_result);",
+                )
+        target.writelns(
+            f"ani_object {ani_after} = {{}};",
+            f"ani_resolver {ani_resolver} = {{}};",
+            f"{env}->Promise_New(&{ani_resolver}, &{ani_after});",
+            f"{cpp_value}.emplace_handler<{cpp_handler_t}>({env}, reinterpret_cast<ani_ref>({ani_resolver}));",
+        )
+
+
 class TypeAniInfoDispatcher(NonVoidTypeVisitor[TypeAniInfo]):
     def __init__(self, am: AnalysisManager):
         self.am = am
@@ -2407,6 +2547,14 @@ class TypeAniInfoDispatcher(NonVoidTypeVisitor[TypeAniInfo]):
     @override
     def visit_vector_type(self, t: VectorType) -> TypeAniInfo:
         raise NotImplementedError("VectorType is not supported in ANI yet.")
+
+    @override
+    def visit_async_setter_type(self, t: AsyncSetterType) -> TypeAniInfo:
+        return AsyncSetterTypeAniInfo(self.am, t)
+
+    @override
+    def visit_async_result_type(self, t: AsyncResultType) -> TypeAniInfo:
+        return AsyncResultTypeAniInfo(self.am, t)
 
     @override
     def visit_callback_type(self, t: CallbackType) -> TypeAniInfo:

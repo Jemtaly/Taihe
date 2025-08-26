@@ -1,0 +1,2 @@
+function futureResultWithCallback(ms: i64, result: String, set: AsyncSetter<String>);
+function futureResultReturnsPromise(ms: i64, result: String): AsyncResult<String>;
