@@ -15,6 +15,8 @@ from taihe.semantics.declarations import (
 )
 from taihe.semantics.types import (
     ArrayType,
+    AsyncResultType,
+    AsyncSetterType,
     CallbackType,
     EnumType,
     IfaceType,
@@ -281,14 +283,6 @@ class OptionalTypeAbiInfo(TypeAbiInfo):
         self.as_param = "struct TOptional"
 
 
-class CallbackTypeAbiInfo(TypeAbiInfo):
-    def __init__(self, am: AnalysisManager, t: CallbackType) -> None:
-        self.defn_headers = ["taihe/callback.abi.h"]
-        self.impl_headers = ["taihe/callback.abi.h"]
-        self.as_owner = "struct TCallback"
-        self.as_param = "struct TCallback"
-
-
 class VectorTypeAbiInfo(TypeAbiInfo):
     def __init__(self, am: AnalysisManager, t: VectorType) -> None:
         self.defn_headers = ["taihe/vector.abi.h"]
@@ -311,6 +305,30 @@ class SetTypeAbiInfo(TypeAbiInfo):
         self.impl_headers = ["taihe/set.abi.h"]
         self.as_owner = "struct TSet"
         self.as_param = "struct TSet"
+
+
+class AsyncSetterTypeAbiInfo(TypeAbiInfo):
+    def __init__(self, am: AnalysisManager, t: AsyncSetterType) -> None:
+        self.defn_headers = ["taihe/async.abi.h"]
+        self.impl_headers = ["taihe/async.abi.h"]
+        self.as_owner = "struct TAsyncSetter"
+        self.as_param = "struct TAsyncSetter"
+
+
+class AsyncResultTypeAbiInfo(TypeAbiInfo):
+    def __init__(self, am: AnalysisManager, t: AsyncResultType) -> None:
+        self.defn_headers = ["taihe/async.abi.h"]
+        self.impl_headers = ["taihe/async.abi.h"]
+        self.as_owner = "struct TAsyncResult"
+        self.as_param = "struct TAsyncResult"
+
+
+class CallbackTypeAbiInfo(TypeAbiInfo):
+    def __init__(self, am: AnalysisManager, t: CallbackType) -> None:
+        self.defn_headers = ["taihe/callback.abi.h"]
+        self.impl_headers = ["taihe/callback.abi.h"]
+        self.as_owner = "struct TCallback"
+        self.as_param = "struct TCallback"
 
 
 class TypeAbiInfoDispatcher(NonVoidTypeVisitor[TypeAbiInfo]):
@@ -368,6 +386,14 @@ class TypeAbiInfoDispatcher(NonVoidTypeVisitor[TypeAbiInfo]):
     @override
     def visit_set_type(self, t: SetType) -> TypeAbiInfo:
         return SetTypeAbiInfo(self.am, t)
+
+    @override
+    def visit_async_setter_type(self, t: AsyncSetterType) -> TypeAbiInfo:
+        return AsyncSetterTypeAbiInfo(self.am, t)
+
+    @override
+    def visit_async_result_type(self, t: AsyncResultType) -> TypeAbiInfo:
+        return AsyncResultTypeAbiInfo(self.am, t)
 
     @override
     def visit_callback_type(self, t: CallbackType) -> TypeAbiInfo:
