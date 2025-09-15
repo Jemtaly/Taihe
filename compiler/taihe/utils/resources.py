@@ -23,7 +23,6 @@ class ResourceType(Enum):
     RUNTIME_SOURCE = "runtime-source"
     RUNTIME_HEADER = "runtime-header"
     STDLIB = "stdlib"
-    DOCUMENTATION = "doc"
 
     # Things that should not be copied to packages should be prefixed with "DEV_"
     DEV_PANDA_VM = "panda-vm"
@@ -236,7 +235,6 @@ _MODE_TO_LAYOUT: Final[dict[DeploymentMode, dict[ResourceType, ResourceT]]] = {
         ResourceType.RUNTIME_SOURCE: "runtime/src",
         ResourceType.RUNTIME_HEADER: "runtime/include",
         ResourceType.STDLIB: "stdlib",
-        ResourceType.DOCUMENTATION: "cookbook",
         ResourceType.DEV_PANDA_VM: ".panda_vm",
         ResourceType.DEV_ANTLR: _resolve_antlr,
         ResourceType.DEV_PYTHON_BUILD: _resolve_python_build,
@@ -247,7 +245,6 @@ _MODE_TO_LAYOUT: Final[dict[DeploymentMode, dict[ResourceType, ResourceT]]] = {
         ResourceType.RUNTIME_SOURCE: "src/taihe/runtime",
         ResourceType.RUNTIME_HEADER: "include",
         ResourceType.STDLIB: "lib/taihe/stdlib",
-        ResourceType.DOCUMENTATION: "share/doc/taihe",
         ResourceType.DEV_PANDA_VM: "var/lib/panda_vm",
     },
 }
