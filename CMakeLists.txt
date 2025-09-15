@@ -155,7 +155,7 @@ function(setup_panda_sdk)
   else()
     # 设置 PANDA 路径
     set(PANDA_SDK_FILENAME "sdk-1.5.0-dev.36922.tgz")
-    set(PANDA_SDK_URL "https://nexus.bz-openlab.ru:10443/repository/koala-npm/%40panda/sdk/-/${PANDA_SDK_FILENAME}")
+    set(PANDA_SDK_URL "https://raw.gitcode.com/m0_52007851/panda_vm/blobs/a05edee122ff003c7eacb806cf6d74b54206485b/${PANDA_SDK_FILENAME}")
     set(PANDA_EXTRACT_DIR "${CMAKE_SOURCE_DIR}/.panda_vm")
     set(PANDA_SDK_PATH "${PANDA_EXTRACT_DIR}/${PANDA_SDK_FILENAME}")
     set(PANDA_HOME "${PANDA_EXTRACT_DIR}/package/linux_host_tools")
@@ -200,7 +200,7 @@ function(setup_panda_sdk)
       if(NEED_ACTUAL_DOWNLOAD)
         message(STATUS "Downloading Panda SDK: ${PANDA_SDK_FILENAME}")
         execute_process(
-          COMMAND curl -u koala-pub:y3t!n0therP -L -o "${PANDA_EXTRACT_DIR}/${PANDA_SDK_FILENAME}" "${PANDA_SDK_URL}"
+          COMMAND curl -L -o "${PANDA_EXTRACT_DIR}/${PANDA_SDK_FILENAME}" "${PANDA_SDK_URL}"
           RESULT_VARIABLE DOWNLOAD_RESULT
         )
         if(NOT DOWNLOAD_RESULT EQUAL 0)

@@ -94,7 +94,6 @@ class CacheManager:
             "--location",  # Follow redirects
             "--fail",  # Fail on HTTP errors
             "--progress-bar",
-            "--remove-on-error",
             "--retry",
             "5",  # Retry for 5 times
             "--output",

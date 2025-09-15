@@ -106,7 +106,6 @@ class BuildUtils:
         self,
         target_file: Path,
         url: str,
-        user_info: UserInfo | None = None,
     ) -> None:
         """Download a file from a URL."""
         if target_file.exists():
@@ -116,9 +115,6 @@ class BuildUtils:
         temp_file = target_file.with_suffix(".tmp")
 
         command = ["curl", "-L", "--progress-bar", url, "-o", temp_file]
-
-        if user_info:
-            command.extend(["-u", f"{user_info.username}:{user_info.password}"])
 
         self.run_command(command)
 
@@ -158,11 +154,7 @@ class BuildConfig:
     def __init__(self):
         self.cxx = os.getenv("CXX", "clang++")
         self.cc = os.getenv("CC", "clang")
-        self.panda_userinfo = UserInfo(
-            username=os.getenv("PANDA_USERNAME", "koala-pub"),
-            password=os.getenv("PANDA_PASSWORD", "y3t!n0therP"),
-        )
-        self.panda_url = "https://nexus.bz-openlab.ru:10443/repository/koala-npm/%40panda/sdk/-/sdk-1.5.0-dev.36922.tgz"
+        self.panda_url = "https://raw.gitcode.com/m0_52007851/panda_vm/blobs/a05edee122ff003c7eacb806cf6d74b54206485b/sdk-1.5.0-dev.36922.tgz"
 
         self.locator = ResourceLocator.detect()
         self.panda_extract_dir = self.locator.get(ResourceType.DEV_PANDA_VM)
@@ -540,7 +532,7 @@ class BuildSystem(BuildUtils):
         if not self.check_local_version(version):
             self.clean_directory(self.config.panda_package_dir)
             self.logger.info("Downloading panda VM version: %s", version)
-            self.download_file(target_file, url, self.config.panda_userinfo)
+            self.download_file(target_file, url)
             self.extract_file(target_file, self.config.panda_extract_dir)
             self.write_local_version(version)
             self.logger.info("Completed download and extraction.")
