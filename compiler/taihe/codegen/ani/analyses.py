@@ -981,7 +981,7 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
             )
             self.into_ani(target, env, cpp_value, ani_after)
             target.writelns(
-                f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", "{self.type_sig}:"), &{ani_boxed}, {ani_after});',
+                f'ANI_CHECK({env}, {env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", "{self.type_sig}:"), &{ani_boxed}, {ani_after}));',
             )
 
     def from_ani_boxed(
@@ -1002,7 +1002,7 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
             ani_value = f"{cpp_after}_ani_value"
             target.writelns(
                 f"{self.ani_type} {ani_value} = {{}};",
-                f'{env}->Object_CallMethod_{self.ani_type.suffix}(static_cast<ani_object>({ani_boxed}), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "unboxed", ":{self.type_sig}"), &{ani_value});',
+                f'ANI_CHECK({env}, {env}->Object_CallMethod_{self.ani_type.suffix}(static_cast<ani_object>({ani_boxed}), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "unboxed", ":{self.type_sig}"), &{ani_value}));',
             )
             self.from_ani(target, env, ani_value, cpp_after)
 
@@ -1024,7 +1024,7 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
             ):
                 target.writelns(
                     f"{self.ani_type} {ani_item} = {{}};",
-                    f"{env}->FixedArray_Get_Ref({ani_fixedarray_value}, {iterator}, reinterpret_cast<ani_ref*>(&{ani_item}));",
+                    f"ANI_CHECK({env}, {env}->FixedArray_Get_Ref({ani_fixedarray_value}, {iterator}, reinterpret_cast<ani_ref*>(&{ani_item})));",
                 )
                 self.from_ani(target, env, ani_item, cpp_item)
                 target.writelns(
@@ -1032,7 +1032,7 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
                 )
         else:
             target.writelns(
-                f"{env}->FixedArray_GetRegion_{self.ani_type.suffix}({ani_fixedarray_value}, 0, {ani_size}, reinterpret_cast<{self.ani_type}*>({cpp_fixedarray_buffer}));",
+                f"ANI_CHECK({env}, {env}->FixedArray_GetRegion_{self.ani_type.suffix}({ani_fixedarray_value}, 0, {ani_size}, reinterpret_cast<{self.ani_type}*>({cpp_fixedarray_buffer})));",
             )
 
     def into_ani_fixedarray(
@@ -1050,8 +1050,8 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
             target.writelns(
                 f"ani_fixedarray_ref {ani_fixedarray_after} = {{}};",
                 f"ani_ref {ani_none} = {{}};",
-                f"{env}->GetUndefined(&{ani_none});",
-                f'{env}->FixedArray_New_Ref(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), {cpp_size}, {ani_none}, &{ani_fixedarray_after});',
+                f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_none}));",
+                f'ANI_CHECK({env}, {env}->FixedArray_New_Ref(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), {cpp_size}, {ani_none}, &{ani_fixedarray_after}));',
             )
             with target.indented(
                 f"for (size_t {iterator} = 0; {iterator} < {cpp_size}; {iterator}++) {{",
@@ -1064,13 +1064,13 @@ class TypeAniInfo(AbstractAnalysis[NonVoidType], ABC):
                     ani_item,
                 )
                 target.writelns(
-                    f"{env}->FixedArray_Set_Ref({ani_fixedarray_after}, {iterator}, {ani_item});",
+                    f"ANI_CHECK({env}, {env}->FixedArray_Set_Ref({ani_fixedarray_after}, {iterator}, {ani_item}));",
                 )
         else:
             target.writelns(
                 f"{self.ani_type.fixedarray} {ani_fixedarray_after} = {{}};",
-                f"{env}->FixedArray_New_{self.ani_type.suffix}({cpp_size}, &{ani_fixedarray_after});",
-                f"{env}->FixedArray_SetRegion_{self.ani_type.suffix}({ani_fixedarray_after}, 0, {cpp_size}, reinterpret_cast<{self.ani_type} const*>({cpp_fixedarray_value}));",
+                f"ANI_CHECK({env}, {env}->FixedArray_New_{self.ani_type.suffix}({cpp_size}, &{ani_fixedarray_after}));",
+                f"ANI_CHECK({env}, {env}->FixedArray_SetRegion_{self.ani_type.suffix}({ani_fixedarray_after}, 0, {cpp_size}, reinterpret_cast<{self.ani_type} const*>({cpp_fixedarray_value})));",
             )
 
 
@@ -1100,7 +1100,7 @@ class EnumTypeAniInfo(TypeAniInfo):
         enum_cpp_info = EnumCppInfo.get(self.am, self.t.decl)
         target.writelns(
             f"ani_size {ani_index} = {{}};",
-            f"{env}->EnumItem_GetIndex({ani_value}, &{ani_index});",
+            f"ANI_CHECK({env}, {env}->EnumItem_GetIndex({ani_value}, &{ani_index}));",
             f"{enum_cpp_info.full_name} {cpp_after}(static_cast<{enum_cpp_info.full_name}::key_t>({ani_index}));",
         )
 
@@ -1114,7 +1114,7 @@ class EnumTypeAniInfo(TypeAniInfo):
     ):
         target.writelns(
             f"ani_enum_item {ani_after} = {{}};",
-            f'{env}->Enum_GetEnumItemByIndex(TH_ANI_FIND_ENUM({env}, "{self.type_desc}"), static_cast<ani_size>({cpp_value}.get_key()), &{ani_after});',
+            f'ANI_CHECK({env}, {env}->Enum_GetEnumItemByIndex(TH_ANI_FIND_ENUM({env}, "{self.type_desc}"), static_cast<ani_size>({cpp_value}.get_key()), &{ani_after}));',
         )
 
 
@@ -1336,7 +1336,7 @@ class NullTypeAniInfo(TypeAniInfo):
     ):
         target.writelns(
             f"ani_ref {ani_after} = {{}};",
-            f"{env}->GetNull(&{ani_after});",
+            f"ANI_CHECK({env}, {env}->GetNull(&{ani_after}));",
         )
 
 
@@ -1372,7 +1372,7 @@ class UndefinedTypeAniInfo(TypeAniInfo):
     ):
         target.writelns(
             f"ani_ref {ani_after} = {{}};",
-            f"{env}->GetUndefined(&{ani_after});",
+            f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_after}));",
         )
 
 
@@ -1492,10 +1492,10 @@ class StringTypeAniInfo(TypeAniInfo):
         cpp_buff = f"{cpp_after}_cpp_buff"
         target.writelns(
             f"ani_size {ani_size} = {{}};",
-            f"{env}->String_GetUTF8Size({ani_value}, &{ani_size});",
+            f"ANI_CHECK({env}, {env}->String_GetUTF8Size({ani_value}, &{ani_size}));",
             f"TString {cpp_tstr};",
             f"char* {cpp_buff} = tstr_initialize(&{cpp_tstr}, {ani_size} + 1);",
-            f"{env}->String_GetUTF8({ani_value}, {cpp_buff}, {ani_size} + 1, &{ani_size});",
+            f"ANI_CHECK({env}, {env}->String_GetUTF8({ani_value}, {cpp_buff}, {ani_size} + 1, &{ani_size}));",
             f"{cpp_buff}[{ani_size}] = '\\0';",
             f"{cpp_tstr}.length = {ani_size};",
             f"::taihe::string {cpp_after} = ::taihe::string({cpp_tstr});",
@@ -1511,7 +1511,7 @@ class StringTypeAniInfo(TypeAniInfo):
     ):
         target.writelns(
             f"ani_string {ani_after} = {{}};",
-            f"{env}->String_NewUTF8({cpp_value}.c_str(), {cpp_value}.size(), &{ani_after});",
+            f"ANI_CHECK({env}, {env}->String_NewUTF8({cpp_value}.c_str(), {cpp_value}.size(), &{ani_after}));",
         )
 
 
@@ -1543,7 +1543,7 @@ class OptionalTypeAniInfo(TypeAniInfo):
         target.writelns(
             f"{self.cpp_info.as_owner} {cpp_after};",
             f"ani_boolean {ani_flag} = {{}};",
-            f"{env}->Reference_IsUndefined({ani_value}, &{ani_flag});",
+            f"ANI_CHECK({env}, {env}->Reference_IsUndefined({ani_value}, &{ani_flag}));",
         )
         with target.indented(
             f"if (!{ani_flag}) {{",
@@ -1572,7 +1572,7 @@ class OptionalTypeAniInfo(TypeAniInfo):
             f"}}",
         ):
             target.writelns(
-                f"{env}->GetUndefined(&{ani_after});",
+                f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_after}));",
             )
         with target.indented(
             f"else {{",
@@ -1618,7 +1618,7 @@ class FixedArrayTypeAniInfo(TypeAniInfo):
         cpp_buffer = f"{cpp_after}_cpp_buffer"
         target.writelns(
             f"ani_size {ani_size} = {{}};",
-            f"{env}->FixedArray_GetLength({ani_value}, &{ani_size});",
+            f"ANI_CHECK({env}, {env}->FixedArray_GetLength({ani_value}, &{ani_size}));",
             f"{item_ty_cpp_info.as_owner}* {cpp_buffer} = reinterpret_cast<{item_ty_cpp_info.as_owner}*>(malloc({ani_size} * sizeof({item_ty_cpp_info.as_owner})));",
         )
         item_ty_ani_info = TypeAniInfo.get(self.am, self.t.item_ty)
@@ -1686,7 +1686,7 @@ class ArrayTypeAniInfo(TypeAniInfo):
         iterator = f"{cpp_buffer}_iterator"
         target.writelns(
             f"ani_size {ani_size} = {{}};",
-            f"{env}->Array_GetLength({ani_value}, &{ani_size});",
+            f"ANI_CHECK({env}, {env}->Array_GetLength({ani_value}, &{ani_size}));",
             f"{item_ty_cpp_info.as_owner}* {cpp_buffer} = reinterpret_cast<{item_ty_cpp_info.as_owner}*>(malloc({ani_size} * sizeof({item_ty_cpp_info.as_owner})));",
         )
         with target.indented(
@@ -1695,7 +1695,7 @@ class ArrayTypeAniInfo(TypeAniInfo):
         ):
             target.writelns(
                 f"ani_ref {ani_item} = {{}};",
-                f"{env}->Array_Get({ani_value}, {iterator}, &{ani_item});",
+                f"ANI_CHECK({env}, {env}->Array_Get({ani_value}, {iterator}, &{ani_item}));",
             )
             item_ty_ani_info.from_ani_boxed(target, env, ani_item, cpp_item)
             target.writelns(
@@ -1722,8 +1722,8 @@ class ArrayTypeAniInfo(TypeAniInfo):
             f"size_t {cpp_size} = {cpp_value}.size();",
             f"ani_array {ani_after} = {{}};",
             f"ani_ref {ani_none} = {{}};",
-            f"{env}->GetUndefined(&{ani_none});",
-            f"{env}->Array_New({cpp_size}, {ani_none}, &{ani_after});",
+            f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_none}));",
+            f"ANI_CHECK({env}, {env}->Array_New({cpp_size}, {ani_none}, &{ani_after}));",
         )
         with target.indented(
             f"for (size_t {iterator} = 0; {iterator} < {cpp_size}; {iterator}++) {{",
@@ -1736,7 +1736,7 @@ class ArrayTypeAniInfo(TypeAniInfo):
                 ani_item,
             )
             target.writelns(
-                f"{env}->Array_Set({ani_after}, {iterator}, {ani_item});",
+                f"ANI_CHECK({env}, {env}->Array_Set({ani_after}, {iterator}, {ani_item}));",
             )
 
 
@@ -1772,7 +1772,7 @@ class ArrayBufferTypeAniInfo(TypeAniInfo):
         target.writelns(
             f"void* {ani_data} = {{}};",
             f"ani_size {ani_length} = {{}};",
-            f"{env}->ArrayBuffer_GetInfo({ani_value}, &{ani_data}, &{ani_length});",
+            f"ANI_CHECK({env}, {env}->ArrayBuffer_GetInfo({ani_value}, &{ani_data}, &{ani_length}));",
             f"{self.cpp_info.as_param} {cpp_after}(reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}), {ani_length});",
         )
 
@@ -1789,7 +1789,7 @@ class ArrayBufferTypeAniInfo(TypeAniInfo):
         target.writelns(
             f"void* {ani_data} = {{}};",
             f"ani_arraybuffer {ani_after} = {{}};",
-            f"{env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_after});",
+            f"ANI_CHECK({env}, {env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_after}));",
             f"std::copy({cpp_value}.begin(), {cpp_value}.end(), reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}));",
         )
 
@@ -1830,12 +1830,12 @@ class TypedArrayTypeAniInfo(TypeAniInfo):
             f"ani_int {ani_byte_length} = {{}};",
             f"ani_int {ani_byte_offset} = {{}};",
             f"ani_arraybuffer {ani_arrbuf} = {{}};",
-            f'{env}->Object_GetPropertyByName_Int({ani_value}, "byteLength", &{ani_byte_length});',
-            f'{env}->Object_GetPropertyByName_Int({ani_value}, "byteOffset", &{ani_byte_offset});',
-            f'{env}->Object_GetPropertyByName_Ref({ani_value}, "buffer", reinterpret_cast<ani_ref*>(&{ani_arrbuf}));',
+            f'ANI_CHECK({env}, {env}->Object_GetPropertyByName_Int({ani_value}, "byteLength", &{ani_byte_length}));',
+            f'ANI_CHECK({env}, {env}->Object_GetPropertyByName_Int({ani_value}, "byteOffset", &{ani_byte_offset}));',
+            f'ANI_CHECK({env}, {env}->Object_GetPropertyByName_Ref({ani_value}, "buffer", reinterpret_cast<ani_ref*>(&{ani_arrbuf})));',
             f"void* {ani_data} = {{}};",
             f"ani_size {ani_length} = {{}};",
-            f"{env}->ArrayBuffer_GetInfo({ani_arrbuf}, &{ani_data}, &{ani_length});",
+            f"ANI_CHECK({env}, {env}->ArrayBuffer_GetInfo({ani_arrbuf}, &{ani_data}, &{ani_length}));",
             f"{self.cpp_info.as_param} {cpp_after}(reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}) + {ani_byte_offset}, {ani_byte_length} / (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)));",
         )
 
@@ -1855,14 +1855,14 @@ class TypedArrayTypeAniInfo(TypeAniInfo):
         target.writelns(
             f"void* {ani_data} = {{}};",
             f"ani_arraybuffer {ani_arrbuf} = {{}};",
-            f"{env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_arrbuf});",
+            f"ANI_CHECK({env}, {env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_arrbuf}));",
             f"std::copy({cpp_value}.begin(), {cpp_value}.end(), reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}));",
             f"ani_ref {ani_byte_length} = {{}};",
-            f"{env}->GetUndefined(&{ani_byte_length});",
+            f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_byte_length}));",
             f"ani_ref {ani_byte_offset} = {{}};",
-            f"{env}->GetUndefined(&{ani_byte_offset});",
+            f"ANI_CHECK({env}, {env}->GetUndefined(&{ani_byte_offset}));",
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", "C{{escompat.ArrayBuffer}}C{{std.core.Double}}C{{std.core.Double}}:"), &{ani_after}, {ani_arrbuf}, {ani_byte_length}, {ani_byte_offset});',
+            f'ANI_CHECK({env}, {env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", "C{{escompat.ArrayBuffer}}C{{std.core.Double}}C{{std.core.Double}}:"), &{ani_after}, {ani_arrbuf}, {ani_byte_length}, {ani_byte_offset}));',
         )
 
 
@@ -1899,10 +1899,10 @@ class BigIntTypeAniInfo(TypeAniInfo):
         ani_length = f"{cpp_after}_ani_length"
         target.writelns(
             f"ani_arraybuffer {ani_arrbuf} = {{}};",
-            f'{env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_fromBigIntToArrayBuffer", "C{{escompat.BigInt}}i:C{{escompat.ArrayBuffer}}"), reinterpret_cast<ani_ref*>(&{ani_arrbuf}), {ani_value}, static_cast<ani_int>(sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)));'
+            f'ANI_CHECK({env}, {env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_fromBigIntToArrayBuffer", "C{{escompat.BigInt}}i:C{{escompat.ArrayBuffer}}"), reinterpret_cast<ani_ref*>(&{ani_arrbuf}), {ani_value}, static_cast<ani_int>(sizeof({item_ty_cpp_info.as_owner}) / sizeof(char))));',
             f"void* {ani_data} = {{}};",
             f"ani_size {ani_length} = {{}};",
-            f"{env}->ArrayBuffer_GetInfo({ani_arrbuf}, &{ani_data}, &{ani_length});",
+            f"ANI_CHECK({env}, {env}->ArrayBuffer_GetInfo({ani_arrbuf}, &{ani_data}, &{ani_length}));",
             f"{self.cpp_info.as_param} {cpp_after}(reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}), {ani_length} / (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)));",
         )
 
@@ -1921,10 +1921,10 @@ class BigIntTypeAniInfo(TypeAniInfo):
         target.writelns(
             f"void* {ani_data} = {{}};",
             f"ani_arraybuffer {ani_arrbuf} = {{}};",
-            f"{env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_arrbuf});",
+            f"ANI_CHECK({env}, {env}->CreateArrayBuffer({cpp_value}.size() * (sizeof({item_ty_cpp_info.as_owner}) / sizeof(char)), &{ani_data}, &{ani_arrbuf}));",
             f"std::copy({cpp_value}.begin(), {cpp_value}.end(), reinterpret_cast<{item_ty_cpp_info.as_owner}*>({ani_data}));",
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_fromArrayBufferToBigInt", "C{{escompat.ArrayBuffer}}:C{{escompat.BigInt}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_arrbuf});',
+            f'ANI_CHECK({env}, {env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_fromArrayBufferToBigInt", "C{{escompat.ArrayBuffer}}:C{{escompat.BigInt}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_arrbuf}));',
         )
 
 
@@ -1970,7 +1970,7 @@ class RecordTypeAniInfo(TypeAniInfo):
         val_ty_ani_info = TypeAniInfo.get(self.am, self.t.val_ty)
         target.writelns(
             f"ani_object {ani_iter} = {{}};",
-            f'{env}->Object_CallMethod_Ref({ani_value}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "entries", ":C{{escompat.IterableIterator}}"), reinterpret_cast<ani_ref*>(&{ani_iter}));',
+            f'ANI_CHECK({env}, {env}->Object_CallMethod_Ref({ani_value}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "entries", ":C{{escompat.IterableIterator}}"), reinterpret_cast<ani_ref*>(&{ani_iter})));',
             f"{self.cpp_info.as_owner} {cpp_after};",
         )
         with target.indented(
@@ -1980,8 +1980,8 @@ class RecordTypeAniInfo(TypeAniInfo):
             target.writelns(
                 f"ani_object {ani_next} = {{}};",
                 f"ani_boolean {ani_done} = {{}};",
-                f'{env}->Object_CallMethod_Ref({ani_iter}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Iterator", "next", ":C{{escompat.IteratorResult}}"), reinterpret_cast<ani_ref*>(&{ani_next}));',
-                f'{env}->Object_GetField_Boolean({ani_next}, TH_ANI_FIND_CLASS_FIELD({env}, "escompat.IteratorResult", "done"), &{ani_done});',
+                f'ANI_CHECK({env}, {env}->Object_CallMethod_Ref({ani_iter}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Iterator", "next", ":C{{escompat.IteratorResult}}"), reinterpret_cast<ani_ref*>(&{ani_next})));',
+                f'ANI_CHECK({env}, {env}->Object_GetField_Boolean({ani_next}, TH_ANI_FIND_CLASS_FIELD({env}, "escompat.IteratorResult", "done"), &{ani_done}));',
             )
             with target.indented(
                 f"if ({ani_done}) {{;",
@@ -1992,11 +1992,11 @@ class RecordTypeAniInfo(TypeAniInfo):
                 )
             target.writelns(
                 f"ani_tuple_value {ani_item} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_next},  TH_ANI_FIND_CLASS_FIELD({env}, "escompat.IteratorResult", "value"), reinterpret_cast<ani_ref*>(&{ani_item}));',
+                f'ANI_CHECK({env}, {env}->Object_GetField_Ref({ani_next},  TH_ANI_FIND_CLASS_FIELD({env}, "escompat.IteratorResult", "value"), reinterpret_cast<ani_ref*>(&{ani_item})));',
                 f"ani_ref {ani_key} = {{}};",
-                f"{env}->TupleValue_GetItem_Ref({ani_item}, 0, &{ani_key});",
+                f"ANI_CHECK({env}, {env}->TupleValue_GetItem_Ref({ani_item}, 0, &{ani_key}));",
                 f"ani_ref {ani_val} = {{}};",
-                f"{env}->TupleValue_GetItem_Ref({ani_item}, 1, &{ani_val});",
+                f"ANI_CHECK({env}, {env}->TupleValue_GetItem_Ref({ani_item}, 1, &{ani_val}));",
             )
             key_ty_ani_info.from_ani_boxed(target, env, ani_key, cpp_key)
             val_ty_ani_info.from_ani_boxed(target, env, ani_val, cpp_val)
@@ -2020,7 +2020,7 @@ class RecordTypeAniInfo(TypeAniInfo):
         ani_val = f"{ani_after}_ani_val"
         target.writelns(
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "escompat.Record"), TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "<ctor>", ":"), &{ani_after});',
+            f'ANI_CHECK({env}, {env}->Object_New(TH_ANI_FIND_CLASS({env}, "escompat.Record"), TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "<ctor>", ":"), &{ani_after}));',
         )
         with target.indented(
             f"for (const auto& [{cpp_key}, {cpp_val}] : {cpp_value}) {{",
@@ -2029,7 +2029,7 @@ class RecordTypeAniInfo(TypeAniInfo):
             key_ty_ani_info.into_ani_boxed(target, env, cpp_key, ani_key)
             val_ty_ani_info.into_ani_boxed(target, env, cpp_val, ani_val)
             target.writelns(
-                f'{env}->Object_CallMethod_Void({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "$_set", "X{{C{{std.core.BaseEnum}}C{{std.core.Numeric}}C{{std.core.String}}}}C{{std.core.Object}}:"), {ani_key}, {ani_val});',
+                f'ANI_CHECK({env}, {env}->Object_CallMethod_Void({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "escompat.Record", "$_set", "X{{C{{std.core.BaseEnum}}C{{std.core.Numeric}}C{{std.core.String}}}}C{{std.core.Object}}:"), {ani_key}, {ani_val}));',
             )
 
 
@@ -2130,7 +2130,7 @@ class CallbackTypeAniInfo(TypeAniInfo):
                 target.writelns(
                     f"ani_ref ani_argv[] = {{{args_ani_str}}};",
                     f"ani_ref {result_ani} = {{}};",
-                    f"env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), {len(self.t.ref.params)}, ani_argv, &{result_ani});",
+                    f"ANI_CHECK(env, env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), {len(self.t.ref.params)}, ani_argv, &{result_ani}));",
                 )
                 return_ty_ani_info.from_ani_boxed(
                     target,
@@ -2146,7 +2146,7 @@ class CallbackTypeAniInfo(TypeAniInfo):
                 target.writelns(
                     f"ani_ref ani_argv[] = {{{args_ani_str}}};",
                     f"ani_ref {result_ani} = {{}};",
-                    f"env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), {len(self.t.ref.params)}, ani_argv, &{result_ani});",
+                    f"ANI_CHECK(env, env->FunctionalObject_Call(static_cast<ani_fn_object>(this->ref), {len(self.t.ref.params)}, ani_argv, &{result_ani}));",
                     f"return;",
                 )
 
@@ -2177,7 +2177,7 @@ class CallbackTypeAniInfo(TypeAniInfo):
             f"ani_long {ani_data_ptr} = reinterpret_cast<ani_long>({cpp_copy}.m_handle.data_ptr);",
             f"{cpp_copy}.m_handle.data_ptr = nullptr;",
             f"ani_fn_object {ani_after} = {{}};",
-            f'{env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_makeCallback", "lll:C{{std.core.Function0}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_cast_ptr}, {ani_func_ptr}, {ani_data_ptr});',
+            f'ANI_CHECK({env}, {env}->Function_Call_Ref(TH_ANI_FIND_MODULE_FUNCTION({env}, "{pkg_ani_info.ns.mod.impl_desc}", "_taihe_makeCallback", "lll:C{{std.core.Function0}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_cast_ptr}, {ani_func_ptr}, {ani_data_ptr}));',
         )
 
     def gen_native_invoke(
