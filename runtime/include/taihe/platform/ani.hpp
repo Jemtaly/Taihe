@@ -1,6 +1,7 @@
 #pragma once
 
 #include <future>
+#include <sstream>
 
 #include <taihe/object.hpp>
 #include <taihe/runtime.hpp>
@@ -91,6 +92,28 @@ struct hash_impl_t<
 };
 }  // namespace taihe
 
+#ifdef ANI_DEBUG_HILOG
+#include "hilog/log.h"
+#undef LOG_DOMAIN
+#undef LOG_TAG
+#define LOG_DOMAIN 0x3200  // Global domain macro, identifying business domain
+#define LOG_TAG "Taihe"    // Global tag macro, identifying module log tag
+#define TH_OUTPUT_LOG(message) OH_LOG_ERROR(LOG_APP, "%{public}s", message)
+#else
+#define TH_OUTPUT_LOG(message) fprintf(stderr, "%s\n", message)
+#endif
+
+namespace taihe {
+inline void ani_debug_log(char const *format, ...) {
+  char buffer[512];
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, sizeof(buffer), format, args);
+  va_end(args);
+  TH_OUTPUT_LOG(buffer);
+}
+}  // namespace taihe
+
 #if __cplusplus >= 202002L
 namespace taihe {
 template<std::size_t N = 0>
@@ -117,7 +140,7 @@ inline ani_module ani_find_module(ani_env *env) {
     char const *descriptor = descriptor_t.c_str();
     ani_module mod;
     if (ANI_OK != env->FindModule(descriptor, &mod)) {
-      std::cerr << "Module not found: " << descriptor << std::endl;
+      taihe::ani_debug_log("Module not found: %s", descriptor);
       return nullptr;
     }
     return mod;
@@ -131,7 +154,7 @@ inline ani_namespace ani_find_namespace(ani_env *env) {
     char const *descriptor = descriptor_t.c_str();
     ani_namespace ns;
     if (ANI_OK != env->FindNamespace(descriptor, &ns)) {
-      std::cerr << "Namespace not found: " << descriptor << std::endl;
+      taihe::ani_debug_log("Namespace not found: %s", descriptor);
       return nullptr;
     }
     return ns;
@@ -145,7 +168,7 @@ inline ani_class ani_find_class(ani_env *env) {
     char const *descriptor = descriptor_t.c_str();
     ani_class cls;
     if (ANI_OK != env->FindClass(descriptor, &cls)) {
-      std::cerr << "Class not found: " << descriptor << std::endl;
+      taihe::ani_debug_log("Class not found: %s", descriptor);
       return nullptr;
     }
     return cls;
@@ -159,7 +182,7 @@ inline ani_enum ani_find_enum(ani_env *env) {
     char const *descriptor = descriptor_t.c_str();
     ani_enum enm;
     if (ANI_OK != env->FindEnum(descriptor, &enm)) {
-      std::cerr << "Enum not found: " << descriptor << std::endl;
+      taihe::ani_debug_log("Enum not found: %s", descriptor);
       return nullptr;
     }
     return enm;
@@ -180,8 +203,8 @@ inline ani_function ani_find_module_function(ani_env *env) {
     }
     ani_function fn;
     if (ANI_OK != env->Module_FindFunction(mod, name, signature, &fn)) {
-      std::cerr << "Function not found: " << descriptor << "::" << name
-                << " with signature: " << signature << std::endl;
+      taihe::ani_debug_log("Function not found: %s::%s with signature: %s",
+                           descriptor, name, signature);
       return nullptr;
     }
     return fn;
@@ -202,8 +225,8 @@ inline ani_function ani_find_namespace_function(ani_env *env) {
     }
     ani_function fn;
     if (ANI_OK != env->Namespace_FindFunction(ns, name, signature, &fn)) {
-      std::cerr << "Function not found: " << descriptor << "::" << name
-                << " with signature: " << signature << std::endl;
+      taihe::ani_debug_log("Function not found: %s::%s with signature: %s",
+                           descriptor, name, signature);
       return nullptr;
     }
     return fn;
@@ -224,8 +247,8 @@ inline ani_method ani_find_class_method(ani_env *env) {
     }
     ani_method mtd;
     if (ANI_OK != env->Class_FindMethod(cls, name, signature, &mtd)) {
-      std::cerr << "Method not found: " << descriptor << "::" << name
-                << " with signature: " << signature << std::endl;
+      taihe::ani_debug_log("Method not found: %s::%s with signature: %s",
+                           descriptor, name, signature);
       return nullptr;
     }
     return mtd;
@@ -246,8 +269,8 @@ inline ani_static_method ani_find_class_static_method(ani_env *env) {
     }
     ani_static_method mtd;
     if (ANI_OK != env->Class_FindStaticMethod(cls, name, signature, &mtd)) {
-      std::cerr << "Static method not found: " << descriptor << "::" << name
-                << " with signature: " << signature << std::endl;
+      taihe::ani_debug_log("Static method not found: %s::%s with signature: %s",
+                           descriptor, name, signature);
       return nullptr;
     }
     return mtd;
@@ -266,8 +289,7 @@ inline ani_variable ani_find_module_variable(ani_env *env) {
     }
     ani_variable var;
     if (ANI_OK != env->Module_FindVariable(mod, name, &var)) {
-      std::cerr << "Variable not found: " << descriptor << "::" << name
-                << std::endl;
+      taihe::ani_debug_log("Variable not found: %s::%s", descriptor, name);
       return nullptr;
     }
     return var;
@@ -286,8 +308,7 @@ inline ani_variable ani_find_namespace_variable(ani_env *env) {
     }
     ani_variable var;
     if (ANI_OK != env->Namespace_FindVariable(ns, name, &var)) {
-      std::cerr << "Variable not found: " << descriptor << "::" << name
-                << std::endl;
+      taihe::ani_debug_log("Variable not found: %s::%s", descriptor, name);
       return nullptr;
     }
     return var;
@@ -306,8 +327,7 @@ inline ani_field ani_find_class_field(ani_env *env) {
     }
     ani_field fld;
     if (ANI_OK != env->Class_FindField(cls, name, &fld)) {
-      std::cerr << "Field not found: " << descriptor << "::" << name
-                << std::endl;
+      taihe::ani_debug_log("Field not found: %s::%s", descriptor, name);
       return nullptr;
     }
     return fld;
@@ -326,8 +346,7 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
     }
     ani_static_field fld;
     if (ANI_OK != env->Class_FindStaticField(cls, name, &fld)) {
-      std::cerr << "Static field not found: " << descriptor << "::" << name
-                << std::endl;
+      taihe::ani_debug_log("Static field not found: %s::%s", descriptor, name);
       return nullptr;
     }
     return fld;
@@ -363,56 +382,56 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
 #define TH_ANI_FIND_CLASS_STATIC_FIELD(env, descriptor, name) \
   ::taihe::ani_find_class_static_field<descriptor, name>(env)
 #else  // __cplusplus >= 202002L
-#define TH_ANI_FIND_MODULE(penv, descriptor)                          \
-  ([env = (penv)] {                                                   \
-    static ::taihe::sref_guard __guard(env, [env]() -> ani_module {   \
-      ani_module __mod;                                               \
-      if (ANI_OK != env->FindModule(descriptor, &__mod)) {            \
-        std::cerr << "Module not found: " << descriptor << std::endl; \
-        return nullptr;                                               \
-      }                                                               \
-      return __mod;                                                   \
-    }());                                                             \
-    return static_cast<ani_module>(__guard.get_ref());                \
-  }())
-
-#define TH_ANI_FIND_NAMESPACE(penv, descriptor)                          \
-  ([env = (penv)] {                                                      \
-    static ::taihe::sref_guard __guard(env, [env]() -> ani_namespace {   \
-      ani_namespace __ns;                                                \
-      if (ANI_OK != env->FindNamespace(descriptor, &__ns)) {             \
-        std::cerr << "Namespace not found: " << descriptor << std::endl; \
-        return nullptr;                                                  \
-      }                                                                  \
-      return __ns;                                                       \
-    }());                                                                \
-    return static_cast<ani_namespace>(__guard.get_ref());                \
-  }())
-
-#define TH_ANI_FIND_CLASS(penv, descriptor)                          \
-  ([env = (penv)] {                                                  \
-    static ::taihe::sref_guard __guard(env, [env]() -> ani_class {   \
-      ani_class __cls;                                               \
-      if (ANI_OK != env->FindClass(descriptor, &__cls)) {            \
-        std::cerr << "Class not found: " << descriptor << std::endl; \
-        return nullptr;                                              \
-      }                                                              \
-      return __cls;                                                  \
-    }());                                                            \
-    return static_cast<ani_class>(__guard.get_ref());                \
-  }())
-
-#define TH_ANI_FIND_ENUM(penv, descriptor)                          \
+#define TH_ANI_FIND_MODULE(penv, descriptor)                        \
   ([env = (penv)] {                                                 \
-    static ::taihe::sref_guard __guard(env, [env]() -> ani_enum {   \
-      ani_enum __enm;                                               \
-      if (ANI_OK != env->FindEnum(descriptor, &__enm)) {            \
-        std::cerr << "Enum not found: " << descriptor << std::endl; \
+    static ::taihe::sref_guard __guard(env, [env]() -> ani_module { \
+      ani_module __mod;                                             \
+      if (ANI_OK != env->FindModule(descriptor, &__mod)) {          \
+        taihe::ani_debug_log("Module not found: %s", descriptor);   \
         return nullptr;                                             \
       }                                                             \
-      return __enm;                                                 \
+      return __mod;                                                 \
     }());                                                           \
-    return static_cast<ani_enum>(__guard.get_ref());                \
+    return static_cast<ani_module>(__guard.get_ref());              \
+  }())
+
+#define TH_ANI_FIND_NAMESPACE(penv, descriptor)                        \
+  ([env = (penv)] {                                                    \
+    static ::taihe::sref_guard __guard(env, [env]() -> ani_namespace { \
+      ani_namespace __ns;                                              \
+      if (ANI_OK != env->FindNamespace(descriptor, &__ns)) {           \
+        taihe::ani_debug_log("Namespace not found: %s", descriptor);   \
+        return nullptr;                                                \
+      }                                                                \
+      return __ns;                                                     \
+    }());                                                              \
+    return static_cast<ani_namespace>(__guard.get_ref());              \
+  }())
+
+#define TH_ANI_FIND_CLASS(penv, descriptor)                        \
+  ([env = (penv)] {                                                \
+    static ::taihe::sref_guard __guard(env, [env]() -> ani_class { \
+      ani_class __cls;                                             \
+      if (ANI_OK != env->FindClass(descriptor, &__cls)) {          \
+        taihe::ani_debug_log("Class not found: %s", descriptor);   \
+        return nullptr;                                            \
+      }                                                            \
+      return __cls;                                                \
+    }());                                                          \
+    return static_cast<ani_class>(__guard.get_ref());              \
+  }())
+
+#define TH_ANI_FIND_ENUM(penv, descriptor)                        \
+  ([env = (penv)] {                                               \
+    static ::taihe::sref_guard __guard(env, [env]() -> ani_enum { \
+      ani_enum __enm;                                             \
+      if (ANI_OK != env->FindEnum(descriptor, &__enm)) {          \
+        taihe::ani_debug_log("Enum not found: %s", descriptor);   \
+        return nullptr;                                           \
+      }                                                           \
+      return __enm;                                               \
+    }());                                                         \
+    return static_cast<ani_enum>(__guard.get_ref());              \
   }())
 
 #define TH_ANI_FIND_MODULE_FUNCTION(penv, descriptor, name, signature)         \
@@ -424,8 +443,8 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
       }                                                                        \
       ani_function __fn;                                                       \
       if (ANI_OK != env->Module_FindFunction(__mod, name, signature, &__fn)) { \
-        std::cerr << "Function not found: " << descriptor << "::" << name      \
-                  << " with signature: " << signature << std::endl;            \
+        taihe::ani_debug_log("Function not found: %s::%s with signature: %s",  \
+                             descriptor, name, signature);                     \
         return nullptr;                                                        \
       }                                                                        \
       return __fn;                                                             \
@@ -433,23 +452,23 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
     return __function;                                                         \
   }())
 
-#define TH_ANI_FIND_NAMESPACE_FUNCTION(penv, descriptor, name, signature) \
-  ([env = (penv)] {                                                       \
-    static ani_function __function = [env]() -> ani_function {            \
-      ani_namespace __ns = TH_ANI_FIND_NAMESPACE(env, descriptor);        \
-      if (__ns == nullptr) {                                              \
-        return nullptr;                                                   \
-      }                                                                   \
-      ani_function __fn;                                                  \
-      if (ANI_OK !=                                                       \
-          env->Namespace_FindFunction(__ns, name, signature, &__fn)) {    \
-        std::cerr << "Function not found: " << descriptor << "::" << name \
-                  << " with signature: " << signature << std::endl;       \
-        return nullptr;                                                   \
-      }                                                                   \
-      return __fn;                                                        \
-    }();                                                                  \
-    return __function;                                                    \
+#define TH_ANI_FIND_NAMESPACE_FUNCTION(penv, descriptor, name, signature)     \
+  ([env = (penv)] {                                                           \
+    static ani_function __function = [env]() -> ani_function {                \
+      ani_namespace __ns = TH_ANI_FIND_NAMESPACE(env, descriptor);            \
+      if (__ns == nullptr) {                                                  \
+        return nullptr;                                                       \
+      }                                                                       \
+      ani_function __fn;                                                      \
+      if (ANI_OK !=                                                           \
+          env->Namespace_FindFunction(__ns, name, signature, &__fn)) {        \
+        taihe::ani_debug_log("Function not found: %s::%s with signature: %s", \
+                             descriptor, name, signature);                    \
+        return nullptr;                                                       \
+      }                                                                       \
+      return __fn;                                                            \
+    }();                                                                      \
+    return __function;                                                        \
   }())
 
 #define TH_ANI_FIND_CLASS_METHOD(penv, descriptor, name, signature)          \
@@ -461,8 +480,8 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
       }                                                                      \
       ani_method __mtd;                                                      \
       if (ANI_OK != env->Class_FindMethod(__cls, name, signature, &__mtd)) { \
-        std::cerr << "Method not found: " << descriptor << "::" << name      \
-                  << " with signature: " << signature << std::endl;          \
+        taihe::ani_debug_log("Method not found: %s::%s with signature: %s",  \
+                             descriptor, name, signature);                   \
         return nullptr;                                                      \
       }                                                                      \
       return __mtd;                                                          \
@@ -470,94 +489,112 @@ inline ani_static_field ani_find_class_static_field(ani_env *env) {
     return __method;                                                         \
   }())
 
-#define TH_ANI_FIND_CLASS_STATIC_METHOD(penv, descriptor, name, signature)     \
-  ([env = (penv)] {                                                            \
-    static ani_static_method __method = [env]() -> ani_static_method {         \
-      ani_class __cls = TH_ANI_FIND_CLASS(env, descriptor);                    \
-      if (__cls == nullptr) {                                                  \
-        return nullptr;                                                        \
-      }                                                                        \
-      ani_static_method __mtd;                                                 \
-      if (ANI_OK !=                                                            \
-          env->Class_FindStaticMethod(__cls, name, signature, &__mtd)) {       \
-        std::cerr << "Static method not found: " << descriptor << "::" << name \
-                  << " with signature: " << signature << std::endl;            \
-        return nullptr;                                                        \
-      }                                                                        \
-      return __mtd;                                                            \
-    }();                                                                       \
-    return __method;                                                           \
-  }())
-
-#define TH_ANI_FIND_MODULE_VARIABLE(penv, descriptor, name)               \
-  ([env = (penv)] {                                                       \
-    static ani_variable __variable = [env]() -> ani_variable {            \
-      ani_module __mod = TH_ANI_FIND_MODULE(env, descriptor);             \
-      if (__mod == nullptr) {                                             \
-        return nullptr;                                                   \
-      }                                                                   \
-      ani_variable __var;                                                 \
-      if (ANI_OK != env->Module_FindVariable(__mod, name, &__var)) {      \
-        std::cerr << "Variable not found: " << descriptor << "::" << name \
-                  << std::endl;                                           \
-        return nullptr;                                                   \
-      }                                                                   \
-      return __var;                                                       \
-    }();                                                                  \
-    return __variable;                                                    \
-  }())
-
-#define TH_ANI_FIND_NAMESPACE_VARIABLE(penv, descriptor, name)            \
-  ([env = (penv)] {                                                       \
-    static ani_variable __variable = [env]() -> ani_variable {            \
-      ani_namespace __ns = TH_ANI_FIND_NAMESPACE(env, descriptor);        \
-      if (__ns == nullptr) {                                              \
-        return nullptr;                                                   \
-      }                                                                   \
-      ani_variable __var;                                                 \
-      if (ANI_OK != env->Namespace_FindVariable(__ns, name, &__var)) {    \
-        std::cerr << "Variable not found: " << descriptor << "::" << name \
-                  << std::endl;                                           \
-        return nullptr;                                                   \
-      }                                                                   \
-      return __var;                                                       \
-    }();                                                                  \
-    return __variable;                                                    \
-  }())
-
-#define TH_ANI_FIND_CLASS_FIELD(penv, descriptor, name)                \
-  ([env = (penv)] {                                                    \
-    static ani_field __field = [env]() -> ani_field {                  \
-      ani_class __cls = TH_ANI_FIND_CLASS(env, descriptor);            \
-      if (__cls == nullptr) {                                          \
-        return nullptr;                                                \
-      }                                                                \
-      ani_field __fld;                                                 \
-      if (ANI_OK != env->Class_FindField(__cls, name, &__fld)) {       \
-        std::cerr << "Field not found: " << descriptor << "::" << name \
-                  << std::endl;                                        \
-        return nullptr;                                                \
-      }                                                                \
-      return __fld;                                                    \
-    }();                                                               \
-    return __field;                                                    \
-  }())
-
-#define TH_ANI_FIND_CLASS_STATIC_FIELD(penv, descriptor, name)                \
+#define TH_ANI_FIND_CLASS_STATIC_METHOD(penv, descriptor, name, signature)    \
   ([env = (penv)] {                                                           \
-    static ani_static_field __field = [env]() -> ani_static_field {           \
+    static ani_static_method __method = [env]() -> ani_static_method {        \
       ani_class __cls = TH_ANI_FIND_CLASS(env, descriptor);                   \
       if (__cls == nullptr) {                                                 \
         return nullptr;                                                       \
       }                                                                       \
-      ani_static_field __fld;                                                 \
-      if (ANI_OK != env->Class_FindStaticField(__cls, name, &__fld)) {        \
-        std::cerr << "Static field not found: " << descriptor << "::" << name \
-                  << std::endl;                                               \
+      ani_static_method __mtd;                                                \
+      if (ANI_OK !=                                                           \
+          env->Class_FindStaticMethod(__cls, name, signature, &__mtd)) {      \
+        taihe::ani_debug_log(                                                 \
+            "Static method not found: %s::%s with signature: %s", descriptor, \
+            name, signature);                                                 \
         return nullptr;                                                       \
       }                                                                       \
-      return __fld;                                                           \
+      return __mtd;                                                           \
     }();                                                                      \
-    return __field;                                                           \
+    return __method;                                                          \
+  }())
+
+#define TH_ANI_FIND_MODULE_VARIABLE(penv, descriptor, name)                   \
+  ([env = (penv)] {                                                           \
+    static ani_variable __variable = [env]() -> ani_variable {                \
+      ani_module __mod = TH_ANI_FIND_MODULE(env, descriptor);                 \
+      if (__mod == nullptr) {                                                 \
+        return nullptr;                                                       \
+      }                                                                       \
+      ani_variable __var;                                                     \
+      if (ANI_OK != env->Module_FindVariable(__mod, name, &__var)) {          \
+        taihe::ani_debug_log("Variable not found: %s::%s", descriptor, name); \
+        return nullptr;                                                       \
+      }                                                                       \
+      return __var;                                                           \
+    }();                                                                      \
+    return __variable;                                                        \
+  }())
+
+#define TH_ANI_FIND_NAMESPACE_VARIABLE(penv, descriptor, name)                \
+  ([env = (penv)] {                                                           \
+    static ani_variable __variable = [env]() -> ani_variable {                \
+      ani_namespace __ns = TH_ANI_FIND_NAMESPACE(env, descriptor);            \
+      if (__ns == nullptr) {                                                  \
+        return nullptr;                                                       \
+      }                                                                       \
+      ani_variable __var;                                                     \
+      if (ANI_OK != env->Namespace_FindVariable(__ns, name, &__var)) {        \
+        taihe::ani_debug_log("Variable not found: %s::%s", descriptor, name); \
+        return nullptr;                                                       \
+      }                                                                       \
+      return __var;                                                           \
+    }();                                                                      \
+    return __variable;                                                        \
+  }())
+
+#define TH_ANI_FIND_CLASS_FIELD(penv, descriptor, name)                    \
+  ([env = (penv)] {                                                        \
+    static ani_field __field = [env]() -> ani_field {                      \
+      ani_class __cls = TH_ANI_FIND_CLASS(env, descriptor);                \
+      if (__cls == nullptr) {                                              \
+        return nullptr;                                                    \
+      }                                                                    \
+      ani_field __fld;                                                     \
+      if (ANI_OK != env->Class_FindField(__cls, name, &__fld)) {           \
+        taihe::ani_debug_log("Field not found: %s::%s", descriptor, name); \
+        return nullptr;                                                    \
+      }                                                                    \
+      return __fld;                                                        \
+    }();                                                                   \
+    return __field;                                                        \
+  }())
+
+#define TH_ANI_FIND_CLASS_STATIC_FIELD(penv, descriptor, name)             \
+  ([env = (penv)] {                                                        \
+    static ani_static_field __field = [env]() -> ani_static_field {        \
+      ani_class __cls = TH_ANI_FIND_CLASS(env, descriptor);                \
+      if (__cls == nullptr) {                                              \
+        return nullptr;                                                    \
+      }                                                                    \
+      ani_static_field __fld;                                              \
+      if (ANI_OK != env->Class_FindStaticField(__cls, name, &__fld)) {     \
+        taihe::ani_debug_log("Static field not found: %s::%s", descriptor, \
+                             name);                                        \
+        return nullptr;                                                    \
+      }                                                                    \
+      return __fld;                                                        \
+    }();                                                                   \
+    return __field;                                                        \
   }())
 #endif  // __cplusplus >= 202002L
+
+#define ANI_CHECK(env, call)                                                \
+  do {                                                                      \
+    ani_status _status = (call);                                            \
+    if (_status != ANI_OK) {                                                \
+      taihe::ani_debug_log("[ANI-ERROR] %s failed with status %d at %s:%d", \
+                           #call, _status, __FILE__, __LINE__);             \
+      ani_boolean errorExists;                                              \
+      env->ExistUnhandledError(&errorExists);                               \
+      if (_status == ANI_PENDING_ERROR && errorExists) {                    \
+        std::ostringstream buffer;                                          \
+        std::streambuf *oldStderr = std::cerr.rdbuf(buffer.rdbuf());        \
+        env->DescribeError();                                               \
+        std::cerr.rdbuf(oldStderr);                                         \
+        taihe::ani_debug_log("[ANI-ERROR] Detailed error message: %s",      \
+                             buffer.str().c_str());                         \
+      }                                                                     \
+      std::abort();                                                         \
+    }                                                                       \
+  } while (0)

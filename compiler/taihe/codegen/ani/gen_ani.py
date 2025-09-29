@@ -441,9 +441,9 @@ class AniCodeGenerator:
         ):
             pkg_ani_source_target.writelns(
                 f"ani_long ani_data_ptr = {{}};",
-                f'env->Object_GetField_Long(object, TH_ANI_FIND_CLASS_FIELD(env, "{iface_ani_info.impl_desc}", "_taihe_dataPtr"), &ani_data_ptr);',
+                f'ANI_CHECK(env, env->Object_GetField_Long(object, TH_ANI_FIND_CLASS_FIELD(env, "{iface_ani_info.impl_desc}", "_taihe_dataPtr"), &ani_data_ptr));',
                 f"ani_long ani_vtbl_ptr = {{}};",
-                f'env->Object_GetField_Long(object, TH_ANI_FIND_CLASS_FIELD(env, "{iface_ani_info.impl_desc}", "_taihe_vtblPtr"), &ani_vtbl_ptr);',
+                f'ANI_CHECK(env, env->Object_GetField_Long(object, TH_ANI_FIND_CLASS_FIELD(env, "{iface_ani_info.impl_desc}", "_taihe_vtblPtr"), &ani_vtbl_ptr));',
                 f"DataBlockHead* cpp_data_ptr = reinterpret_cast<DataBlockHead*>(ani_data_ptr);",
                 f"{iface_abi_info.vtable}* cpp_vtbl_ptr = reinterpret_cast<{iface_abi_info.vtable}*>(ani_vtbl_ptr);",
                 f"{iface_cpp_info.full_weak_name} cpp_iface = {iface_cpp_info.full_weak_name}({{cpp_vtbl_ptr, cpp_data_ptr}});",
@@ -664,7 +664,7 @@ class AniCodeGenerator:
                 return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
                 iface_ani_impl_target.writelns(
                     f"{return_ty_ani_info.ani_type} {result_ani} = {{}};",
-                    f'env->Function_Call_{return_ty_ani_info.ani_type.suffix}(TH_ANI_FIND_{ns.scope.upper}_FUNCTION(env, "{ns.impl_desc}", "{method_ani_info.reverse_name}", nullptr), reinterpret_cast<{return_ty_ani_info.ani_type.base}*>(&{result_ani}), static_cast<ani_object>(this->ref){args_ani_sss});',
+                    f'ANI_CHECK(env, env->Function_Call_{return_ty_ani_info.ani_type.suffix}(TH_ANI_FIND_{ns.scope.upper}_FUNCTION(env, "{ns.impl_desc}", "{method_ani_info.reverse_name}", nullptr), reinterpret_cast<{return_ty_ani_info.ani_type.base}*>(&{result_ani}), static_cast<ani_object>(this->ref){args_ani_sss}));',
                 )
                 return_ty_ani_info.from_ani(
                     iface_ani_impl_target,
@@ -677,7 +677,7 @@ class AniCodeGenerator:
                 )
             else:
                 iface_ani_impl_target.writelns(
-                    f'env->Function_Call_Void(TH_ANI_FIND_{ns.scope.upper}_FUNCTION(env, "{ns.impl_desc}", "{method_ani_info.reverse_name}", nullptr), static_cast<ani_object>(this->ref){args_ani_sss});',
+                    f'ANI_CHECK(env, env->Function_Call_Void(TH_ANI_FIND_{ns.scope.upper}_FUNCTION(env, "{ns.impl_desc}", "{method_ani_info.reverse_name}", nullptr), static_cast<ani_object>(this->ref){args_ani_sss}));',
                 )
 
     def gen_iface_into_ani_func(
@@ -697,7 +697,7 @@ class AniCodeGenerator:
                 f"ani_long ani_data_ptr = reinterpret_cast<ani_long>(cpp_obj.m_handle.data_ptr);",
                 f"cpp_obj.m_handle.data_ptr = nullptr;",
                 f"ani_object ani_obj;",
-                f'env->Object_New(TH_ANI_FIND_CLASS(env, "{iface_ani_info.impl_desc}"), TH_ANI_FIND_CLASS_METHOD(env, "{iface_ani_info.impl_desc}", "_taihe_initialize", "ll:"), &ani_obj, ani_vtbl_ptr, ani_data_ptr);',
+                f'ANI_CHECK(env, env->Object_New(TH_ANI_FIND_CLASS(env, "{iface_ani_info.impl_desc}"), TH_ANI_FIND_CLASS_METHOD(env, "{iface_ani_info.impl_desc}", "_taihe_initialize", "ll:"), &ani_obj, ani_vtbl_ptr, ani_data_ptr));',
                 f"return ani_obj;",
             )
 
@@ -767,11 +767,11 @@ class AniCodeGenerator:
                 )
                 if struct_ani_info.is_class():
                     struct_ani_impl_target.writelns(
-                        f'env->Object_GetField_{final_ty_ani_info.ani_type.suffix}(ani_obj, TH_ANI_FIND_CLASS_FIELD(env, "{struct_ani_info.type_desc}", "{final.name}"), reinterpret_cast<{final_ty_ani_info.ani_type.base}*>(&{field_ani}));',
+                        f'ANI_CHECK(env, env->Object_GetField_{final_ty_ani_info.ani_type.suffix}(ani_obj, TH_ANI_FIND_CLASS_FIELD(env, "{struct_ani_info.type_desc}", "{final.name}"), reinterpret_cast<{final_ty_ani_info.ani_type.base}*>(&{field_ani})));',
                     )
                 else:
                     struct_ani_impl_target.writelns(
-                        f'env->Object_CallMethod_{final_ty_ani_info.ani_type.suffix}(ani_obj, TH_ANI_FIND_CLASS_METHOD(env, "{struct_ani_info.type_desc}", "<get>{final.name}", nullptr), reinterpret_cast<{final_ty_ani_info.ani_type.base}*>(&{field_ani}));',
+                        f'ANI_CHECK(env, env->Object_CallMethod_{final_ty_ani_info.ani_type.suffix}(ani_obj, TH_ANI_FIND_CLASS_METHOD(env, "{struct_ani_info.type_desc}", "<get>{final.name}", nullptr), reinterpret_cast<{final_ty_ani_info.ani_type.base}*>(&{field_ani})));',
                     )
                 final_ty_ani_info.from_ani(
                     struct_ani_impl_target,
@@ -813,7 +813,7 @@ class AniCodeGenerator:
             fields_ani_sss = "".join(", " + field_ani for field_ani in fields_ani)
             struct_ani_impl_target.writelns(
                 f"ani_object ani_obj = {{}};",
-                f'env->Object_New(TH_ANI_FIND_CLASS(env, "{struct_ani_info.impl_desc}"), TH_ANI_FIND_CLASS_METHOD(env, "{struct_ani_info.impl_desc}", "<ctor>", nullptr), &ani_obj{fields_ani_sss});',
+                f'ANI_CHECK(env, env->Object_New(TH_ANI_FIND_CLASS(env, "{struct_ani_info.impl_desc}"), TH_ANI_FIND_CLASS_METHOD(env, "{struct_ani_info.impl_desc}", "<ctor>", nullptr), &ani_obj{fields_ani_sss}));',
                 f"return ani_obj;",
             )
 
@@ -890,11 +890,11 @@ class AniCodeGenerator:
                 )
                 if final_ty_ani_info.type_desc == "U":
                     union_ani_impl_target.writelns(
-                        f"env->Reference_IsUndefined(ani_value, &{is_field_ani});",
+                        f"ANI_CHECK(env, env->Reference_IsUndefined(ani_value, &{is_field_ani}));",
                     )
                 else:
                     union_ani_impl_target.writelns(
-                        f'env->Object_InstanceOf(static_cast<ani_object>(ani_value), TH_ANI_FIND_CLASS(env, "{final_ty_ani_info.type_desc}"), &{is_field_ani});',
+                        f'ANI_CHECK(env, env->Object_InstanceOf(static_cast<ani_object>(ani_value), TH_ANI_FIND_CLASS(env, "{final_ty_ani_info.type_desc}"), &{is_field_ani}));',
                     )
                 with union_ani_impl_target.indented(
                     f"if ({is_field_ani}) {{",
