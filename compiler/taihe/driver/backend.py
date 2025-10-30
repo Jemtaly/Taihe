@@ -111,6 +111,7 @@ class BackendRegistry:
             CppCommonHeadersBackendConfig,
             CppUserHeadersBackendConfig,
         )
+        from taihe.codegen.napi import NapiBridgeBackendConfig
         from taihe.semantics import PrettyPrintBackendConfig
 
         backends = [
@@ -126,6 +127,8 @@ class BackendRegistry:
             AniBridgeBackendConfig,
             # pretty print
             PrettyPrintBackendConfig,
+            # napi
+            NapiBridgeBackendConfig,
         ]
 
         for b in backends:
