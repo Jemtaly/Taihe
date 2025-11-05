@@ -1,0 +1,35 @@
+@!lib("async_test")
+
+function addSync(a: i32, b: i32): i32;
+@promise function addRetPromise(a: i32, b: i32): i32;
+@async function addWithAsync(a: i32, b: i32): i32;
+
+@class
+interface IBase {
+    @promise makeRetPromise();
+    @async makeWithAsync();
+    makeSync();
+}
+@ctor("IBase")
+function createIBase(): IBase;
+
+@static("IBase")
+@promise function printRetPromise(): void;
+@static("IBase")
+@async function printWithAsync(): void;
+@static("IBase")
+function printSync(): void;
+
+struct Data {
+  a: String;
+  b: String;
+  c: i32;
+}
+
+@promise function fromStructRetPromise(data: Data): void;
+@async function fromStructWithAsync(data: Data): void;
+function fromStructSync(data: Data): void;
+
+@promise function toStructRetPromise(a: String, b: String, c: i32): Data;
+@async function toStructWithAsync(a: String, b: String, c: i32): Data;
+function toStructSync(a: String, b: String, c: i32): Data;
