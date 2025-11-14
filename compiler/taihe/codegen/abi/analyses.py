@@ -50,6 +50,7 @@ class GlobFuncAbiInfo(AbstractAnalysis[GlobFuncDecl]):
     def __init__(self, am: AnalysisManager, f: GlobFuncDecl) -> None:
         segments = [*f.parent_pkg.segments, f.name]
         self.impl_name = encode(segments, DeclKind.FUNC)
+        self.ret_type_name = self.impl_name + "_out"
 
     @classmethod
     @override
@@ -63,6 +64,7 @@ class IfaceMethodAbiInfo(AbstractAnalysis[IfaceMethodDecl]):
         self.impl_name = encode(segments, DeclKind.FUNC)
         self.wrap_name = encode(segments, DeclKind.METHOD)
         self.min_version = 0
+        self.ret_type_name = self.impl_name + "_out"
 
     @classmethod
     @override

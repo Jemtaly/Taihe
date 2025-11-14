@@ -1,5 +1,6 @@
 #pragma once
 
+#include <taihe/expected.abi.h>
 #include <taihe/object.abi.h>
 
 // TCallback

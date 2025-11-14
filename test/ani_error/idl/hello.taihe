@@ -1,0 +1,10 @@
+function sayHello(): void;
+function sayHello_ii(a: i32): i32;
+interface Foo{
+    bar(): void;
+    bar_ii(a: i32): i32;
+}
+function createFoo(): Foo;
+function callFoo(a: Foo): String;
+function callcb(f: () => void): void;
+function callcb_ii(f: (a: i32) => i32): void;
