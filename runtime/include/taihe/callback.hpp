@@ -4,7 +4,7 @@
 #include <taihe/common.hpp>
 #include <taihe/object.hpp>
 
-#include <type_traits>
+#include <utility>
 
 namespace taihe {
 template<typename Signature>
@@ -17,7 +17,7 @@ template<typename Return, typename... Params>
 struct callback_view<Return(Params...)> {
   static constexpr bool is_holder = false;
 
-  using vtable_type = as_abi_t<Return>(DataBlockHead *, as_abi_t<Params>...);
+  using vtable_type = as_abi_t<Return>(TCallback, as_abi_t<Params>...);
   using view_type = callback_view<Return(Params...)>;
   using holder_type = callback<Return(Params...)>;
 
@@ -42,25 +42,16 @@ public:
   }
 
   Return operator()(Params... params) const & {
-    if constexpr (std::is_void_v<Return>) {
-      return m_handle.vtbl_ptr(m_handle.data_ptr, into_abi<Params>(params)...);
-    } else {
-      return from_abi<Return>(
-          m_handle.vtbl_ptr(m_handle.data_ptr, into_abi<Params>(params)...));
-    }
+    return call_abi_func<Return, callback_view, Params...>(
+        m_handle.vtbl_ptr, *this, ::std::forward<Params>(params)...);
   }
 
 public:
   template<typename Impl>
-  static as_abi_t<Return> vtbl_impl(DataBlockHead *data_ptr,
+  static as_abi_t<Return> vtbl_impl(TCallback tobj,
                                     as_abi_t<Params>... params) {
-    if constexpr (std::is_void_v<Return>) {
-      return cast_data_ptr<Impl>(data_ptr)->operator()(
-          from_abi<Params>(params)...);
-    } else {
-      return into_abi<Return>(cast_data_ptr<Impl>(data_ptr)->operator()(
-          from_abi<Params>(params)...));
-    }
+    return call_cpp_method<Return, Params...>(
+        &Impl::operator(), *cast_data_ptr<Impl>(tobj.data_ptr), params...);
   };
 
   template<typename Impl>
