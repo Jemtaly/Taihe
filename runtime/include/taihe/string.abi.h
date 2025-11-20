@@ -13,20 +13,23 @@ enum TStringFlags {
   TSTRING_MODE_MASK = 0xFFFF,
   TSTRING_ENCODING_MASK = 0xFFFF0000,
   TSTRING_REF = 1u,
+  TSTRING_EXT = 1u << 1,
   TSTRING_UTF8 = 1u << 16,
   TSTRING_UTF16 = 1u << 17,
   TSTRING_UTF32 = 1u << 18,
 };
 
+struct TStringInfo {
+  TRefCount count;
+  void *external_obj;
+  void (*dest)(void *);
+};
+
 struct TString {
   uint32_t flags;
   uint32_t length;
+  struct TStringInfo *pstrinfo;
   char const *ptr;
-};
-
-struct TStringData {
-  TRefCount count;
-  char buffer[];
 };
 
 //////////////////
@@ -330,3 +333,5 @@ TH_EXPORT struct TString tstr_substr_utf32(struct TString tstr, size_t pos,
 //   the memory, so it should not be freed.
 TH_EXPORT struct TString tstr_substr(struct TString tstr, size_t pos,
                                      size_t len);
+
+TH_EXPORT uint32_t tstr_encoding(struct TString tstr);

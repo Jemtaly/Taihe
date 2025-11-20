@@ -40,10 +40,6 @@ struct encoding_flag<char32_t> {
   static constexpr uint32_t value = TSTRING_UTF32;
 };
 
-inline uint32_t tstr_encoding(TString const &h) {
-  return (h.flags & TSTRING_ENCODING_MASK);
-}
-
 struct string_view {
   using value_type = char;
   using size_type = std::size_t;
