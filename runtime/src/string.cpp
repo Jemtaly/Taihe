@@ -249,6 +249,324 @@ void tstr_drop(struct TString tstr) {
   }
 }
 
+inline size_t utf8_to_utf16_required(const char* src, size_t len) {
+  const uint8_t* data = reinterpret_cast<const uint8_t*>(src);
+  size_t pos = 0, units = 0;
+
+  while (pos < len) {
+    if (pos + 16 <= len) {
+      uint64_t v1, v2;
+      std::copy(data + pos,     data + pos + 8,  reinterpret_cast<uint8_t*>(&v1));
+      std::copy(data + pos + 8, data + pos + 16, reinterpret_cast<uint8_t*>(&v2));
+      uint64_t v = v1 | v2;
+      if ((v & 0x8080808080808080) == 0) {
+        units += 16;
+        pos += 16;
+        continue;
+      }
+    }
+
+    uint8_t leading_byte = data[pos];
+    if (leading_byte < 0b10000000) {
+      // ASCII
+      units += 1;
+      pos++;
+    } else if ((leading_byte & 0b11100000) == 0b11000000) {
+      // 2 字节 UTF-8
+      if (pos + 1 >= len || (data[pos + 1] & 0b11000000) != 0b10000000) {
+        units += 1;
+        pos++;
+        continue;
+      }
+      units += 1;
+      pos += 2;
+    } else if ((leading_byte & 0b11110000) == 0b11100000) {
+      // 3 字节 UTF-8
+      if (pos + 2 >= len ||
+          (data[pos + 1] & 0b11000000) != 0b10000000 ||
+          (data[pos + 2] & 0b11000000) != 0b10000000
+        ) {
+        units += 1;
+        pos++;
+        continue;
+      }
+      units += 1;
+      pos += 3;
+    } else if ((leading_byte & 0b11111000) == 0b11110000) {
+      // 4 字节 UTF-8
+      if (pos + 3 >= len ||
+          (data[pos + 1] & 0b11000000) != 0b10000000 ||
+          (data[pos + 2] & 0b11000000) != 0b10000000 ||
+          (data[pos + 3] & 0b11000000) != 0b10000000
+        ) {
+        units += 1;
+        pos++;
+        continue;
+      }
+      units += 2;
+      pos += 4;
+    } else {
+      units += 1;
+      pos++;
+    }
+  }
+  return units;
+}
+
+inline size_t utf8_to_utf16(const char *input, size_t len, uint16_t *output) {
+  const uint8_t *data = reinterpret_cast<const uint8_t *>(input);
+  size_t pos = 0;
+  uint16_t *start{output};
+
+  while (pos < len) {
+    if (pos + 16 <= len) {
+      uint64_t v1, v2;
+      std::copy(
+        data + pos,
+        data + pos + 8,
+        reinterpret_cast<uint8_t*>(&v1)
+      );
+      std::copy(data + pos + 8, data + pos + 16, reinterpret_cast<uint8_t*>(&v2));
+      uint64_t v{v1 | v2};
+      if ((v & 0x8080808080808080) == 0) {
+        size_t final_pos = pos + 16;
+        while (pos < final_pos) {
+          *output++ = uint16_t(input[pos]);
+          pos++;
+        }
+        continue;
+      }
+    }
+
+    uint8_t leading_byte = data[pos];
+    if (leading_byte < 0b10000000) {
+      // ASCII
+      *output++ = uint16_t(leading_byte);
+      pos++;
+    } else if ((leading_byte & 0b11100000) == 0b11000000) {
+      // 2 字节 UTF-8
+      if (pos + 1 >= len || (data[pos + 1] & 0b11000000) != 0b10000000) {
+        *output++ = 0xFFFD;
+        pos++;
+        continue;
+      }
+      uint32_t code_point =
+          (leading_byte & 0b00011111) << 6 | (data[pos + 1] & 0b00111111);
+      if (code_point < 0x80 || 0x7ff < code_point) {
+        return 0;
+      }
+      *output++ = uint16_t(code_point);
+      pos += 2;
+    } else if ((leading_byte & 0b11110000) == 0b11100000) {
+      // 3 字节 UTF-8
+      if (pos + 2 >= len ||
+          (data[pos + 1] & 0b11000000) != 0b10000000 ||
+          (data[pos + 2] & 0b11000000) != 0b10000000
+        ) {
+        *output++ = 0xFFFD;
+        pos++;
+        continue;
+      }
+      uint32_t code_point = (leading_byte & 0b00001111) << 12 |
+                            (data[pos + 1] & 0b00111111) << 6 |
+                            (data[pos + 2] & 0b00111111);
+      if (code_point < 0x800 || 0xffff < code_point ||
+          (0xd7ff < code_point && code_point < 0xe000)) {
+        return 0;
+      }
+      *output++ = uint16_t(code_point);
+      pos += 3;
+    } else if ((leading_byte & 0b11111000) == 0b11110000) {
+      // 4 字节 UTF-8
+      if (pos + 3 >= len ||
+          (data[pos + 1] & 0b11000000) != 0b10000000 ||
+          (data[pos + 2] & 0b11000000) != 0b10000000 ||
+          (data[pos + 3] & 0b11000000) != 0b10000000
+        ) {
+        *output++ = 0xFFFD;
+        pos++;
+        continue;
+      }
+      uint32_t code_point = (leading_byte & 0b00000111) << 18 |
+                            (data[pos + 1] & 0b00111111) << 12 |
+                            (data[pos + 2] & 0b00111111) << 6 |
+                            (data[pos + 3] & 0b00111111);
+      if (code_point <= 0xffff || 0x10ffff < code_point) {
+        return 0;
+      }
+      code_point -= 0x10000;
+      uint16_t high_surrogate = uint16_t(0xD800 + (code_point >> 10));
+      uint16_t low_surrogate = uint16_t(0xDC00 + (code_point & 0x3FF));
+      *output++ = high_surrogate;
+      *output++ = low_surrogate;
+      pos += 4;
+    } else {
+      return 0;
+    }
+  }
+  return output - start;
+}
+
+inline size_t utf16_to_utf8_required(const uint16_t* src, size_t len) {
+  const uint16_t *data = src;
+  size_t pos = 0, units = 0;
+  while (pos < len) {
+    if (pos + 4 <= len) {
+      uint64_t v;
+      std::copy(
+        data + pos,
+        data + pos + 4,
+        reinterpret_cast<uint8_t*>(&v)
+      );
+      if ((v & 0xFF80FF80FF80FF80) == 0) {
+        units += 4;
+        pos += 4;
+        continue;
+      }
+    }
+    uint16_t word = data[pos];
+    if ((word & 0xFF80) == 0) {
+      units += 1;
+      pos++;
+    } else if ((word & 0xF800) == 0) {
+      units += 2;
+      pos++;
+    } else if ((word & 0xF800) != 0xD800) {
+      units += 3;
+      pos++;
+    } else {
+      // must be a surrogate pair
+      uint16_t diff = uint16_t(word - 0xD800);
+      if (pos + 1 >= len || diff > 0x3FF) {
+        units += 3;
+        pos++;
+        continue;
+      }
+      if (uint16_t(data[pos + 1] - 0xDC00) > 0x3FF) {
+        units += 3;
+        pos++;
+        continue;
+      }
+      units += 4;
+      pos += 2;
+    }
+  }
+  return units;
+}
+
+inline size_t utf16_to_utf8(const uint16_t *input, size_t len, char *output) {
+  const uint16_t *data = input;
+  size_t pos = 0;
+  char *start{output};
+  while (pos < len) {
+    if (pos + 4 <= len) {
+      uint64_t v;
+      std::copy(
+        data + pos,
+        data + pos + 4,
+        reinterpret_cast<uint8_t*>(&v)
+      );
+      if ((v & 0xFF80FF80FF80FF80) == 0) {
+        size_t final_pos = pos + 4;
+        while (pos < final_pos) {
+          *output++ = char(input[pos]);
+          pos++;
+        }
+        continue;
+      }
+    }
+    uint16_t word = data[pos];
+    if ((word & 0xFF80) == 0) {
+      *output++ = char(word);
+      pos++;
+    } else if ((word & 0xF800) == 0) {
+      *output++ = char((word >> 6) | 0b11000000);
+      *output++ = char((word & 0b111111) | 0b10000000);
+      pos++;
+    } else if ((word & 0xF800) != 0xD800) {
+      *output++ = char((word >> 12) | 0b11100000);
+      *output++ = char(((word >> 6) & 0b111111) | 0b10000000);
+      *output++ = char((word & 0b111111) | 0b10000000);
+      pos++;
+    } else {
+      // must be a surrogate pair
+      uint16_t diff = uint16_t(word - 0xD800);
+      if (pos + 1 >= len || diff > 0x3FF) {
+        *output++ = char(0xEF);
+        *output++ = char(0xBF);
+        *output++ = char(0xBD);
+        pos++;
+        continue;
+      }
+      uint16_t next_word = data[pos + 1];
+      uint16_t diff2 = uint16_t(next_word - 0xDC00);
+      if (diff2 > 0x3FF) {
+        *output++ = char(0xEF);
+        *output++ = char(0xBF);
+        *output++ = char(0xBD);
+        pos++;
+        continue;
+      }
+
+      uint32_t value = (diff << 10) + diff2 + 0x10000;
+      *output++ = char((value >> 18) | 0b11110000);
+      *output++ = char(((value >> 12) & 0b111111) | 0b10000000);
+      *output++ = char(((value >> 6) & 0b111111) | 0b10000000);
+      *output++ = char((value & 0b111111) | 0b10000000);
+      pos += 2;
+    }
+  }
+  return output - start;
+}
+
+struct TString tstr_utf8_to_utf16(struct TString utf8_str) {
+  if (tstr_encoding(utf8_str) == TSTRING_UTF16) return tstr_dup(utf8_str);
+
+  const char* src = tstr_buf(utf8_str);
+  size_t len = utf8_str.length;
+
+  size_t needed = utf8_to_utf16_required(src, len);
+
+  struct TString result;
+  uint16_t* dst = tstr_initialize_utf16(&result, (needed + 1));
+
+  if (!dst) return (struct TString){
+    .flags = TSTRING_UTF16,
+    .length = 0,
+    .pstrinfo = nullptr,
+    .ptr = nullptr,
+  };
+
+  size_t used_len = utf8_to_utf16(src, len, dst);
+  dst[used_len] = u'\0';
+  result.length = used_len * 2;
+  return result;
+}
+
+struct TString tstr_utf16_to_utf8(struct TString utf16_str) {
+  if (tstr_encoding(utf16_str) == TSTRING_UTF8) return tstr_dup(utf16_str);
+
+  const uint16_t* src = reinterpret_cast<const uint16_t*>(tstr_buf(utf16_str));
+  size_t len = utf16_str.length / 2;
+
+  size_t needed = utf16_to_utf8_required(src, len);
+
+  struct TString result;
+  char* dst = tstr_initialize(&result, (needed + 1));
+
+  if (!dst) return (struct TString){
+    .flags = TSTRING_UTF8,
+    .length = 0,
+    .pstrinfo = nullptr,
+    .ptr = nullptr,
+  };
+
+  size_t used_len = utf16_to_utf8(src, len, dst);
+  dst[used_len] = '\0';
+  result.length = used_len;
+  return result;
+}
+
 struct TString tstr_concat_utf8(size_t count, struct TString const *tstr_list) {
   size_t len = 0;
   for (size_t i = 0; i < count; ++i) {

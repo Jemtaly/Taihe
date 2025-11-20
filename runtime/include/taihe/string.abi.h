@@ -334,4 +334,48 @@ TH_EXPORT struct TString tstr_substr_utf32(struct TString tstr, size_t pos,
 TH_EXPORT struct TString tstr_substr(struct TString tstr, size_t pos,
                                      size_t len);
 
+// Retrieves the encoding type of a TString.
+//
+// # Parameters
+// - `tstr`: The TString whose encoding type is to be retrieved.
+//
+// # Returns
+// - A `uint32_t` value representing the encoding of the TString.
+//   user can compare with TSTRING_UTF8 / TSTRING_UTF16
+//   Possible values typically correspond to UTF-8, UTF-16, or UTF-32.
+//
+// # Notes
+// - This function does not modify the TString.
 TH_EXPORT uint32_t tstr_encoding(struct TString tstr);
+
+// Converts a UTF8-encoded TString object into a UTF16-encoded TString.
+//
+// # Parameters
+// - `utf8_str`: The source TString encoded in UTF8.
+//
+// # Returns
+// - A new TString encoded in UTF16.
+//   The returned TString owns its memory and must be freed with `tstr_drop`.
+//
+// # Notes
+// - Invalid UTF8 sequences are handled according to the internal conversion
+//   policy (typically replacing invalid sequences with U+FFFD).
+// - Serious errors return an empty string U'\0'.
+// - The returned TString is heap-allocated and independent of the input.
+TH_EXPORT struct TString tstr_utf8_to_utf16(struct TString utf8_str);
+
+// Converts a UTF16-encoded TString object into a UTF8-encoded TString.
+//
+// # Parameters
+// - `utf16_str`: The source TString encoded in UTF16.
+//
+// # Returns
+// - A new TString encoded in UTF8.
+//   The returned TString owns its memory and must be freed with `tstr_drop`.
+//
+// # Notes
+// - Invalid surrogate pairs or malformed UTF16 sequences are handled according
+//   to the internal conversion policy (typically replacing invalid sequences
+//   with U+FFFD).
+// - The returned TString is heap-allocated and independent of the input.
+TH_EXPORT struct TString tstr_utf16_to_utf8(struct TString utf16_str);
