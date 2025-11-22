@@ -166,7 +166,7 @@ struct string_view {
   friend uint32_t tstr_encoding(TString const &h);
   template<typename CharT>
   friend basic_string_view<CharT> to_basic_string_view(string_view sv);
-  string_view substr(std::size_t pos, std::size_t len) const;
+  string_view substr(std::size_t pos, std::size_t len);
 
 protected:
   struct TString m_handle;
@@ -474,11 +474,11 @@ inline string &string::operator+=(string_view other) {
 }
 
 inline string_view substr(string_view sv, std::size_t pos, std::size_t len) {
-  return string_view(tstr_substr(sv.m_handle, pos, len));
+  return string_view(tstr_substr(&sv.m_handle, pos, len));
 }
 
-inline string_view string_view::substr(std::size_t pos, std::size_t len) const {
-  return string_view(tstr_substr(this->m_handle, pos, len));
+inline string_view string_view::substr(std::size_t pos, std::size_t len) {
+  return string_view(tstr_substr(&this->m_handle, pos, len));
 }
 
 template<typename CharT>

@@ -14,6 +14,7 @@ enum TStringFlags {
   TSTRING_ENCODING_MASK = 0xFFFF0000,
   TSTRING_REF = 1u,
   TSTRING_EXT = 1u << 1,
+  TSTRING_HAS_CACHE = 1u << 2,
   TSTRING_UTF8 = 1u << 16,
   TSTRING_UTF16 = 1u << 17,
   TSTRING_UTF32 = 1u << 18,
@@ -25,11 +26,18 @@ struct TStringInfo {
   void (*dest)(void *);
 };
 
+struct TStringCache {
+  TRefCount count;
+  uint32_t length;
+  char buffer[];
+};
+
 struct TString {
   uint32_t flags;
   uint32_t length;
   struct TStringInfo *pstrinfo;
   char const *ptr;
+  char const *cache;
 };
 
 //////////////////
@@ -44,6 +52,10 @@ TH_INLINE const char *tstr_buf(struct TString tstr) {
 // Returns the length of the TString.
 TH_INLINE size_t tstr_len(struct TString tstr) {
   return tstr.length;
+}
+
+TH_INLINE const char *tstr_cache(struct TString tstr) {
+  return tstr.cache;
 }
 
 // Allocates memory and initializes a UTF8 encoding TString with a given
@@ -210,7 +222,49 @@ TH_EXPORT void tstr_drop(struct TString tstr);
 // - Use `tstr_drop` to free the duplicate when done.
 TH_EXPORT struct TString tstr_dup(struct TString tstr);
 
-// Concatenates UTF8 encoding TString objects.
+// Concatenates into a UTF8 encoding TString objects but unchecked encoding.
+//
+// # Parameters
+// - `count`: The number of strings to concatenate.
+// - `tstr_list`: An array of TString objects to concatenate.
+//
+// # Returns
+// - A new TString object containing the concatenated result.
+//
+// # Notes
+// - The returned TString must be freed using `tstr_drop`.
+TH_EXPORT struct TString tstr_concat_utf8_unsafe(
+    size_t count, struct TString const *tstr_list);
+
+// Concatenates into a UTF16 encoding TString objects but unchecked encoding.
+//
+// # Parameters
+// - `count`: The number of strings to concatenate.
+// - `tstr_list`: An array of TString objects to concatenate.
+//
+// # Returns
+// - A new TString object containing the concatenated result.
+//
+// # Notes
+// - The returned TString must be freed using `tstr_drop`.
+TH_EXPORT struct TString tstr_concat_utf16_unsafe(
+    size_t count, struct TString const *tstr_list);
+
+// Concatenates into a UTF32 encoding TString objects but unchecked encoding.
+//
+// # Parameters
+// - `count`: The number of strings to concatenate.
+// - `tstr_list`: An array of TString objects to concatenate.
+//
+// # Returns
+// - A new TString object containing the concatenated result.
+//
+// # Notes
+// - The returned TString must be freed using `tstr_drop`.
+TH_EXPORT struct TString tstr_concat_utf32_unsafe(
+    size_t count, struct TString const *tstr_list);
+
+// Concatenates into a UTF8 encoding TString objects.
 //
 // # Parameters
 // - `count`: The number of strings to concatenate.
@@ -224,7 +278,7 @@ TH_EXPORT struct TString tstr_dup(struct TString tstr);
 TH_EXPORT struct TString tstr_concat_utf8(size_t count,
                                           struct TString const *tstr_list);
 
-// Concatenates UTF16 encoding TString objects.
+// Concatenates into a UTF16 encoding TString objects.
 //
 // # Parameters
 // - `count`: The number of strings to concatenate.
@@ -238,7 +292,7 @@ TH_EXPORT struct TString tstr_concat_utf8(size_t count,
 TH_EXPORT struct TString tstr_concat_utf16(size_t count,
                                            struct TString const *tstr_list);
 
-// Concatenates UTF32 encoding TString objects.
+// Concatenates into a UTF32 encoding TString objects.
 //
 // # Parameters
 // - `count`: The number of strings to concatenate.
@@ -252,17 +306,32 @@ TH_EXPORT struct TString tstr_concat_utf16(size_t count,
 TH_EXPORT struct TString tstr_concat_utf32(size_t count,
                                            struct TString const *tstr_list);
 
-// Concatenates TString objects.
+// Concatenates multiple TString objects into a single TString.
+//
+// This function automatically handles UTF-8 and UTF-16 encoded strings.
+// For each input TString:
+// - If it is UTF-8, its contents are copied directly.
+// - If it is UTF-16 but has a UTF-8 cache, the cached UTF-8 string is used.
+// - Otherwise, UTF-16 strings are converted to UTF-8 during concatenation.
 //
 // # Parameters
-// - `count`: The number of strings to concatenate.
-// - `tstr_list`: An array of TString objects to concatenate.
+// - `count`: The number of strings in `tstr_list`.
+// - `tstr_list`: Pointer to an array of `TString` objects to concatenate.
 //
 // # Returns
-// - A new TString object containing the concatenated result.
+// - A new `TString` object in UTF-8 encoding containing the concatenated
+// result.
+// - The returned TString has owned memory and must be freed using `tstr_drop`.
 //
 // # Notes
-// - The returned TString must be freed using `tstr_drop`.
+// - This function is "unchecked" in the sense that it assumes valid input
+//   encodings. It does not perform strict UTF validation and may replace
+//   invalid sequences with replacement characters (U+FFFD) in UTF-16 to UTF-8
+//   conversion.
+// - Caches in input TStrings are not modified; however, if a UTF-16 input
+// string
+//   has no UTF-8 cache, a temporary UTF-8 buffer may be created internally
+//   during concatenation.
 TH_EXPORT struct TString tstr_concat(size_t count,
                                      struct TString const *tstr_list);
 
@@ -331,7 +400,7 @@ TH_EXPORT struct TString tstr_substr_utf32(struct TString tstr, size_t pos,
 // # Notes
 // - The returned TString is just a view of the original string and does not own
 //   the memory, so it should not be freed.
-TH_EXPORT struct TString tstr_substr(struct TString tstr, size_t pos,
+TH_EXPORT struct TString tstr_substr(struct TString *tstr, size_t pos,
                                      size_t len);
 
 // Retrieves the encoding type of a TString.
