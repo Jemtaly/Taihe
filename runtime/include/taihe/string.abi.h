@@ -58,6 +58,10 @@ TH_INLINE const char *tstr_cache(struct TString tstr) {
   return tstr.cache;
 }
 
+TH_INLINE size_t tstr_cache_len(struct TString tstr) {
+  return *(reinterpret_cast<uint32_t const *>(tstr.cache) - 1);
+}
+
 // Allocates memory and initializes a UTF8 encoding TString with a given
 // capacity.
 //
@@ -448,3 +452,53 @@ TH_EXPORT struct TString tstr_utf8_to_utf16(struct TString utf8_str);
 //   with U+FFFD).
 // - The returned TString is heap-allocated and independent of the input.
 TH_EXPORT struct TString tstr_utf16_to_utf8(struct TString utf16_str);
+
+// Generates (or retrieves) the cached UTF-8 representation of a UTF-16 TString.
+//
+// # Parameters
+// - `utf16_tstr`: A pointer to a TString encoded in UTF-16.
+//
+// # Returns
+// - A pointer to a null-terminated UTF-8 byte sequence representing the content
+//   of the input TString.
+//   *The returned pointer is borrowed and owned by `utf16_tstr`; it must NOT be
+//   freed.*
+//
+// # Notes
+// - If this TString is UTF-8 encoding, the funtion simply returns the existing
+//   existing pointer.
+// - If the UTF-8 cache for this TString has already been created, the function
+//   simply returns the existing cached pointer.
+// - If no cache exists yet, the function allocates memory inside the TString
+//   object, performs UTF-16 → UTF-8 conversion, stores the result as an
+//   internal cache, and returns the pointer.
+// - The returned memory remains valid until the TString is modified or dropped
+//   (freed with `tstr_drop`).
+// - The function does not modify the string content itself; it only populates
+//   the lazy conversion cache.
+TH_EXPORT char const *tstr_generate_utf8_cache(struct TString *utf16_tstr);
+
+// Generates (or retrieves) the cached UTF-16 representation of a UTF-8 TString.
+//
+// # Parameters
+// - `utf8_tstr`: A pointer to a TString encoded in UTF-8.
+//
+// # Returns
+// - A pointer to a null-terminated UTF-16 sequence representing the content
+//   of the input TString.
+//   *The returned pointer is borrowed and owned by `utf8_tstr`; it must NOT be
+//   freed.*
+//
+// # Notes
+// - If this TString is UTF-16 encoding, the funtion simply returns the existing
+//   existing pointer.
+// - If the UTF-16 cache for this TString has already been created, the function
+//   simply returns the existing cached pointer.
+// - If no cache exists yet, the function allocates memory inside the TString
+//   object, performs UTF-8 → UTF-16 conversion, stores the result as an
+//   internal cache, and returns the pointer.
+// - The returned memory remains valid until the TString is modified or dropped
+//   (freed with `tstr_drop`).
+// - The function does not modify the string content itself; it only populates
+//   the lazy conversion cache.
+TH_EXPORT uint16_t const *tstr_generate_utf16_cache(struct TString *utf8_tstr);
