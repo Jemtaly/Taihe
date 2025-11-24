@@ -53,25 +53,6 @@ uint16_t *tstr_initialize_utf16(struct TString *tstr_ptr, uint32_t capacity) {
   return reinterpret_cast<uint16_t *>(buffer);
 }
 
-uint32_t *tstr_initialize_utf32(struct TString *tstr_ptr, uint32_t capacity) {
-  size_t char_size = sizeof(uint32_t);
-  size_t bytes_required = sizeof(struct TStringInfo) + char_size * capacity;
-  struct TStringInfo *sh =
-      reinterpret_cast<struct TStringInfo *>(malloc(bytes_required));
-  if (!sh) return nullptr;
-
-  tref_init(&sh->count, 1);
-  sh->external_obj = nullptr;
-  sh->dest = nullptr;
-
-  char *buffer = reinterpret_cast<char *>(sh + 1);
-
-  tstr_ptr->flags = TSTRING_UTF32;
-  tstr_ptr->pstrinfo = sh;
-  tstr_ptr->ptr = buffer;
-  return reinterpret_cast<uint32_t *>(buffer);
-}
-
 struct TString tstr_new(char const *value TH_NONNULL, size_t len) {
   struct TString tstr;
   char *buf = tstr_initialize(&tstr, len + 1);
@@ -92,16 +73,6 @@ struct TString tstr_new_utf16(uint16_t const *value TH_NONNULL, size_t len) {
   return tstr;
 }
 
-struct TString tstr_new_utf32(uint32_t const *value TH_NONNULL, size_t len) {
-  struct TString tstr;
-  uint32_t *buf = tstr_initialize_utf32(&tstr, len + 1);
-  std::copy(value, value + len, buf);
-  buf[len] = U'\0';
-  tstr.length = len * sizeof(uint32_t);
-  tstr.cache = nullptr;
-  return tstr;
-}
-
 struct TString tstr_new_ref(char const *buf TH_NONNULL, size_t len) {
   struct TString tstr;
   tstr.flags = TSTRING_REF | TSTRING_UTF8;
@@ -116,16 +87,6 @@ struct TString tstr_new_ref_utf16(uint16_t const *buf TH_NONNULL, size_t len) {
   struct TString tstr;
   tstr.flags = TSTRING_REF | TSTRING_UTF16;
   tstr.length = len * 2;
-  tstr.pstrinfo = nullptr;
-  tstr.ptr = reinterpret_cast<char const *>(buf);
-  tstr.cache = nullptr;
-  return tstr;
-}
-
-struct TString tstr_new_ref_utf32(uint32_t const *buf TH_NONNULL, size_t len) {
-  struct TString tstr;
-  tstr.flags = TSTRING_REF | TSTRING_UTF32;
-  tstr.length = len * 4;
   tstr.pstrinfo = nullptr;
   tstr.ptr = reinterpret_cast<char const *>(buf);
   tstr.cache = nullptr;
@@ -183,31 +144,6 @@ struct TString tstr_new_from_external_utf16(uint16_t const *buf TH_NONNULL,
   return tstr;
 }
 
-struct TString tstr_new_from_external_utf32(uint32_t const *buf TH_NONNULL,
-                                            size_t len, void *external_obj,
-                                            void (*dest)(void *)) {
-  struct TString tstr;
-  struct TStringInfo *info = reinterpret_cast<struct TStringInfo *>(
-      malloc(sizeof(struct TStringInfo)));
-  if (!info) {
-    tstr.flags = 0;
-    tstr.length = 0;
-    tstr.pstrinfo = nullptr;
-    tstr.ptr = nullptr;
-    return tstr;
-  }
-  tref_init(&info->count, 1);
-  info->external_obj = external_obj;
-  info->dest = dest;
-  tstr.flags = TSTRING_UTF32 | TSTRING_EXT;
-  tstr.length = len;
-  tstr.pstrinfo = info;
-  tstr.ptr = reinterpret_cast<char const *>(buf);
-  tstr.cache = nullptr;
-
-  return tstr;
-}
-
 struct TString tstr_dup(struct TString orig) {
   // ref 需创建堆内存
   // sh、external 不需要创建新的堆内存
@@ -220,9 +156,7 @@ struct TString tstr_dup(struct TString orig) {
     return orig;
   }
   struct TString tstr;
-  size_t char_size = (orig.flags & TSTRING_UTF16)   ? 2
-                     : (orig.flags & TSTRING_UTF32) ? 4
-                                                    : 1;
+  size_t char_size = (orig.flags & TSTRING_UTF16)? 2 : 1;
   size_t bytes_required = sizeof(struct TStringInfo) + orig.length + char_size;
   struct TStringInfo *newSh =
       reinterpret_cast<struct TStringInfo *>(malloc(bytes_required));
@@ -235,9 +169,6 @@ struct TString tstr_dup(struct TString orig) {
   if (orig.flags & TSTRING_UTF16) {
     uint16_t *dst = reinterpret_cast<uint16_t *>(buffer);
     dst[orig.length / 2] = u'\0';
-  } else if (orig.flags & TSTRING_UTF32) {
-    uint32_t *dst = reinterpret_cast<uint32_t *>(buffer);
-    dst[orig.length / 4] = U'\0';
   } else {
     buffer[orig.length] = '\0';
   }
@@ -697,38 +628,6 @@ struct TString tstr_concat_utf16(size_t count,
   return tstr_list[0];
 }
 
-struct TString tstr_concat_utf32_unsafe(size_t count,
-                                        struct TString const *tstr_list) {
-  size_t len = 0;
-  for (size_t i = 0; i < count; ++i) {
-    len += tstr_list[i].length;
-  }
-  struct TString tstr;
-  uint32_t *buf = tstr_initialize_utf32(&tstr, len / 4 + 1);
-  for (size_t i = 0; i < count; ++i) {
-    buf = std::copy(reinterpret_cast<uint32_t const *>(tstr_list[i].ptr),
-                    reinterpret_cast<uint32_t const *>(tstr_list[i].ptr) +
-                        tstr_list[i].length / 4,
-                    buf);
-  }
-  buf[len / 4] = U'\0';
-  tstr.length = len;
-  tstr.cache = nullptr;
-  return tstr;
-}
-
-struct TString tstr_concat_utf32(size_t count,
-                                 struct TString const *tstr_list) {
-  int32_t flags = 0;
-  for (size_t i = 0; i < count; ++i) {
-    flags |= tstr_list[i].flags;
-  }
-  if ((flags & TSTRING_ENCODING_MASK) == TSTRING_UTF32) {
-    return tstr_concat_utf32_unsafe(count, tstr_list);
-  }
-  return tstr_list[0];
-}
-
 struct TString tstr_concat(size_t count, struct TString const *tstr_list) {
   int32_t flags = 0;
   size_t array_len = (count + 3) / 4;
@@ -829,22 +728,6 @@ TH_INLINE struct TString tstr_substr_utf16_unsafe(struct TString tstr,
 struct TString tstr_substr_utf16(struct TString tstr, size_t pos, size_t len) {
   if ((tstr.flags & TSTRING_ENCODING_MASK) != TSTRING_UTF16) return tstr;
   return tstr_substr_utf16_unsafe(tstr, pos, len);
-}
-
-TH_INLINE struct TString tstr_substr_utf32_unsafe(struct TString tstr,
-                                                  size_t pos, size_t len) {
-  if (pos > tstr.length / 4) {
-    len = 0;
-  } else if (pos + len > tstr.length / 4) {
-    len = tstr.length / 4 - pos;
-  }
-  return tstr_new_ref_utf32(reinterpret_cast<uint32_t const *>(tstr.ptr) + pos,
-                            len);
-}
-
-struct TString tstr_substr_utf32(struct TString tstr, size_t pos, size_t len) {
-  if ((tstr.flags & TSTRING_ENCODING_MASK) != TSTRING_UTF32) return tstr;
-  return tstr_substr_utf32_unsafe(tstr, pos, len);
 }
 
 struct TString tstr_substr(struct TString *tstr, size_t pos, size_t len) {
