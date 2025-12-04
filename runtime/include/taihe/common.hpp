@@ -94,4 +94,11 @@ struct static_tag_t {};
 
 template<auto tag>
 constexpr static_tag_t<tag> static_tag;
+
+///////////////
+// false tags //
+///////////////
+
+template<class T>
+constexpr inline bool always_false = false;
 }  // namespace taihe

@@ -492,6 +492,99 @@ void testMemoryLeak() {
                  remaining);
 }
 
+void testMultipleEncodingsString() {
+  // ASCII
+  {
+    char16_t const src[] = u"Hello World";
+    taihe::string s(src, 11);
+    // length
+    {
+      size_t sLen = s.size();
+      Tester::assert(sLen == strlen(u8"Hello World"),
+                     "ASCII: UTF8 length mismatch");
+    }
+    // data
+    {
+      char const *sData = s.data();
+      Tester::assert(strcmp(sData, u8"Hello World") == 0,
+                     "ASCII: data() UTF8 mismatch");
+    }
+    // operator[]
+    {
+      Tester::assert(s[0] == (char)0x48, "ASCII: operator[] did not use UTF8");
+    }
+
+    // front/back
+    {
+      Tester::assert(s.front() == (char)0x48, "ASCII: front() mismatch");
+      Tester::assert(s.back() == (char)0x64, "ASCII: back() mismatch");
+    }
+    // iterator
+    {
+      std::string collected;
+      for (char c : s) collected.push_back(c);
+      Tester::assert(collected == std::string(u8"Hello World"),
+                     "ASCII: Iterator collected wrong UTF8 sequence");
+    }
+    // substr
+    {
+      auto sv = s.substr(0, 5);
+      Tester::assert(sv.size() == strlen(u8"Hello"),
+                     "ASCII: substr size mismatch");
+      string newStr = sv;
+      Tester::assert(strcmp(newStr.data(), u8"Hello") == 0,
+                     "ASCII: substr content mismatch");
+      std::cout << newStr.c_str() << std::endl;
+    }
+  }
+
+  // Non-ASCII
+  {
+    char16_t const src[] = u"你好世界";
+    taihe::string s(src, 4);
+    // length
+    {
+      size_t len1 = s.size();
+      Tester::assert(len1 == strlen(u8"你好世界"),
+                     "Non-ASCII: UTF8 length mismatch");
+    }
+    // data
+    {
+      char const *p1 = s.data();
+      Tester::assert(strcmp(p1, u8"你好世界") == 0,
+                     "Non-ASCII: data() UTF8 mismatch");
+    }
+    // operator[]
+    {
+      Tester::assert(s[0] == (char)0xE4,
+                     "Non-ASCII: operator[] did not use UTF8");
+    }
+
+    // front/back
+    {
+      Tester::assert(s.front() == (char)0xE4, "Non-ASCII: front() mismatch");
+      Tester::assert(s.back() == (char)0x8C, "Non-ASCII: back() mismatch");
+    }
+    // iterator
+    {
+      std::string collected;
+      for (char c : s) collected.push_back(c);
+      Tester::assert(collected == std::string(u8"你好世界"),
+                     "Non-ASCII: Iterator collected wrong UTF8 sequence");
+    }
+    // substr
+    {
+      string_view sv = s.substr(0, 6);
+      Tester::assert(sv.size() == strlen(u8"你好"),
+                     "Non-ASCII: substr size mismatch");
+      string newStr = sv;
+      Tester::assert(strcmp(newStr.data(), u8"你好") == 0,
+                     "Non-ASCII: substr content mismatch");
+      std::cout << newStr.c_str() << std::endl;
+    }
+  }
+}
+
 int main() {
   Tester tester;
 
@@ -507,6 +600,7 @@ int main() {
   tester.run("testCompare", testCompare);
   tester.run("testHashAndSame", testHashAndSame);
   tester.run("testMemoryLeak", testMemoryLeak);
+  tester.run("testMultipleEncodingsString", testMultipleEncodingsString);
 
   return tester.report();
 }

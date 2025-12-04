@@ -18,6 +18,8 @@ namespace taihe {
 struct string_view;
 struct string;
 
+enum class StringEncoding { utf8, utf16, unknown };
+
 struct string_view {
   using value_type = char;
   using size_type = std::size_t;
@@ -34,6 +36,10 @@ struct string_view {
   string_view(char const *value TH_NONNULL, size_type size)
       : string_view(tstr_new_ref(value, size)) {}
 
+  string_view(char16_t const *value TH_NONNULL, size_type size)
+      : string_view(tstr_new_ref_utf16(
+            reinterpret_cast<uint16_t const *>(value), size)) {}
+
   string_view(std::initializer_list<char> value)
       : string_view(value.begin(), value.size()) {}
 
@@ -44,7 +50,11 @@ struct string_view {
       : string_view(value.data(), value.size()) {}
 
   operator std::string_view() const noexcept {
-    return {tstr_buf(m_handle), tstr_len(m_handle)};
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return {tstr_buf(m_handle), tstr_len(m_handle)};
+    }
+    tstr_generate_utf8_cache(&m_handle);
+    return {tstr_cache(m_handle), tstr_cache_len(m_handle)};
   }
 
   // methods
@@ -52,7 +62,10 @@ struct string_view {
     if (pos >= size()) {
       TH_THROW(std::out_of_range, "Index out of range");
     }
-    return tstr_buf(m_handle)[pos];
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle)[pos];
+    }
+    return tstr_generate_utf8_cache(&m_handle)[pos];
   }
 
   bool empty() const noexcept {
@@ -60,33 +73,52 @@ struct string_view {
   }
 
   size_type size() const noexcept {
-    return tstr_len(m_handle);
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_len(m_handle);
+    }
+    tstr_generate_utf8_cache(&m_handle);
+    return tstr_cache_len(m_handle);
   }
 
   const_reference front() const {
     if (empty()) {
       TH_THROW(std::out_of_range, "Empty string");
     }
-    return tstr_buf(m_handle)[0];
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle)[0];
+    }
+    return tstr_generate_utf8_cache(&m_handle)[0];
   }
 
   const_reference back() const {
     if (empty()) {
       TH_THROW(std::out_of_range, "Empty string");
     }
-    return tstr_buf(m_handle)[size() - 1];
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle)[size() - 1];
+    }
+    return tstr_generate_utf8_cache(&m_handle)[size() - 1];
   }
 
   const_pointer c_str() const noexcept {
-    return tstr_buf(m_handle);
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle);
+    }
+    return tstr_generate_utf8_cache(&m_handle);
   }
 
   const_pointer data() const noexcept {
-    return tstr_buf(m_handle);
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle);
+    }
+    return tstr_generate_utf8_cache(&m_handle);
   }
 
   const_iterator begin() const noexcept {
-    return tstr_buf(m_handle);
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle);
+    }
+    return tstr_generate_utf8_cache(&m_handle);
   }
 
   const_iterator cbegin() const noexcept {
@@ -94,7 +126,10 @@ struct string_view {
   }
 
   const_iterator end() const noexcept {
-    return tstr_buf(m_handle) + tstr_len(m_handle);
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return tstr_buf(m_handle) + tstr_len(m_handle);
+    }
+    return tstr_generate_utf8_cache(&m_handle) + tstr_cache_len(m_handle);
   }
 
   const_iterator cend() const noexcept {
@@ -117,15 +152,44 @@ struct string_view {
     return rend();
   }
 
+  std::string u8string() const noexcept {
+    if (tstr_encoding(m_handle) == TSTRING_UTF8) {
+      return {tstr_buf(m_handle), tstr_len(m_handle)};
+    }
+    tstr_generate_utf8_cache(&m_handle);
+    return {tstr_cache(m_handle), tstr_cache_len(m_handle)};
+  }
+
+  std::u16string u16string() const noexcept {
+    if (tstr_encoding(m_handle) == TSTRING_UTF16) {
+      return {reinterpret_cast<char16_t const *>(tstr_buf(m_handle)),
+              tstr_len(m_handle) / 2};
+    }
+    tstr_generate_utf16_cache(&m_handle);
+    return {reinterpret_cast<char16_t const *>(tstr_cache(m_handle)),
+            tstr_cache_len(m_handle)};
+  }
+
+  bool is_utf8() const noexcept {
+    return tstr_encoding(m_handle) == TSTRING_UTF8;
+  }
+
+  bool is_utf16() const noexcept {
+    return tstr_encoding(m_handle) == TSTRING_UTF16;
+  }
+
   friend struct string;
 
   friend string concat(std::initializer_list<string_view> sv_list);
+  friend string concat_utf16(std::initializer_list<string_view> sv_list);
   friend string_view substr(string_view sv, std::size_t pos, std::size_t len);
+  friend string_view substr_utf16(string_view sv, std::size_t pos, std::size_t len);
   friend string operator+(string_view left, string_view right);
-  string_view substr(std::size_t pos, std::size_t len) const;
+  friend StringEncoding encoding(string_view sv);
+  string_view substr(std::size_t pos, std::size_t len);
 
 protected:
-  struct TString m_handle;
+  mutable struct TString m_handle;
 };
 
 struct string : public string_view {
@@ -136,6 +200,10 @@ struct string : public string_view {
 
   string(char const *value TH_NONNULL, size_type size)
       : string(tstr_new(value, size)) {}
+
+  string(char16_t const *value TH_NONNULL, size_type size)
+      : string(
+            tstr_new_utf16(reinterpret_cast<uint16_t const *>(value), size)) {}
 
   string(std::initializer_list<char> value)
       : string(value.begin(), value.size()) {}
@@ -167,13 +235,15 @@ struct string : public string_view {
   }
 
   string &operator+=(string_view other);
+
+  friend uint32_t tstr_encoding(TString const &h);
 };
 
 inline string concat(std::initializer_list<string_view> sv_list) {
   static_assert(alignof(string_view) == alignof(struct TString));
   return string(
       tstr_concat(sv_list.size(),
-                  reinterpret_cast<struct TString const *>(sv_list.begin())));
+      reinterpret_cast<struct TString const *>(sv_list.begin())));
 }
 
 inline string operator+(string_view left, string_view right) {
@@ -184,12 +254,21 @@ inline string &string::operator+=(string_view other) {
   return *this = *this + other;
 }
 
-inline string_view substr(string_view sv, std::size_t pos, std::size_t len) {
-  return string_view(tstr_substr(sv.m_handle, pos, len));
+inline StringEncoding encoding(string_view sv) {
+  uint32_t flags = tstr_encoding(sv.m_handle);
+  uint32_t enc = flags & TSTRING_ENCODING_MASK;
+
+  if (enc == TSTRING_UTF8) return StringEncoding::utf8;
+  if (enc == TSTRING_UTF16) return StringEncoding::utf16;
+  return StringEncoding::unknown;
 }
 
-inline string_view string_view::substr(std::size_t pos, std::size_t len) const {
-  return string_view(tstr_substr(this->m_handle, pos, len));
+inline string_view substr(string_view sv, std::size_t pos, std::size_t len) {
+  return string_view(tstr_substr(&sv.m_handle, pos, len));
+}
+
+inline string_view string_view::substr(std::size_t pos, std::size_t len) {
+  return string_view(tstr_substr(&this->m_handle, pos, len));
 }
 
 inline bool operator==(string_view lhs, string_view rhs) {
