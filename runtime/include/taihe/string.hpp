@@ -246,13 +246,6 @@ inline string concat(std::initializer_list<string_view> sv_list) {
       reinterpret_cast<struct TString const *>(sv_list.begin())));
 }
 
-inline string concat_utf16(std::initializer_list<string_view> sv_list) {
-  static_assert(alignof(string_view) == alignof(struct TString));
-  return string(
-      tstr_concat_utf16(sv_list.size(),
-      reinterpret_cast<struct TString const *>(sv_list.begin())));
-}
-
 inline string operator+(string_view left, string_view right) {
   return concat({left, right});
 }
@@ -272,10 +265,6 @@ inline StringEncoding encoding(string_view sv) {
 
 inline string_view substr(string_view sv, std::size_t pos, std::size_t len) {
   return string_view(tstr_substr(&sv.m_handle, pos, len));
-}
-
-inline string_view substr_utf16(string_view sv, std::size_t pos, std::size_t len) {
-  return string_view(tstr_substr_utf16(sv.m_handle, pos, len));
 }
 
 inline string_view string_view::substr(std::size_t pos, std::size_t len) {

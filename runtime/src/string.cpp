@@ -585,49 +585,6 @@ struct TString tstr_concat_utf8_unsafe(size_t count,
   return tstr;
 }
 
-struct TString tstr_concat_utf8(size_t count, struct TString const *tstr_list) {
-  int32_t flags = 0;
-  for (size_t i = 0; i < count; ++i) {
-    flags |= tstr_list[i].flags;
-  }
-  if ((flags & TSTRING_ENCODING_MASK) == TSTRING_UTF8) {
-    return tstr_concat_utf8_unsafe(count, tstr_list);
-  }
-  return tstr_list[0];
-}
-
-struct TString tstr_concat_utf16_unsafe(size_t count,
-                                        struct TString const *tstr_list) {
-  size_t len = 0;
-  for (size_t i = 0; i < count; ++i) {
-    len += tstr_list[i].length;
-  }
-  struct TString tstr;
-  uint16_t *buf = tstr_initialize_utf16(&tstr, len / 2 + 1);
-  for (size_t i = 0; i < count; ++i) {
-    buf = std::copy(reinterpret_cast<uint16_t const *>(tstr_list[i].ptr),
-                    reinterpret_cast<uint16_t const *>(tstr_list[i].ptr) +
-                        tstr_list[i].length / 2,
-                    buf);
-  }
-  buf[len / 2] = u'\0';
-  tstr.length = len;
-  tstr.cache = nullptr;
-  return tstr;
-}
-
-struct TString tstr_concat_utf16(size_t count,
-                                 struct TString const *tstr_list) {
-  int32_t flags = 0;
-  for (size_t i = 0; i < count; ++i) {
-    flags |= tstr_list[i].flags;
-  }
-  if ((flags & TSTRING_ENCODING_MASK) == TSTRING_UTF16) {
-    return tstr_concat_utf16_unsafe(count, tstr_list);
-  }
-  return tstr_list[0];
-}
-
 struct TString tstr_concat(size_t count, struct TString const *tstr_list) {
   int32_t flags = 0;
   size_t array_len = (count + 3) / 4;
@@ -707,27 +664,6 @@ TH_INLINE struct TString tstr_substr_utf8_unsafe(struct TString tstr,
     len = tstr.length - pos;
   }
   return tstr_new_ref(tstr.ptr + pos, len);
-}
-
-struct TString tstr_substr_utf8(struct TString tstr, size_t pos, size_t len) {
-  if ((tstr.flags & TSTRING_ENCODING_MASK) != TSTRING_UTF8) return tstr;
-  return tstr_substr_utf8_unsafe(tstr, pos, len);
-}
-
-TH_INLINE struct TString tstr_substr_utf16_unsafe(struct TString tstr,
-                                                  size_t pos, size_t len) {
-  if (pos > tstr.length / 2) {
-    len = 0;
-  } else if (pos + len > tstr.length / 2) {
-    len = tstr.length / 2 - pos;
-  }
-  return tstr_new_ref_utf16(reinterpret_cast<uint16_t const *>(tstr.ptr) + pos,
-                            len);
-}
-
-struct TString tstr_substr_utf16(struct TString tstr, size_t pos, size_t len) {
-  if ((tstr.flags & TSTRING_ENCODING_MASK) != TSTRING_UTF16) return tstr;
-  return tstr_substr_utf16_unsafe(tstr, pos, len);
 }
 
 struct TString tstr_substr(struct TString *tstr, size_t pos, size_t len) {

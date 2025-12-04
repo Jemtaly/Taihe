@@ -177,62 +177,6 @@ TH_EXPORT void tstr_drop(struct TString tstr);
 // - Use `tstr_drop` to free the duplicate when done.
 TH_EXPORT struct TString tstr_dup(struct TString tstr);
 
-// Concatenates into a UTF8 encoding TString objects but unchecked encoding.
-//
-// # Parameters
-// - `count`: The number of strings to concatenate.
-// - `tstr_list`: An array of TString objects to concatenate.
-//
-// # Returns
-// - A new TString object containing the concatenated result.
-//
-// # Notes
-// - The returned TString must be freed using `tstr_drop`.
-TH_EXPORT struct TString tstr_concat_utf8_unsafe(
-    size_t count, struct TString const *tstr_list);
-
-// Concatenates into a UTF16 encoding TString objects but unchecked encoding.
-//
-// # Parameters
-// - `count`: The number of strings to concatenate.
-// - `tstr_list`: An array of TString objects to concatenate.
-//
-// # Returns
-// - A new TString object containing the concatenated result.
-//
-// # Notes
-// - The returned TString must be freed using `tstr_drop`.
-TH_EXPORT struct TString tstr_concat_utf16_unsafe(
-    size_t count, struct TString const *tstr_list);
-
-// Concatenates into a UTF8 encoding TString objects.
-//
-// # Parameters
-// - `count`: The number of strings to concatenate.
-// - `tstr_list`: An array of TString objects to concatenate.
-//
-// # Returns
-// - A new TString object containing the concatenated result.
-//
-// # Notes
-// - The returned TString must be freed using `tstr_drop`.
-TH_EXPORT struct TString tstr_concat_utf8(size_t count,
-                                          struct TString const *tstr_list);
-
-// Concatenates into a UTF16 encoding TString objects.
-//
-// # Parameters
-// - `count`: The number of strings to concatenate.
-// - `tstr_list`: An array of TString objects to concatenate.
-//
-// # Returns
-// - A new TString object containing the concatenated result.
-//
-// # Notes
-// - The returned TString must be freed using `tstr_drop`.
-TH_EXPORT struct TString tstr_concat_utf16(size_t count,
-                                           struct TString const *tstr_list);
-
 // Concatenates multiple TString objects into a single TString.
 //
 // This function automatically handles UTF-8 and UTF-16 encoded strings.
@@ -261,40 +205,6 @@ TH_EXPORT struct TString tstr_concat_utf16(size_t count,
 //   during concatenation.
 TH_EXPORT struct TString tstr_concat(size_t count,
                                      struct TString const *tstr_list);
-
-// Extracts a substring from a UTF8 encoding TString object.
-//
-// # Parameters
-// - `tstr`: The source TString object to extract the substring from.
-// - `pos`: The starting position of the substring within the source TString
-//   object.
-// - `len`: The length of the substring to extract.
-//
-// # Returns
-// - A TString reference of the extracted substring.
-//
-// # Notes
-// - The returned TString is just a view of the original string and does not own
-//   the memory, so it should not be freed.
-TH_EXPORT struct TString tstr_substr_utf8(struct TString tstr, size_t pos,
-                                          size_t len);
-
-// Extracts a substring from a UTF16 encoding TString object.
-//
-// # Parameters
-// - `tstr`: The source TString object to extract the substring from.
-// - `pos`: The starting position of the substring within the source TString
-//   object.
-// - `len`: The length of the substring to extract.
-//
-// # Returns
-// - A TString reference of the extracted substring.
-//
-// # Notes
-// - The returned TString is just a view of the original string and does not own
-//   the memory, so it should not be freed.
-TH_EXPORT struct TString tstr_substr_utf16(struct TString tstr, size_t pos,
-                                           size_t len);
 
 // Extracts a substring from a TString object.
 //
