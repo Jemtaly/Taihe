@@ -306,6 +306,119 @@ class FileWriter(BaseWriter):
         del f
 
 
+##############################
+# Structured code generation #
+##############################
+
+
+class CodeNode(ABC):
+    """A structured code node that can be rendered into a `BaseWriter`.
+
+    This is intentionally minimal: generators can build a tree of `CodeNode`s
+    first, then render once at the end to avoid deep `with indented(...)` stacks
+    and strict sequential emission ordering.
+    """
+
+    @abstractmethod
+    def render(self, w: BaseWriter) -> None: ...
+
+
+class FileBuilder(CodeNode):
+    """A structured code file that can be saved via an `OutputManager`."""
+
+    def __init__(
+        self,
+        relative_path: str,
+        file_kind: FileKind,
+        *,
+        default_indent: str,
+        comment_prefix: str,
+    ):
+        self.desc = FileDescriptor(
+            relative_path=relative_path,
+            kind=file_kind,
+        )
+        self._default_indent = default_indent
+        self._comment_prefix = comment_prefix
+
+    def save(self, om: "OutputManager") -> None:
+        with om.open(self.desc) as f:
+            self.render(
+                BaseWriter(
+                    out=f,
+                    comment_prefix=self._comment_prefix,
+                    default_indent=self._default_indent,
+                    debug_level=om.debug_level,
+                )
+            )
+
+
+###########################
+# Code builder utilities  #
+###########################
+
+
+@dataclass(slots=True)
+class CodeBuilder(CodeNode):
+    """A mutable list of nodes with convenience APIs for building code trees."""
+
+    nodes: list[CodeNode] = field(default_factory=lambda: [])
+
+    def line(self, text: str = "") -> "CodeBuilder":
+        self.nodes.append(CodeLine(text))
+        return self
+
+    def lines(self, *lines: str) -> "CodeBuilder":
+        for line in lines:
+            self.line(line)
+        return self
+
+    def block(
+        self,
+        prologue: str | None,
+        epilogue: str | None,
+        /,
+        *,
+        indent: str | None = None,
+    ) -> "CodeBlock":
+        blk = CodeBlock(prologue=prologue, epilogue=epilogue, indent=indent)
+        self.nodes.append(blk)
+        return blk
+
+    def append(self, other: CodeNode) -> "CodeBuilder":
+        self.nodes.append(other)
+        return self
+
+    def render(self, w: BaseWriter) -> None:
+        for n in self.nodes:
+            n.render(w)
+
+
+@dataclass(slots=True)
+class CodeLine(CodeNode):
+    text: str
+
+    def render(self, w: BaseWriter) -> None:
+        w.writeln(self.text)
+
+
+@dataclass(slots=True)
+class CodeBlock(CodeNode):
+    prologue: str | None
+    epilogue: str | None
+    indent: str | None = None
+    body: CodeBuilder = field(default_factory=CodeBuilder)
+
+    def render(self, w: BaseWriter) -> None:
+        with w.indented(self.prologue, self.epilogue, indent=self.indent):
+            self.body.render(w)
+
+
+#############################
+# Output management system  #
+#############################
+
+
 @dataclass
 class OutputConfig(ABC):
     debug_level: DebugLevel = field(default=DebugLevel.NONE, kw_only=True)

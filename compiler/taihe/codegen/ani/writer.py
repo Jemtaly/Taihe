@@ -18,7 +18,14 @@ from typing import TextIO
 
 from typing_extensions import override
 
-from taihe.utils.outputs import FileKind, FileWriter, OutputManager
+from taihe.utils.outputs import (
+    BaseWriter,
+    CodeBuilder,
+    FileBuilder,
+    FileKind,
+    FileWriter,
+    OutputManager,
+)
 
 
 class Naming(ABC):
@@ -145,3 +152,32 @@ class StsWriter(FileWriter, ArkTsImportManager):
     def write_prologue(self, f: TextIO):
         for line in self.gen_prologue():
             f.write(f"{line}\n")
+
+
+class ArkTsFileBuilder(FileBuilder, ArkTsImportManager):
+    """ArkTS-specific CodeFile wrapper.
+
+    Keeps ArkTS-specific prologue/epilogue and import formatting out of
+    `taihe.utils.outputs`.
+    """
+
+    def __init__(
+        self,
+        relative_path: str,
+        *,
+        is_static: bool = True,
+    ):
+        super().__init__(
+            relative_path,
+            FileKind.ETS,
+            default_indent=ETS_DEFAULT_INDENT,
+            comment_prefix=ETS_COMMENT_PREFIX,
+        )
+        ArkTsImportManager.__init__(self, is_static=is_static)
+        self.body = CodeBuilder()
+
+    @override
+    def render(self, w: BaseWriter) -> None:
+        for line in self.gen_prologue():
+            w.writeln(line)
+        self.body.render(w)

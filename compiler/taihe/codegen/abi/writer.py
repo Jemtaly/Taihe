@@ -20,7 +20,14 @@ from typing import TextIO
 
 from typing_extensions import override
 
-from taihe.utils.outputs import FileKind, FileWriter, OutputManager
+from taihe.utils.outputs import (
+    BaseWriter,
+    CodeBuilder,
+    FileBuilder,
+    FileKind,
+    FileWriter,
+    OutputManager,
+)
 
 C_DEFAULT_INDENT = "    "
 C_COMMENT_PREFIX = "// "
@@ -166,3 +173,49 @@ class CHeaderWriter(CSourceWriter):
             file_kind=file_kind,
             include_guard=PragmaBasedIncludeGuard(),
         )
+
+
+class CLikeFileBuilder(FileBuilder, CMacroManager):
+    """C/C++-specific CodeFile wrapper.
+
+    Keeps C-specific prologue/epilogue and `#include` formatting out of
+    `taihe.utils.outputs`.
+    """
+
+    def __init__(
+        self,
+        relative_path: str,
+        *,
+        is_cpp: bool,
+        is_header: bool,
+        is_template: bool = False,
+    ):
+        if is_template:
+            file_kind = FileKind.C_TEMPLATE
+        elif is_header:
+            file_kind = FileKind.CPP_HEADER if is_cpp else FileKind.C_HEADER
+        else:
+            file_kind = FileKind.CPP_SOURCE if is_cpp else FileKind.C_SOURCE
+
+        super().__init__(
+            relative_path,
+            file_kind,
+            default_indent=C_DEFAULT_INDENT,
+            comment_prefix=C_COMMENT_PREFIX,
+        )
+        CMacroManager.__init__(
+            self,
+            diag_settings={} if is_template else DEFAULT_CLANG_DIAGNOSTIC_SETTINGS,
+            include_guard=PragmaBasedIncludeGuard()
+            if is_header
+            else None,
+        )
+        self.body = CodeBuilder()
+
+    @override
+    def render(self, w: BaseWriter) -> None:
+        for line in self.gen_prologue():
+            w.writeln(line)
+        self.body.render(w)
+        for line in self.gen_epilogue():
+            w.writeln(line)
