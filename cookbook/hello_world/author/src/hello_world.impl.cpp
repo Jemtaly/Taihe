@@ -29,4 +29,6 @@ string add(int32_t a, int32_t b) {
 
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_add(add);
+// NOLINTEND

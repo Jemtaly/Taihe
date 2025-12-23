@@ -182,6 +182,7 @@ array<uintptr_t> GetStringArray() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_ConstructBook(ConstructBook);
 TH_EXPORT_CPP_API_PrintBook(PrintBook);
 TH_EXPORT_CPP_API_MapBookToYear(MapBookToYear);
@@ -192,3 +193,4 @@ TH_EXPORT_CPP_API_PrintBookAdvanced(PrintBookAdvanced);
 TH_EXPORT_CPP_API_MakeFancyBook(MakeFancyBook);
 TH_EXPORT_CPP_API_IsString(IsString);
 TH_EXPORT_CPP_API_GetStringArray(GetStringArray);
+// NOLINTEND

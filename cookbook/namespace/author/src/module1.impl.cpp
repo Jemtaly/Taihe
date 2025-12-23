@@ -27,4 +27,6 @@ void module1Run() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_module1Run(module1Run);
+// NOLINTEND

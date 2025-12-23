@@ -38,4 +38,6 @@ INotificationService makeNotificationService() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_makeNotificationService(makeNotificationService);
+// NOLINTEND

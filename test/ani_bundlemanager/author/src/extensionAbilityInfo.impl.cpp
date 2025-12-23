@@ -90,4 +90,6 @@ ExtensionAbilityInfo GetExtensionAbilityInfo() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_GetExtensionAbilityInfo(GetExtensionAbilityInfo);
+// NOLINTEND

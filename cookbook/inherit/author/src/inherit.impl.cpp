@@ -73,4 +73,6 @@ CreditCard makeCreditCard(double initAmount) {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_makeCreditCard(makeCreditCard);
+// NOLINTEND

@@ -76,6 +76,7 @@ void TestCbStruct(
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_TestCbV(TestCbV);
 TH_EXPORT_CPP_API_TestCbI(TestCbI);
 TH_EXPORT_CPP_API_TestCbS(TestCbS);

@@ -45,4 +45,6 @@ ModuleInfo GetModuleInfo() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_GetModuleInfo(GetModuleInfo);
+// NOLINTEND

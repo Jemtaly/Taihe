@@ -80,4 +80,6 @@ ShortcutInfo GetShortcutInfo() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_GetShortcutInfo(GetShortcutInfo);
+// NOLINTEND

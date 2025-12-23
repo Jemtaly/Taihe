@@ -48,4 +48,6 @@ public:
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_makePerson(makePerson);
+// NOLINTEND

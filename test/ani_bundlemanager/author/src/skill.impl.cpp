@@ -82,5 +82,7 @@ SkillUri GetSkillUri() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_GetSkill(GetSkill);
 TH_EXPORT_CPP_API_GetSkillUri(GetSkillUri);
+// NOLINTEND

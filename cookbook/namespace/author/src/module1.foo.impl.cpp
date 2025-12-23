@@ -27,4 +27,6 @@ void fooFunc() {
 }
 }  // namespace
 
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_fooFunc(fooFunc);
+// NOLINTEND
