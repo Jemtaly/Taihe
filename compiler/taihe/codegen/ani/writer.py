@@ -14,7 +14,6 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import TextIO
 
 from typing_extensions import override
 
@@ -149,9 +148,9 @@ class StsWriter(FileWriter, ArkTsImportManager):
         ArkTsImportManager.__init__(self, is_static=is_static)
 
     @override
-    def write_prologue(self, f: TextIO):
+    def write_prologue(self, f: BaseWriter):
         for line in self.gen_prologue():
-            f.write(f"{line}\n")
+            f.writeln(line)
 
 
 class ArkTsFileBuilder(FileBuilder, ArkTsImportManager):

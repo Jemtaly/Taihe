@@ -16,7 +16,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import TextIO
 
 from typing_extensions import override
 
@@ -148,14 +147,14 @@ class CSourceWriter(FileWriter, CMacroManager):
         )
 
     @override
-    def write_prologue(self, f: TextIO):
+    def write_prologue(self, f: BaseWriter):
         for line in self.gen_prologue():
-            f.write(f"{line}\n")
+            f.writeln(line)
 
     @override
-    def write_epilogue(self, f: TextIO):
+    def write_epilogue(self, f: BaseWriter):
         for line in self.gen_epilogue():
-            f.write(f"{line}\n")
+            f.writeln(line)
 
 
 class CHeaderWriter(CSourceWriter):

@@ -21,7 +21,6 @@ from collections.abc import Iterator, Sequence
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from io import StringIO
 from pathlib import Path
 from sys import _getframe, stdout  # type: ignore
 from types import FrameType, TracebackType
@@ -151,31 +150,31 @@ class BaseWriter:
         for line in lines:
             self.writeln(line, _show_debug=False)
 
-    def write_block(self, text_block: str, *, _show_debug: bool = True):
+    def write_text(self, text: str, *, _show_debug: bool = True):
         """Writes a potentially multi-line text block.
 
         Args:
-            text_block: The block of text to write
+            text: The text to write. Can be multi-line.
         """
         if _show_debug:
             self._write_debug(_getframe(1))  # type: ignore
 
-        for line in text_block.splitlines():
+        for line in text.splitlines():
             self.writeln(line, _show_debug=False)
 
-    def write_comment(self, comment: str, *, _show_debug: bool = True):
+    def write_comment_text(self, text: str, *, _show_debug: bool = True):
         """Writes a comment block, prefixing each line with the comment prefix.
 
         Indents the comment block according to the current indentation level.
         Handles multi-line comments by splitting the input string.
 
         Args:
-            comment: The comment text to write. Can be multi-line.
+            text: The comment text to write. Can be multi-line.
         """
         if _show_debug:
             self._write_debug(_getframe(1))  # type: ignore
 
-        for line in comment.splitlines():
+        for line in text.splitlines():
             self.writeln(self._comment_prefix + line, _show_debug=False)
 
     @contextmanager
@@ -251,59 +250,10 @@ class BaseWriter:
 
         taihe_dir = Path(__file__).parent.parent
         file_name = Path(f.f_code.co_filename).relative_to(taihe_dir).as_posix()
-        self.write_comment(
+        self.write_comment_text(
             f"CODEGEN-DEBUG: {f.f_code.co_name} in {file_name}:{f.f_lineno}",
             _show_debug=False,
         )
-
-
-class FileWriter(BaseWriter):
-    def __init__(
-        self,
-        om: "OutputManager",
-        relative_path: str,
-        file_kind: FileKind,
-        *,
-        default_indent: str,
-        comment_prefix: str,
-    ):
-        super().__init__(
-            out=StringIO(),
-            default_indent=default_indent,
-            comment_prefix=comment_prefix,
-            debug_level=om.debug_level,
-        )
-        self._om = om
-        self.desc = FileDescriptor(
-            relative_path=relative_path,
-            kind=file_kind,
-        )
-
-    def __enter__(self):
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> bool:
-        del exc_val, exc_tb, exc_type
-        with self._om.open(self.desc) as f:
-            self.write_prologue(f)
-            self.write_body(f)
-            self.write_epilogue(f)
-        return False
-
-    def write_body(self, f: TextIO):
-        assert isinstance(self._out, StringIO)
-        f.write(self._out.getvalue())
-
-    def write_prologue(self, f: TextIO):
-        del f
-
-    def write_epilogue(self, f: TextIO):
-        del f
 
 
 ##############################
@@ -343,14 +293,95 @@ class FileBuilder(CodeNode):
 
     def save(self, om: "OutputManager") -> None:
         with om.open(self.desc) as f:
-            self.render(
-                BaseWriter(
-                    out=f,
-                    comment_prefix=self._comment_prefix,
-                    default_indent=self._default_indent,
-                    debug_level=om.debug_level,
-                )
+            w = BaseWriter(
+                out=f,
+                comment_prefix=self._comment_prefix,
+                default_indent=self._default_indent,
+                debug_level=om.debug_level,
             )
+            self.render(w)
+
+
+class FileWriter(FileBuilder):
+    def __init__(
+        self,
+        om: "OutputManager",
+        relative_path: str,
+        file_kind: FileKind,
+        *,
+        default_indent: str,
+        comment_prefix: str,
+    ):
+        super().__init__(
+            relative_path=relative_path,
+            file_kind=file_kind,
+            default_indent=default_indent,
+            comment_prefix=comment_prefix,
+        )
+        self._om = om
+        self._body = CodeBuilder()
+        self._current = self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        del exc_val, exc_tb, exc_type
+        self.save(self._om)
+        return False
+
+    def newline(self) -> None:
+        self._current.line()
+
+    def writeln(self, line: str) -> None:
+        self._current.line(line)
+
+    def writelns(self, *lines: str) -> None:
+        self._current.lines(*lines)
+
+    def write_block(self, text: str) -> None:
+        self._current.text(text)
+
+    def write_comment_block(self, text: str) -> None:
+        self._current.comment_text(text)
+
+    @contextmanager
+    def indented(
+        self,
+        prologue: str | None,
+        epilogue: str | None,
+        *,
+        indent: str | None = None,
+    ) -> Iterator[Self]:
+        current = self._current
+        self._current = self._current.block(
+            prologue,
+            epilogue,
+            indent=indent,
+        ).body
+        try:
+            yield self
+        finally:
+            self._current = current
+
+    def render(self, w: BaseWriter) -> None:
+        self.write_prologue(w)
+        self.write_body(w)
+        self.write_epilogue(w)
+
+    def write_body(self, f: BaseWriter):
+        self._body.render(f)
+
+    def write_prologue(self, f: BaseWriter):
+        del f
+
+    def write_epilogue(self, f: BaseWriter):
+        del f
 
 
 ###########################
@@ -373,6 +404,14 @@ class CodeBuilder(CodeNode):
             self.line(line)
         return self
 
+    def text(self, text: str) -> "CodeBuilder":
+        self.nodes.append(CodeText(text))
+        return self
+
+    def comment_text(self, text: str) -> "CodeBuilder":
+        self.nodes.append(CommentText(text))
+        return self
+
     def block(
         self,
         prologue: str | None,
@@ -381,7 +420,11 @@ class CodeBuilder(CodeNode):
         *,
         indent: str | None = None,
     ) -> "CodeBlock":
-        blk = CodeBlock(prologue=prologue, epilogue=epilogue, indent=indent)
+        blk = CodeBlock(
+            prologue,
+            epilogue,
+            indent=indent,
+        )
         self.nodes.append(blk)
         return blk
 
@@ -396,10 +439,26 @@ class CodeBuilder(CodeNode):
 
 @dataclass(slots=True)
 class CodeLine(CodeNode):
+    line: str
+
+    def render(self, w: BaseWriter) -> None:
+        w.writeln(self.line)
+
+
+@dataclass
+class CodeText(CodeNode):
     text: str
 
     def render(self, w: BaseWriter) -> None:
-        w.writeln(self.text)
+        w.write_text(self.text)
+
+
+@dataclass
+class CommentText(CodeNode):
+    text: str
+
+    def render(self, w: BaseWriter) -> None:
+        w.write_comment_text(self.text)
 
 
 @dataclass(slots=True)
