@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_PLATFORM_ANI_HPP
+#define TAIHE_PLATFORM_ANI_HPP
 
 #include <taihe/object.hpp>
 #include <taihe/runtime.hpp>
@@ -492,3 +493,5 @@ inline ani_static_field ani_cache_class_static_field(ani_env *env) {
     return __field;                                                         \
   }())
 #endif  // __cplusplus >= 202002L
+
+#endif  // TAIHE_PLATFORM_ANI_HPP

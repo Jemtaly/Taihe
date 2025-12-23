@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_OBJECT_ABI_H
+#define TAIHE_OBJECT_ABI_H
 
 #include <taihe/common.h>
 
@@ -94,3 +95,5 @@ TH_EXPORT struct DataBlockHead *tobj_dup(struct DataBlockHead *data_ptr);
 // # Arguments
 // - `tobj`: The data pointer.
 TH_EXPORT void tobj_drop(struct DataBlockHead *data_ptr);
+
+#endif  // TAIHE_OBJECT_ABI_H

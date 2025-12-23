@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_COMMON_H
+#define TAIHE_COMMON_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -65,3 +66,5 @@ TH_INLINE void tref_inc(TRefCount *c) {
 TH_INLINE bool tref_dec(TRefCount *c) {
   return __atomic_sub_fetch(c, 1, __ATOMIC_ACQ_REL) == 0;
 }
+
+#endif  // TAIHE_COMMON_H

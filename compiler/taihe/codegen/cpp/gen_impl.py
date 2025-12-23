@@ -227,6 +227,10 @@ class CppTemplateBaseWriterGenerator:
         return re.sub(pattern, replace_ns, cpp_type)
 
     def gen_using_namespaces(self):
+        if not self.using_namespaces:
+            self.target.writelns(
+                "// You can add using namespace statements here if needed.",
+            )
         for namespace in self.using_namespaces:
             self.target.writelns(
                 f"using namespace {namespace};",
@@ -249,7 +253,6 @@ class CppTemplatePackageGenerator(CppTemplateBaseWriterGenerator):
         with self.target:
             self.target.add_include(pkg_cpp_impl_info.header)
             self.target.add_include("stdexcept")
-            self.target.newline()
             with self.target.indented(
                 f"namespace {{",
                 f"}}  // namespace",
@@ -322,7 +325,6 @@ class CppTemplateIfaceGenerator(CppTemplateBaseWriterGenerator):
         with self.target:
             self.target.add_include(iface_cpp_impl_info.header)
             self.target.add_include("stdexcept")
-            self.target.newline()
             with self.target.indented(
                 f"namespace {{",
                 f"}}  // namespace",
@@ -405,7 +407,6 @@ class CppTemplateClassHeaderGenerator:
                     if isinstance(return_ty := method.return_ty, NonVoidType):
                         return_ty_cpp_info = TypeCppInfo.get(self.am, return_ty)
                         self.target.add_include(*return_ty_cpp_info.impl_headers)
-            self.target.newline()
             self.gen_iface_template_class()
 
     def gen_iface_template_class(self):
@@ -417,6 +418,8 @@ class CppTemplateClassHeaderGenerator:
         ):
             self.target.writelns(
                 f"public:",
+            )
+            self.target.writelns(
                 f"// You can add member variables and constructor here.",
             )
             for ancestor in iface_abi_info.ancestor_dict:
@@ -457,7 +460,6 @@ class CppTemplateClassSourceGenerator(CppTemplateBaseWriterGenerator):
         with self.target:
             self.target.add_include(iface_cpp_impl_info.template_header)
             self.target.add_include("stdexcept")
-            self.target.newline()
             self.gen_using_namespaces()
             for ancestor in iface_abi_info.ancestor_dict:
                 for method in ancestor.methods:

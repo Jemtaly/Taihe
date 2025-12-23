@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef FOO_DERIVEDMETHODCLASS_IMPL_HPP
+#define FOO_DERIVEDMETHODCLASS_IMPL_HPP
 
 #include "taihe/string.hpp"
 
@@ -24,3 +25,5 @@ public:
   taihe::string foo();
   taihe::string bar();
 };
+
+#endif  // FOO_DERIVEDMETHODCLASS_IMPL_HPP

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_ARRAY_HPP
+#define TAIHE_ARRAY_HPP
 
 #include <taihe/array.abi.h>
 #include <taihe/common.hpp>
@@ -290,3 +291,5 @@ struct std::hash<taihe::array<cpp_owner_t>> {
     return seed;
   }
 };
+
+#endif  // TAIHE_ARRAY_HPP

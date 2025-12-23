@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_CALLBACK_ABI_H
+#define TAIHE_CALLBACK_ABI_H
 
 #include <taihe/object.abi.h>
 
@@ -28,3 +29,5 @@ struct TCallback {
   void *vtbl_ptr;
   struct DataBlockHead *data_ptr;
 };
+
+#endif  // TAIHE_CALLBACK_ABI_H

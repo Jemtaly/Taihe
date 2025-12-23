@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_UNIT_HPP
+#define TAIHE_UNIT_HPP
 
 #include <taihe/unit.abi.h>
 #include <taihe/common.hpp>
@@ -54,3 +55,5 @@ struct std::hash<taihe::unit> {
     return 0;  // unit has no state, so we can return a constant hash value
   }
 };
+
+#endif  // TAIHE_UNIT_HPP

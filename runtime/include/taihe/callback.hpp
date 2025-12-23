@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_CALLBACK_HPP
+#define TAIHE_CALLBACK_HPP
 
 #include <taihe/callback.abi.h>
 #include <taihe/common.hpp>
@@ -162,3 +163,5 @@ struct std::hash<taihe::callback<Return(Params...)>> {
     return std::hash<taihe::data_holder>()(val);
   }
 };
+
+#endif  // TAIHE_CALLBACK_HPP

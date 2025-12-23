@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_UNIT_ABI_H
+#define TAIHE_UNIT_ABI_H
 
 #include <taihe/common.h>
 
@@ -22,3 +23,5 @@ struct TUnit {
   // standard and for ABI layout compatibility
   char dummy;
 };
+
+#endif  // TAIHE_UNIT_ABI_H

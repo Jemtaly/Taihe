@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_SET_HPP
+#define TAIHE_SET_HPP
 
 #include <taihe/set.abi.h>
 #include <taihe/common.hpp>
@@ -335,3 +336,5 @@ struct std::hash<taihe::set<K>> {
 
 #undef SET_GROWTH_FACTOR
 #undef SET_DEFAULT_CAPACITY
+
+#endif  // TAIHE_SET_HPP

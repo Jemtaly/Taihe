@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_STRING_ABI_H
+#define TAIHE_STRING_ABI_H
 
 #include <taihe/common.h>
 
@@ -150,3 +151,5 @@ TH_EXPORT struct TString tstr_concat(size_t count,
 //   the memory, so it should not be freed.
 TH_EXPORT struct TString tstr_substr(struct TString tstr, size_t pos,
                                      size_t len);
+
+#endif  // TAIHE_STRING_ABI_H

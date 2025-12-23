@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_OPTIONAL_ABI_H
+#define TAIHE_OPTIONAL_ABI_H
 
 #include <taihe/common.h>
 
@@ -25,3 +26,5 @@
 struct TOptional {
   void const *m_data;
 };
+
+#endif  // TAIHE_OPTIONAL_ABI_H

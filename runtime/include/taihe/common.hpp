@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef TAIHE_COMMON_HPP
+#define TAIHE_COMMON_HPP
 
 #include <taihe/common.h>
 
@@ -110,3 +111,5 @@ struct static_tag_t {};
 template<auto tag>
 constexpr static_tag_t<tag> static_tag;
 }  // namespace taihe
+
+#endif  // TAIHE_COMMON_HPP
