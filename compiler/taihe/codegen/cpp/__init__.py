@@ -42,7 +42,7 @@ class CppCommonHeadersBackendConfig(BackendConfig):
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                CppHeadersGenerator(om, am).generate(pg)
+                CppHeadersGenerator(am, pg).generate(om)
 
         return CppCommonHeadersBackendImpl(instance)
 
@@ -71,8 +71,8 @@ class CppAuthorBackendConfig(BackendConfig):
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                CppImplSourcesGenerator(om, am).generate(pg)
-                CppImplHeadersGenerator(om, am).generate(pg)
+                CppImplSourcesGenerator(am, pg).generate(om)
+                CppImplHeadersGenerator(am, pg).generate(om)
 
         return CppImplBackendImpl(instance)
 
@@ -97,6 +97,6 @@ class CppUserHeadersBackendConfig(BackendConfig):
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                CppUserHeadersGenerator(om, am).generate(pg)
+                CppUserHeadersGenerator(am, pg).generate(om)
 
         return CppUserHeadersBackendImpl(instance)

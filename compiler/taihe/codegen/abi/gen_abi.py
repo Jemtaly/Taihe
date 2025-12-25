@@ -38,356 +38,338 @@ from taihe.utils.outputs import FileKind, OutputManager
 
 
 class AbiHeadersGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pg: PackageGroup):
         self.am = am
+        self.pg = pg
 
-    def generate(self, pg: PackageGroup):
-        for pkg in pg.all_packages:
+    def generate(self, om: OutputManager):
+        for pkg in self.pg.all_packages:
             for struct in pkg.structs:
-                AbiStructDeclGenerator(self.om, self.am, struct).gen_struct_decl_file()
-                AbiStructDefnGenerator(self.om, self.am, struct).gen_struct_defn_file()
-                AbiStructImplGenerator(self.om, self.am, struct).gen_struct_impl_file()
+                AbiStructDeclGenerator(self.am, struct).gen_struct_decl_file(om)
+                AbiStructDefnGenerator(self.am, struct).gen_struct_defn_file(om)
+                AbiStructImplGenerator(self.am, struct).gen_struct_impl_file(om)
             for union in pkg.unions:
-                AbiUnionDeclGenerator(self.om, self.am, union).gen_union_decl_file()
-                AbiUnionDefnGenerator(self.om, self.am, union).gen_union_defn_file()
-                AbiUnionImplGenerator(self.om, self.am, union).gen_union_impl_file()
+                AbiUnionDeclGenerator(self.am, union).gen_union_decl_file(om)
+                AbiUnionDefnGenerator(self.am, union).gen_union_defn_file(om)
+                AbiUnionImplGenerator(self.am, union).gen_union_impl_file(om)
             for iface in pkg.interfaces:
-                AbiIfaceDeclGenerator(self.om, self.am, iface).gen_iface_decl_file()
-                AbiIfaceDefnGenerator(self.om, self.am, iface).gen_iface_defn_file()
-                AbiIfaceImplGenerator(self.om, self.am, iface).gen_iface_impl_file()
-            AbiPackageHeaderGenerator(self.om, self.am, pkg).gen_package_file()
+                AbiIfaceDeclGenerator(self.am, iface).gen_iface_decl_file(om)
+                AbiIfaceDefnGenerator(self.am, iface).gen_iface_defn_file(om)
+                AbiIfaceImplGenerator(self.am, iface).gen_iface_impl_file(om)
+            AbiPackageHeaderGenerator(self.am, pkg).gen_package_file(om)
 
 
 class AbiStructDeclGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, struct: StructDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, struct: StructDecl):
         self.am = am
         self.struct = struct
+
+    def gen_struct_decl_file(self, om: OutputManager):
         struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{struct_abi_info.decl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_struct_decl_file(self):
-        struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        with self.target:
-            self.target.add_include("taihe/common.h")
-            self.target.writelns(
+        with target:
+            target.add_include("taihe/common.h")
+            target.writelns(
                 f"struct {struct_abi_info.mangled_name};",
             )
 
 
 class AbiStructDefnGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, struct: StructDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, struct: StructDecl):
         self.am = am
         self.struct = struct
+
+    def gen_struct_defn_file(self, om: OutputManager):
         struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{struct_abi_info.defn_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_struct_defn_file(self):
-        struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        with self.target:
-            self.target.add_include(struct_abi_info.decl_header)
+        with target:
+            target.add_include(struct_abi_info.decl_header)
             for field in self.struct.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.add_include(*field_ty_abi_info.defn_headers)
-            self.gen_struct_defn()
+                target.add_include(*field_ty_abi_info.defn_headers)
+            self.gen_struct_defn(target)
 
-    def gen_struct_defn(self):
+    def gen_struct_defn(self, target: CHeaderWriter):
         struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        with self.target.indented(
+        with target.indented(
             f"struct {struct_abi_info.mangled_name} {{",
             f"}};",
         ):
             for field in self.struct.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.writelns(
+                target.writelns(
                     f"{field_ty_abi_info.as_owner} {field.name};",
                 )
 
 
 class AbiStructImplGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, struct: StructDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, struct: StructDecl):
         self.am = am
         self.struct = struct
+
+    def gen_struct_impl_file(self, om: OutputManager):
         struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{struct_abi_info.impl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_struct_impl_file(self):
-        struct_abi_info = StructAbiInfo.get(self.am, self.struct)
-        with self.target:
-            self.target.add_include(struct_abi_info.defn_header)
+        with target:
+            target.add_include(struct_abi_info.defn_header)
             for field in self.struct.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.add_include(*field_ty_abi_info.impl_headers)
+                target.add_include(*field_ty_abi_info.impl_headers)
 
 
 class AbiUnionDeclGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, union: UnionDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, union: UnionDecl):
         self.am = am
         self.union = union
+
+    def gen_union_decl_file(self, om: OutputManager):
         union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{union_abi_info.decl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_union_decl_file(self):
-        union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        with self.target:
-            self.target.add_include("taihe/common.h")
-            self.target.writelns(
+        with target:
+            target.add_include("taihe/common.h")
+            target.writelns(
                 f"struct {union_abi_info.mangled_name};",
             )
 
 
 class AbiUnionDefnGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, union: UnionDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, union: UnionDecl):
         self.am = am
         self.union = union
+
+    def gen_union_defn_file(self, om: OutputManager):
         union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{union_abi_info.defn_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_union_defn_file(self):
-        union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        with self.target:
-            self.target.add_include(union_abi_info.decl_header)
-            self.gen_union_defn()
+        with target:
+            target.add_include(union_abi_info.decl_header)
             for field in self.union.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.add_include(*field_ty_abi_info.defn_headers)
+                target.add_include(*field_ty_abi_info.defn_headers)
+            self.gen_union_defn(target)
 
-    def gen_union_defn(self):
+    def gen_union_defn(self, target: CHeaderWriter):
         union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        with self.target.indented(
+        with target.indented(
             f"union {union_abi_info.union_name} {{",
             f"}};",
         ):
             for field in self.union.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.writelns(
+                target.writelns(
                     f"{field_ty_abi_info.as_owner} {field.name};",
                 )
-        with self.target.indented(
+        with target.indented(
             f"struct {union_abi_info.mangled_name} {{",
             f"}};",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"{union_abi_info.tag_type} m_tag;",
                 f"union {union_abi_info.union_name} m_data;",
             )
 
 
 class AbiUnionImplGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, union: UnionDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, union: UnionDecl):
         self.am = am
         self.union = union
+
+    def gen_union_impl_file(self, om: OutputManager):
         union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{union_abi_info.impl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_union_impl_file(self):
-        union_abi_info = UnionAbiInfo.get(self.am, self.union)
-        with self.target:
-            self.target.add_include(union_abi_info.defn_header)
+        with target:
+            target.add_include(union_abi_info.defn_header)
             for field in self.union.fields:
                 field_ty_abi_info = TypeAbiInfo.get(self.am, field.ty)
-                self.target.add_include(*field_ty_abi_info.impl_headers)
+                target.add_include(*field_ty_abi_info.impl_headers)
 
 
 class AbiIfaceDeclGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, iface: IfaceDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, iface: IfaceDecl):
         self.am = am
         self.iface = iface
+
+    def gen_iface_decl_file(self, om: OutputManager):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{iface_abi_info.decl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_iface_decl_file(self):
-        iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target:
-            self.target.add_include("taihe/object.abi.h")
-            self.target.writelns(
+        with target:
+            target.add_include("taihe/object.abi.h")
+            target.writelns(
                 f"struct {iface_abi_info.mangled_name};",
             )
 
 
 class AbiIfaceDefnGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, iface: IfaceDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, iface: IfaceDecl):
         self.am = am
         self.iface = iface
+
+    def gen_iface_defn_file(self, om: OutputManager):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{iface_abi_info.defn_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_iface_defn_file(self):
-        iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target:
-            self.target.add_include(iface_abi_info.decl_header)
+        with target:
+            target.add_include(iface_abi_info.decl_header)
             for ancestor, info in iface_abi_info.ancestor_dict.items():
                 if ancestor is self.iface:
                     continue
                 ancestor_abi_info = IfaceAbiInfo.get(self.am, ancestor)
-                self.target.add_include(ancestor_abi_info.defn_header)
-            self.gen_iface_vtable()
-            self.gen_iface_defn()
-            self.gen_iface_static_cast()
-            self.gen_iface_dynamic_cast()
+                target.add_include(ancestor_abi_info.defn_header)
+            self.gen_iface_vtable(target)
+            self.gen_iface_defn(target)
+            self.gen_iface_static_cast(target)
+            self.gen_iface_dynamic_cast(target)
 
-    def gen_iface_vtable(self):
+    def gen_iface_vtable(self, target: CHeaderWriter):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        self.target.writelns(
+        target.writelns(
             f"struct {iface_abi_info.ftable};",
         )
-        with self.target.indented(
+        with target.indented(
             f"struct {iface_abi_info.vtable} {{",
             f"}};",
         ):
             for ancestor_item_info in iface_abi_info.ancestor_list:
                 ancestor_abi_info = IfaceAbiInfo.get(self.am, ancestor_item_info.iface)
-                self.target.writelns(
+                target.writelns(
                     f"struct {ancestor_abi_info.ftable} const* {ancestor_item_info.ftbl_ptr};",
                 )
 
-    def gen_iface_defn(self):
+    def gen_iface_defn(self, target: CHeaderWriter):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        self.target.writelns(
+        target.writelns(
             f"TH_EXPORT void const* const {iface_abi_info.iid};",
         )
-        with self.target.indented(
+        with target.indented(
             f"struct {iface_abi_info.mangled_name} {{",
             f"}};",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"struct {iface_abi_info.vtable} const* vtbl_ptr;",
                 f"struct DataBlockHead* data_ptr;",
             )
 
-    def gen_iface_static_cast(self):
+    def gen_iface_static_cast(self, target: CHeaderWriter):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
         for ancestor, info in iface_abi_info.ancestor_dict.items():
             if ancestor is self.iface:
                 continue
             ancestor_abi_info = IfaceAbiInfo.get(self.am, ancestor)
-            with self.target.indented(
+            with target.indented(
                 f"TH_INLINE struct {ancestor_abi_info.vtable} const* {info.static_cast}(struct {iface_abi_info.vtable} const* vtbl_ptr) {{",
                 f"}}",
             ):
-                self.target.writelns(
+                target.writelns(
                     f"return vtbl_ptr ? (struct {ancestor_abi_info.vtable} const*)((void* const*)vtbl_ptr + {info.offset}) : NULL;",
                 )
 
-    def gen_iface_dynamic_cast(self):
+    def gen_iface_dynamic_cast(self, target: CHeaderWriter):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target.indented(
+        with target.indented(
             f"TH_INLINE struct {iface_abi_info.vtable} const* {iface_abi_info.dynamic_cast}(struct TypeInfo const* rtti_ptr) {{",
             f"}}",
         ):
-            with self.target.indented(
+            with target.indented(
                 f"for (size_t i = 0; i < rtti_ptr->len; i++) {{",
                 f"}}",
             ):
-                with self.target.indented(
+                with target.indented(
                     f"if (rtti_ptr->idmap[i].id == {iface_abi_info.iid}) {{",
                     f"}}",
                 ):
-                    self.target.writelns(
+                    target.writelns(
                         f"return (struct {iface_abi_info.vtable} const*)rtti_ptr->idmap[i].vtbl_ptr;",
                     )
-            self.target.writelns(
+            target.writelns(
                 f"return NULL;",
             )
 
 
 class AbiIfaceImplGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, iface: IfaceDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, iface: IfaceDecl):
         self.am = am
         self.iface = iface
+
+    def gen_iface_impl_file(self, om: OutputManager):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{iface_abi_info.impl_header}",
             FileKind.C_HEADER,
         )
-
-    def gen_iface_impl_file(self):
-        iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target:
-            self.target.add_include(iface_abi_info.defn_header)
+        with target:
+            target.add_include(iface_abi_info.defn_header)
             for method in self.iface.methods:
                 for param in method.params:
                     param_ty_abi_info = TypeAbiInfo.get(self.am, param.ty)
-                    self.target.add_include(*param_ty_abi_info.defn_headers)
+                    target.add_include(*param_ty_abi_info.defn_headers)
                 if isinstance(return_ty := method.return_ty, NonVoidType):
                     param_ty_abi_info = TypeAbiInfo.get(self.am, return_ty)
-                    self.target.add_include(*param_ty_abi_info.defn_headers)
-            self.gen_iface_ftable()
+                    target.add_include(*param_ty_abi_info.defn_headers)
+            self.gen_iface_ftable(target)
             for method in self.iface.methods:
-                self.gen_method(method)
-                self.gen_method_call(method)
+                self.gen_method(target, method)
+                self.gen_method_call(target, method)
             for ancestor, info in iface_abi_info.ancestor_dict.items():
                 if ancestor is self.iface:
                     continue
                 ancestor_abi_info = IfaceAbiInfo.get(self.am, ancestor)
-                self.target.add_include(ancestor_abi_info.impl_header)
+                target.add_include(ancestor_abi_info.impl_header)
             for method in self.iface.methods:
                 for param in method.params:
                     return_ty_abi_info = TypeAbiInfo.get(self.am, param.ty)
-                    self.target.add_include(*return_ty_abi_info.impl_headers)
+                    target.add_include(*return_ty_abi_info.impl_headers)
                 if isinstance(return_ty := method.return_ty, NonVoidType):
                     return_ty_abi_info = TypeAbiInfo.get(self.am, return_ty)
-                    self.target.add_include(*return_ty_abi_info.impl_headers)
+                    target.add_include(*return_ty_abi_info.impl_headers)
 
-    def gen_iface_ftable(self):
+    def gen_iface_ftable(self, target: CHeaderWriter):
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target.indented(
+        with target.indented(
             f"struct {iface_abi_info.ftable} {{",
             f"}};",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"uint64_t version;",
             )
-            with self.target.indented(
+            with target.indented(
                 f"struct {{",
                 f"}} methods;",
             ):
                 for method in self.iface.methods:
-                    self.gen_iface_ftable_method(method)
+                    self.gen_iface_ftable_method(target, method)
 
-    def gen_iface_ftable_method(self, method: IfaceMethodDecl):
+    def gen_iface_ftable_method(self, target: CHeaderWriter, method: IfaceMethodDecl):
         params = []
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
         params.append(f"{iface_abi_info.as_param} tobj")
@@ -400,11 +382,11 @@ class AbiIfaceImplGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        self.target.writelns(
+        target.writelns(
             f"{return_ty_abi_name} (*{method.name})({params_str});",
         )
 
-    def gen_method_call(self, method: IfaceMethodDecl):
+    def gen_method_call(self, target: CHeaderWriter, method: IfaceMethodDecl):
         method_abi_info = IfaceMethodAbiInfo.get(self.am, method)
         params = []
         args = []
@@ -422,27 +404,27 @@ class AbiIfaceImplGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        with self.target.indented(
+        with target.indented(
             f"TH_INLINE {return_ty_abi_name} {method_abi_info.wrap_name}({params_str}) {{",
             f"}}",
         ):
             info = iface_abi_info.ancestor_dict[self.iface]
-            with self.target.indented(
+            with target.indented(
                 f"if (0 >= {method_abi_info.min_version} || tobj.vtbl_ptr->{info.ftbl_ptr}->version >= {method_abi_info.min_version}) {{",
                 f"}}",
             ):
-                self.target.writelns(
+                target.writelns(
                     f"return tobj.vtbl_ptr->{info.ftbl_ptr}->methods.{method.name}({args_str});",
                 )
-            with self.target.indented(
+            with target.indented(
                 f"else {{",
                 f"}}",
             ):
-                self.target.writelns(
+                target.writelns(
                     f"return {method_abi_info.impl_name}({args_str});",
                 )
 
-    def gen_method(self, method: IfaceMethodDecl):
+    def gen_method(self, target: CHeaderWriter, method: IfaceMethodDecl):
         method_abi_info = IfaceMethodAbiInfo.get(self.am, method)
         params = []
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
@@ -456,45 +438,44 @@ class AbiIfaceImplGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        self.target.writelns(
+        target.writelns(
             f"TH_EXPORT {return_ty_abi_name} {method_abi_info.impl_name}({params_str});",
         )
 
 
 class AbiPackageHeaderGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, pkg: PackageDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pkg: PackageDecl):
         self.am = am
         self.pkg = pkg
+
+    def gen_package_file(self, om: OutputManager):
         pkg_abi_info = PackageAbiInfo.get(self.am, self.pkg)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{pkg_abi_info.header}",
             FileKind.C_HEADER,
         )
-
-    def gen_package_file(self):
-        with self.target:
+        with target:
             for struct in self.pkg.structs:
                 struct_abi_info = StructAbiInfo.get(self.am, struct)
-                self.target.add_include(struct_abi_info.impl_header)
+                target.add_include(struct_abi_info.impl_header)
             for union in self.pkg.unions:
                 union_abi_info = UnionAbiInfo.get(self.am, union)
-                self.target.add_include(union_abi_info.impl_header)
+                target.add_include(union_abi_info.impl_header)
             for iface in self.pkg.interfaces:
                 iface_abi_info = IfaceAbiInfo.get(self.am, iface)
-                self.target.add_include(iface_abi_info.impl_header)
-            self.target.add_include("taihe/common.h")
+                target.add_include(iface_abi_info.impl_header)
+            target.add_include("taihe/common.h")
             for func in self.pkg.functions:
                 for param in func.params:
                     param_ty_abi_info = TypeAbiInfo.get(self.am, param.ty)
-                    self.target.add_include(*param_ty_abi_info.impl_headers)
+                    target.add_include(*param_ty_abi_info.impl_headers)
                 if isinstance(return_ty := func.return_ty, NonVoidType):
                     return_ty_abi_info = TypeAbiInfo.get(self.am, return_ty)
-                    self.target.add_include(*return_ty_abi_info.impl_headers)
-                self.gen_func(func)
+                    target.add_include(*return_ty_abi_info.impl_headers)
+                self.gen_func(target, func)
 
-    def gen_func(self, func: GlobFuncDecl):
+    def gen_func(self, target: CHeaderWriter, func: GlobFuncDecl):
         func_abi_info = GlobFuncAbiInfo.get(self.am, func)
         params = []
         for param in func.params:
@@ -506,42 +487,41 @@ class AbiPackageHeaderGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        self.target.writelns(
+        target.writelns(
             f"TH_EXPORT {return_ty_abi_name} {func_abi_info.impl_name}({params_str});",
         )
 
 
 class AbiSourcesGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pg: PackageGroup):
         self.am = am
+        self.pg = pg
 
-    def generate(self, pg: PackageGroup):
-        for pkg in pg.all_packages:
-            AbiPackageSourceGenerator(self.om, self.am, pkg).gen_package_file()
+    def generate(self, om: OutputManager):
+        for pkg in self.pg.all_packages:
+            AbiPackageSourceGenerator(self.am, pkg).gen_package_file(om)
 
 
 class AbiPackageSourceGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, pkg: PackageDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pkg: PackageDecl):
         self.am = am
         self.pkg = pkg
+
+    def gen_package_file(self, om: OutputManager):
         pkg_abi_info = PackageAbiInfo.get(self.am, self.pkg)
-        self.target = CSourceWriter(
-            self.om,
+        target = CSourceWriter(
+            om,
             f"src/{pkg_abi_info.source}",
             FileKind.C_SOURCE,
         )
-
-    def gen_package_file(self):
-        with self.target:
+        with target:
             for iface in self.pkg.interfaces:
                 iface_abi_info = IfaceAbiInfo.get(self.am, iface)
-                self.target.add_include(iface_abi_info.defn_header)
-                self.gen_iface_iid(iface)
+                target.add_include(iface_abi_info.defn_header)
+                self.gen_iface_iid(target, iface)
 
-    def gen_iface_iid(self, iface: IfaceDecl):
+    def gen_iface_iid(self, target: CSourceWriter, iface: IfaceDecl):
         iface_abi_info = IfaceAbiInfo.get(self.am, iface)
-        self.target.writelns(
+        target.writelns(
             f"void const* const {iface_abi_info.iid} = &{iface_abi_info.iid};",
         )

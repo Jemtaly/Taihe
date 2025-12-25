@@ -59,7 +59,7 @@ class AniBridgeBackendConfig(BackendConfig):
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                AniCodeGenerator(om, am).generate(pg)
-                StsCodeGenerator(om, am).generate(pg)
+                AniCodeGenerator(am, pg).generate(om)
+                StsCodeGenerator(am, pg).generate(om)
 
         return AniBridgeBackendImpl(instance)

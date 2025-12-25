@@ -37,7 +37,7 @@ class PrettyPrintBackendConfig(BackendConfig):
         return PrettyPrintBackendConfig()
 
     def construct(self, instance: "CompilerInstance"):
-        from taihe.semantics.format import TaiheGenerator
+        from taihe.semantics.format import generate_formatted_idl
 
         class PrettyPrintBackendImpl(Backend):
             def __init__(self, ci: "CompilerInstance", config: BackendConfig):
@@ -47,11 +47,11 @@ class PrettyPrintBackendConfig(BackendConfig):
                 self._om = self._config.output_config.construct()
 
             def generate(self):
-                generator = TaiheGenerator(
+                generate_formatted_idl(
+                    self._ci.package_group,
                     self._om,
                     show_resolved=self._config.show_resolved,
                     colorize=self._config.colorize,
                 )
-                generator.generate(self._ci.package_group)
 
         return PrettyPrintBackendImpl(instance, self)

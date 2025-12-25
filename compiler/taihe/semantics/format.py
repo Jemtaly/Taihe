@@ -357,28 +357,22 @@ class TaihePrinter(RecursiveDeclVisitor):
             d.accept(self)
 
 
-class TaiheGenerator:
-    def __init__(
-        self,
-        om: OutputManager,
-        *,
-        show_resolved: bool = False,
-        colorize: bool = False,
-    ):
-        self.om = om
-        self.show_resolved = show_resolved
-        self.colorize = colorize
-
-    def generate(self, g: "PackageGroup"):
-        for p in g.all_packages:
-            fd = FileDescriptor(
-                relative_path=f"idl/{p.name}{IDL_FILE_DEFAULT_EXT}",
-                kind=FileKind.TAIHE,
+def generate_formatted_idl(
+    pg: "PackageGroup",
+    om: OutputManager,
+    *,
+    show_resolved: bool = False,
+    colorize: bool = False,
+):
+    for p in pg.all_packages:
+        fd = FileDescriptor(
+            relative_path=f"idl/{p.name}{IDL_FILE_DEFAULT_EXT}",
+            kind=FileKind.TAIHE,
+        )
+        with om.open(fd) as buffer:
+            printer = TaihePrinter(
+                buffer,
+                show_resolved=show_resolved,
+                colorize=colorize,
             )
-            with self.om.open(fd) as buffer:
-                printer = TaihePrinter(
-                    buffer,
-                    show_resolved=self.show_resolved,
-                    colorize=self.colorize,
-                )
-                p.accept(printer)
+            p.accept(printer)

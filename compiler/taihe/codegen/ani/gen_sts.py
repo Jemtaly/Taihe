@@ -178,41 +178,40 @@ class OnOffRegister:
 
 
 class StsCodeGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pg: PackageGroup):
         self.am = am
+        self.pg = pg
 
-    def generate(self, pg: PackageGroup):
-        pg_ani_info = PackageGroupAniInfo.get(self.am, pg)
+    def generate(self, om: OutputManager):
+        pg_ani_info = PackageGroupAniInfo.get(self.am, self.pg)
         for _, mod in pg_ani_info.mods.items():
-            module_generator = StsModuleGenerator(self.om, self.am, mod)
-            module_generator.gen_module_file()
+            module_generator = StsModuleGenerator(self.am, mod)
+            module_generator.gen_module_file(om)
 
 
 class StsModuleGenerator:
     def __init__(
         self,
-        om: OutputManager,
         am: AnalysisManager,
         mod: ArkTsModule,
     ):
         self.am = am
-        self.target = StsWriter(om, f"{mod.module_name}.ets", FileKind.ETS)
         self.mod = mod
 
-    def gen_module_file(self):
-        with self.target:
-            namespace_generator = StsNamespaceGenerator(self.target, self.am, self.mod)
-            namespace_generator.gen_namespace()
-            self.gen_utils()
+    def gen_module_file(self, om: OutputManager):
+        target = StsWriter(om, f"{self.mod.module_name}.ets", FileKind.ETS)
+        with target:
+            namespace_generator = StsNamespaceGenerator(self.am, self.mod)
+            namespace_generator.gen_namespace(target)
+            self.gen_utils(target)
 
-    def gen_utils(self):
-        self.target.add_import_decl("@ohos.base", "BusinessError", self.mod.BEType)
-        self.target.writelns(
+    def gen_utils(self, target: StsWriter):
+        target.add_import_decl("@ohos.base", "BusinessError", self.mod.BEType)
+        target.writelns(
             f"type {self.mod.ACType}<T, E = void> = (error: {self.mod.BEType}<E> | null, data: T | undefined) => void;",
         )
 
-        self.target.writelns(
+        target.writelns(
             f"function {self.mod.arrbuf_to_bigint}(arr: ArrayBuffer): BigInt {{",
             f"    let res: BigInt = 0n;",
             f"    for (let i: int = 0; i < arr.getByteLength(); i++) {{",
@@ -225,7 +224,7 @@ class StsModuleGenerator:
             f"    return res;",
             f"}}",
         )
-        self.target.writelns(
+        target.writelns(
             f"function {self.mod.bigint_to_arrbuf}(val: BigInt, blk: int): ArrayBuffer {{",
             f"    let n_7 = BigInt(blk * 8 - 1);",
             f"    let n_8 = BigInt(blk * 8);",
@@ -249,7 +248,7 @@ class StsModuleGenerator:
             f"}}",
         )
 
-        self.target.writelns(
+        target.writelns(
             f"native function {self.mod.native_invoke}(",
             f"    castPtr: long, funcPtr: long, dataPtr: long,",
             f"    arg_0?: Object, arg_1?: Object, arg_2?: Object, arg_3?: Object,",
@@ -258,7 +257,7 @@ class StsModuleGenerator:
             f"    arg_c?: Object, arg_d?: Object, arg_e?: Object, arg_f?: Object,",
             f"): Object | null | undefined;",
         )
-        self.target.writelns(
+        target.writelns(
             f"function {self.mod.make_callback}(castPtr: long, funcPtr: long, dataPtr: long) {{",
             f"    let callback = (",
             f"        arg_0?: Object, arg_1?: Object, arg_2?: Object, arg_3?: Object,",
@@ -279,7 +278,7 @@ class StsModuleGenerator:
             f"}}",
         )
 
-        self.target.writelns(
+        target.writelns(
             f"native function {self.mod.obj_drop}(dataPtr: long): void;",
             f"native function {self.mod.obj_dup}(dataPtr: long): long;",
             f"const {self.mod.registry} = new FinalizationRegistry<long>({self.mod.obj_drop});",
@@ -289,50 +288,43 @@ class StsModuleGenerator:
 class StsNamespaceGenerator:
     def __init__(
         self,
-        target: StsWriter,
         am: AnalysisManager,
         ns: ArkTsModuleOrNamespace,
     ):
         self.am = am
-        self.target = target
         self.ns = ns
 
-    def gen_namespace(self):
+    def gen_namespace(self, target: StsWriter):
         for head in self.ns.injected_heads:
-            self.target.write_block(head)
+            target.write_block(head)
         for code in self.ns.injected_codes:
-            self.target.write_block(code)
+            target.write_block(code)
         for pkg in self.ns.packages:
-            package_generator = StsPackageGenerator(self.am, self.target, pkg)
-            package_generator.gen_package()
+            package_generator = StsPackageGenerator(self.am, pkg)
+            package_generator.gen_package(target)
         for child_ns_name, child_ns in self.ns.children.items():
             sts_decl = f"namespace {child_ns_name}"
             if child_ns.is_default:
                 sts_decl = f"export default {sts_decl}"
             else:
                 sts_decl = f"export {sts_decl}"
-            with self.target.indented(
+            with target.indented(
                 f"{sts_decl} {{",
                 f"}}",
             ):
-                child_ns_generator = StsNamespaceGenerator(
-                    self.target,
-                    self.am,
-                    child_ns,
-                )
-                child_ns_generator.gen_namespace()
+                child_ns_generator = StsNamespaceGenerator(self.am, child_ns)
+                child_ns_generator.gen_namespace(target)
 
 
 class StsPackageGenerator:
-    def __init__(self, am: AnalysisManager, target: StsWriter, pkg: PackageDecl):
+    def __init__(self, am: AnalysisManager, pkg: PackageDecl):
         self.am = am
-        self.target = target
         self.pkg = pkg
 
-    def gen_package(self):
+    def gen_package(self, target: StsWriter):
         for func in self.pkg.functions:
-            native_func_generator = StsNativeFuncGenerator(self.am, self.target, func)
-            native_func_generator.gen_native_func()
+            native_func_generator = StsNativeFuncGenerator(self.am, func)
+            native_func_generator.gen_native_func(target)
 
         ctors_map: dict[str, list[GlobFuncDecl]] = {}
         statics_map: dict[str, list[GlobFuncDecl]] = {}
@@ -352,7 +344,6 @@ class StsPackageGenerator:
         for func in glob_funcs:
             any_func_generator = StsAnyFuncGenerator(
                 self.am,
-                self.target,
                 func,
                 func_kind,
                 "export default "
@@ -361,128 +352,117 @@ class StsPackageGenerator:
                 func_overload_register,
                 func_on_off_register,
             )
-            any_func_generator.gen_any_func()
+            any_func_generator.gen_any_func(target)
         for name, info in func_overload_register.infos.items():
             overload_func_generator = StsOverloadFuncGenerator(
                 self.am,
-                self.target,
                 name,
                 info,
                 func_kind,
                 "export ",
             )
-            overload_func_generator.gen_overload_func()
+            overload_func_generator.gen_overload_func(target)
         for name, info in func_on_off_register.infos.items():
             on_off_func_generator = StsOnOffFuncGenerator(
                 self.am,
-                self.target,
                 name,
                 info,
                 func_kind,
                 "export ",
             )
-            on_off_func_generator.gen_full_on_off_func()
+            on_off_func_generator.gen_full_on_off_func(target)
 
         for enum in self.pkg.enums:
-            enum_generator = StsEnumGenerator(self.am, self.target, enum)
-            enum_generator.gen_enum()
+            enum_generator = StsEnumGenerator(self.am, enum)
+            enum_generator.gen_enum(target)
         for union in self.pkg.unions:
-            union_generator = StsUnionGenerator(self.am, self.target, union)
-            union_generator.gen_union()
+            union_generator = StsUnionGenerator(self.am, union)
+            union_generator.gen_union(target)
         for struct in self.pkg.structs:
             struct_generator = StsStructGenerator(
                 self.am,
-                self.target,
                 struct,
                 statics_map.get(struct.name, []),
                 ctors_map.get(struct.name, []),
             )
-            struct_generator.gen_struct_interface()
-            struct_generator.gen_struct_class()
-            struct_generator.gen_struct_ctor()
+            struct_generator.gen_struct_interface(target)
+            struct_generator.gen_struct_class(target)
+            struct_generator.gen_struct_ctor(target)
         for iface in self.pkg.interfaces:
             iface_generator = StsIfaceGenerator(
                 self.am,
-                self.target,
                 iface,
                 statics_map.get(iface.name, []),
                 ctors_map.get(iface.name, []),
             )
-            iface_generator.gen_iface_interface()
-            iface_generator.gen_iface_class()
-            iface_generator.gen_iface_ctor()
+            iface_generator.gen_iface_interface(target)
+            iface_generator.gen_iface_class(target)
+            iface_generator.gen_iface_ctor(target)
 
         for func in glob_funcs:
             reverse_func_generator = StsReverseFuncGenerator(
                 self.am,
-                self.target,
                 func,
                 func_kind,
             )
-            reverse_func_generator.gen_reverse_func()
+            reverse_func_generator.gen_reverse_func(target)
         for struct in self.pkg.structs:
             struct_ani_info = StructAniInfo.get(self.am, struct)
             ctor_kind = CtorKind(struct_ani_info.sts_impl_name)
             for ctor in ctors_map.get(struct.name, []):
                 reverse_func_generator = StsReverseFuncGenerator(
                     self.am,
-                    self.target,
                     ctor,
                     ctor_kind,
                 )
-                reverse_func_generator.gen_reverse_func()
+                reverse_func_generator.gen_reverse_func(target)
             func_kind = StaticKind(struct_ani_info.sts_impl_name)
             for func in statics_map.get(struct.name, []):
                 reverse_func_generator = StsReverseFuncGenerator(
                     self.am,
-                    self.target,
                     func,
                     func_kind,
                 )
-                reverse_func_generator.gen_reverse_func()
+                reverse_func_generator.gen_reverse_func(target)
         for iface in self.pkg.interfaces:
             iface_ani_info = IfaceAniInfo.get(self.am, iface)
             ctor_kind = CtorKind(iface_ani_info.sts_impl_name)
             for ctor in ctors_map.get(iface.name, []):
                 reverse_func_generator = StsReverseFuncGenerator(
                     self.am,
-                    self.target,
                     ctor,
                     ctor_kind,
                 )
-                reverse_func_generator.gen_reverse_func()
+                reverse_func_generator.gen_reverse_func(target)
             func_kind = StaticKind(iface_ani_info.sts_impl_name)
             for func in statics_map.get(iface.name, []):
                 reverse_func_generator = StsReverseFuncGenerator(
                     self.am,
-                    self.target,
                     func,
                     func_kind,
                 )
-                reverse_func_generator.gen_reverse_func()
+                reverse_func_generator.gen_reverse_func(target)
             meth_kind = InterfaceKind(iface_ani_info.sts_type_name)
             for method in iface.methods:
                 reverse_func_generator = StsReverseFuncGenerator(
                     self.am,
-                    self.target,
                     method,
                     meth_kind,
                 )
-                reverse_func_generator.gen_reverse_func()
+                reverse_func_generator.gen_reverse_func(target)
 
 
 class StsEnumGenerator:
-    def __init__(self, am: AnalysisManager, target: StsWriter, enum: EnumDecl):
+    def __init__(self, am: AnalysisManager, enum: EnumDecl):
         self.am = am
-        self.target = target
         self.enum = enum
 
-    def gen_enum(self):
+    def gen_enum(self, target: StsWriter):
         if ConstAttr.get(self.enum) is not None:
             enum_ty_ani_info = TypeAniInfo.get(self.am, self.enum.ty)
             for item in self.enum.items:
-                self.target.writelns(
-                    f"export const {item.name}: {enum_ty_ani_info.sts_type_in(self.target)} = {dumps(item.value)};",
+                target.writelns(
+                    f"export const {item.name}: {enum_ty_ani_info.sts_type_in(target)} = {dumps(item.value)};",
                 )
             return
 
@@ -494,23 +474,22 @@ class StsEnumGenerator:
         else:
             sts_decl = f"export {sts_decl}"
 
-        with self.target.indented(
+        with target.indented(
             f"{sts_decl} {{",
             f"}}",
         ):
             for item in self.enum.items:
-                self.target.writelns(
+                target.writelns(
                     f"{item.name} = {dumps(item.value)},",
                 )
 
 
 class StsUnionGenerator:
-    def __init__(self, am: AnalysisManager, target: StsWriter, union: UnionDecl):
+    def __init__(self, am: AnalysisManager, union: UnionDecl):
         self.am = am
-        self.target = target
         self.union = union
 
-    def gen_union(self):
+    def gen_union(self, target: StsWriter):
         union_ani_info = UnionAniInfo.get(self.am, self.union)
 
         sts_decl = f"type {union_ani_info.sts_type_name}"
@@ -522,9 +501,9 @@ class StsUnionGenerator:
         sts_types = []
         for field in self.union.fields:
             field_ty_ani_info = TypeAniInfo.get(self.am, field.ty)
-            sts_types.append(field_ty_ani_info.sts_type_in(self.target))
+            sts_types.append(field_ty_ani_info.sts_type_in(target))
         sts_types_str = " | ".join(sts_types)
-        self.target.writelns(
+        target.writelns(
             f"{sts_decl} = {sts_types_str};",
         )
 
@@ -533,18 +512,16 @@ class StsStructGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         struct: StructDecl,
         funcs: list[GlobFuncDecl],
         ctors: list[GlobFuncDecl],
     ):
         self.am = am
-        self.target = target
         self.struct = struct
         self.funcs = funcs
         self.ctors = ctors
 
-    def gen_struct_interface(self):
+    def gen_struct_interface(self, target: StsWriter):
         struct_ani_info = StructAniInfo.get(self.am, self.struct)
         if struct_ani_info.is_class():
             # no interface
@@ -556,7 +533,7 @@ class StsStructGenerator:
             for extend in struct_ani_info.sts_iface_extends:
                 extend_ty = extend.ty
                 extend_ani_info = TypeAniInfo.get(self.am, extend_ty)
-                extends.append(extend_ani_info.sts_type_in(self.target))
+                extends.append(extend_ani_info.sts_type_in(target))
             extends_str = ", ".join(extends) if extends else ""
             sts_decl = f"{sts_decl} extends {extends_str}"
         if struct_ani_info.is_default:
@@ -564,23 +541,23 @@ class StsStructGenerator:
         else:
             sts_decl = f"export {sts_decl}"
 
-        with self.target.indented(
+        with target.indented(
             f"{sts_decl} {{",
             f"}}",
         ):
             # TODO: hack inject
             for injected in struct_ani_info.interface_injected_codes:
-                self.target.write_block(injected)
+                target.write_block(injected)
 
             for field in struct_ani_info.sts_local_fields:
                 readonly = "readonly " if ReadOnlyAttr.get(field) is not None else ""
                 opt = "?" if OptionalAttr.get(field) else ""
                 field_ty_ani_info = TypeAniInfo.get(self.am, field.ty)
-                self.target.writelns(
-                    f"{readonly}{field.name}{opt}: {field_ty_ani_info.sts_type_in(self.target)};",
+                target.writelns(
+                    f"{readonly}{field.name}{opt}: {field_ty_ani_info.sts_type_in(target)};",
                 )
 
-    def gen_struct_class(self):
+    def gen_struct_class(self, target: StsWriter):
         struct_ani_info = StructAniInfo.get(self.am, self.struct)
 
         sts_decl = f"class {struct_ani_info.sts_impl_name}"
@@ -590,7 +567,7 @@ class StsStructGenerator:
                 for inherit in struct_ani_info.sts_class_extends:
                     inherit_ty = inherit.ty
                     inherit_ani_info = TypeAniInfo.get(self.am, inherit_ty)
-                    inherits.append(inherit_ani_info.sts_type_in(self.target))
+                    inherits.append(inherit_ani_info.sts_type_in(target))
                 inherits_str = ", ".join(inherits) if inherits else ""
                 sts_decl = f"{sts_decl} extends {inherits_str}"
             if struct_ani_info.sts_iface_extends:
@@ -598,7 +575,7 @@ class StsStructGenerator:
                 for implement in struct_ani_info.sts_iface_extends:
                     implement_ty = implement.ty
                     implement_ani_info = TypeAniInfo.get(self.am, implement_ty)
-                    implements.append(implement_ani_info.sts_type_in(self.target))
+                    implements.append(implement_ani_info.sts_type_in(target))
                 implements_str = ", ".join(implements) if implements else ""
                 sts_decl = f"{sts_decl} implements {implements_str}"
             if struct_ani_info.is_default:
@@ -608,13 +585,13 @@ class StsStructGenerator:
         else:
             sts_decl = f"{sts_decl} implements {struct_ani_info.sts_type_name}"
 
-        with self.target.indented(
+        with target.indented(
             f"{sts_decl} {{",
             f"}}",
         ):
             # TODO: hack inject
             for injected in struct_ani_info.class_injected_codes:
-                self.target.write_block(injected)
+                target.write_block(injected)
 
             for final in [
                 *struct_ani_info.sts_local_fields,
@@ -623,11 +600,11 @@ class StsStructGenerator:
                 readonly = "readonly " if ReadOnlyAttr.get(final) is not None else ""
                 opt = "?" if OptionalAttr.get(final) else ""
                 final_ty_ani_info = TypeAniInfo.get(self.am, final.ty)
-                self.target.writelns(
-                    f"{readonly}{final.name}{opt}: {final_ty_ani_info.sts_type_in(self.target)};",
+                target.writelns(
+                    f"{readonly}{final.name}{opt}: {final_ty_ani_info.sts_type_in(target)};",
                 )
 
-            with self.target.indented(
+            with target.indented(
                 f"constructor(",
                 f")",
             ):
@@ -635,10 +612,10 @@ class StsStructGenerator:
                     final = parts[-1]
                     opt = "?" if OptionalAttr.get(final) else ""
                     final_ty_ani_info = TypeAniInfo.get(self.am, final.ty)
-                    self.target.writelns(
-                        f"{final.name}{opt}: {final_ty_ani_info.sts_type_in(self.target)},",
+                    target.writelns(
+                        f"{final.name}{opt}: {final_ty_ani_info.sts_type_in(target)},",
                     )
-            with self.target.indented(
+            with target.indented(
                 f"{{",
                 f"}}",
             ):
@@ -647,18 +624,18 @@ class StsStructGenerator:
                     for final in struct_ani_info.sts_class_extend_fields:
                         finals.append(final.name)
                     finals_str = ", ".join(finals)
-                    self.target.writelns(
+                    target.writelns(
                         f"super({finals_str});",
                     )
                 for final in [
                     *struct_ani_info.sts_local_fields,
                     *struct_ani_info.sts_iface_extend_fields,
                 ]:
-                    self.target.writelns(
+                    target.writelns(
                         f"this.{final.name} = {final.name};",
                     )
 
-            with self.target.indented(
+            with target.indented(
                 f"constructor(other: {struct_ani_info.sts_impl_name}) {{",
                 f"}}",
             ):
@@ -667,14 +644,14 @@ class StsStructGenerator:
                     for final in struct_ani_info.sts_class_extend_fields:
                         finals.append(f"other.{final.name}")
                     finals_str = ", ".join(finals)
-                    self.target.writelns(
+                    target.writelns(
                         f"super({finals_str});",
                     )
                 for final in [
                     *struct_ani_info.sts_local_fields,
                     *struct_ani_info.sts_iface_extend_fields,
                 ]:
-                    self.target.writelns(
+                    target.writelns(
                         f"this.{final.name} = other.{final.name};",
                     )
 
@@ -685,34 +662,31 @@ class StsStructGenerator:
             for ctor in self.ctors:
                 any_ctor_generator = StsAnyCtorGenerator(
                     self.am,
-                    self.target,
                     ctor,
                     ctor_kind,
                     "",
                     ctor_overload_register,
                     ctor_on_off_register,
                 )
-                any_ctor_generator.gen_any_ctor()
+                any_ctor_generator.gen_any_ctor(target)
             for name, info in ctor_overload_register.infos.items():
                 overload_ctor_generator = StsOverloadCtorGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     ctor_kind,
                     "",
                 )
-                overload_ctor_generator.gen_overload_ctor()
+                overload_ctor_generator.gen_overload_ctor(target)
             for name, info in ctor_on_off_register.infos.items():
                 on_off_ctor_generator = StsOnOffCtorGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     ctor_kind,
                     "",
                 )
-                on_off_ctor_generator.gen_full_on_off_ctor()
+                on_off_ctor_generator.gen_full_on_off_ctor(target)
 
             # funcs
             func_overload_register = OverloadRegister()
@@ -721,39 +695,36 @@ class StsStructGenerator:
             for func in self.funcs:
                 any_func_generator = StsAnyFuncGenerator(
                     self.am,
-                    self.target,
                     func,
                     func_kind,
                     "",
                     func_overload_register,
                     func_on_off_register,
                 )
-                any_func_generator.gen_any_func()
+                any_func_generator.gen_any_func(target)
             for name, info in func_overload_register.infos.items():
                 overload_func_generator = StsOverloadFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     func_kind,
                     "",
                 )
-                overload_func_generator.gen_overload_func()
+                overload_func_generator.gen_overload_func(target)
             for name, info in func_on_off_register.infos.items():
                 on_off_func_generator = StsOnOffFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     func_kind,
                     "",
                 )
-                on_off_func_generator.gen_full_on_off_func()
+                on_off_func_generator.gen_full_on_off_func(target)
 
-    def gen_struct_ctor(self):
+    def gen_struct_ctor(self, target: StsWriter):
         struct_ani_info = StructAniInfo.get(self.am, self.struct)
 
-        with self.target.indented(
+        with target.indented(
             f"function {struct_ani_info.sts_ctor_name}(",
             f"): {struct_ani_info.sts_impl_name}",
         ):
@@ -761,10 +732,10 @@ class StsStructGenerator:
                 final = parts[-1]
                 opt = "?" if OptionalAttr.get(final) else ""
                 final_ty_ani_info = TypeAniInfo.get(self.am, final.ty)
-                self.target.writelns(
-                    f"{final.name}{opt}: {final_ty_ani_info.sts_type_in(self.target)},",
+                target.writelns(
+                    f"{final.name}{opt}: {final_ty_ani_info.sts_type_in(target)},",
                 )
-        with self.target.indented(
+        with target.indented(
             f"{{",
             f"}}",
         ):
@@ -773,7 +744,7 @@ class StsStructGenerator:
                 final = parts[-1]
                 finals.append(final.name)
             finals_str = ", ".join(finals)
-            self.target.writelns(
+            target.writelns(
                 f"return new {struct_ani_info.sts_impl_name}({finals_str});",
             )
 
@@ -782,18 +753,16 @@ class StsIfaceGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         iface: IfaceDecl,
         funcs: list[GlobFuncDecl],
         ctors: list[GlobFuncDecl],
     ):
         self.am = am
-        self.target = target
         self.iface = iface
         self.funcs = funcs
         self.ctors = ctors
 
-    def gen_iface_interface(self):
+    def gen_iface_interface(self, target: StsWriter):
         iface_ani_info = IfaceAniInfo.get(self.am, self.iface)
         if iface_ani_info.is_class():
             # no interface
@@ -805,7 +774,7 @@ class StsIfaceGenerator:
             for extend in iface_ani_info.sts_iface_extends:
                 extend_ty = extend.ty
                 extend_ani_info = TypeAniInfo.get(self.am, extend_ty)
-                extends.append(extend_ani_info.sts_type_in(self.target))
+                extends.append(extend_ani_info.sts_type_in(target))
             extends_str = ", ".join(extends) if extends else ""
             sts_decl = f"{sts_decl} extends {extends_str}"
         if iface_ani_info.is_default:
@@ -813,13 +782,13 @@ class StsIfaceGenerator:
         else:
             sts_decl = f"export {sts_decl}"
 
-        with self.target.indented(
+        with target.indented(
             f"{sts_decl} {{",
             f"}}",
         ):
             # TODO: hack inject
             for injected in iface_ani_info.interface_injected_codes:
-                self.target.write_block(injected)
+                target.write_block(injected)
 
             # methods
             meth_overload_register = OverloadRegister()
@@ -828,36 +797,33 @@ class StsIfaceGenerator:
             for method in self.iface.methods:
                 any_func_decl_generator = StsAnyFuncDeclGenerator(
                     self.am,
-                    self.target,
                     method,
                     meth_kind,
                     "",
                     meth_overload_register,
                     meth_on_off_register,
                 )
-                any_func_decl_generator.gen_any_func_decl()
+                any_func_decl_generator.gen_any_func_decl(target)
             for name, info in meth_overload_register.infos.items():
                 overload_func_generator = StsOverloadFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     meth_kind,
                     "",
                 )
-                overload_func_generator.gen_overload_func()
+                overload_func_generator.gen_overload_func(target)
             for name, info in meth_on_off_register.infos.items():
                 on_off_func_generator = StsOnOffFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     meth_kind,
                     "",
                 )
-                on_off_func_generator.gen_half_on_off_func()
+                on_off_func_generator.gen_half_on_off_func(target)
 
-    def gen_iface_class(self):
+    def gen_iface_class(self, target: StsWriter):
         iface_ani_info = IfaceAniInfo.get(self.am, self.iface)
         package_ani_info = PackageAniInfo.get(self.am, self.iface.parent_pkg)
 
@@ -868,7 +834,7 @@ class StsIfaceGenerator:
                 for inherit in iface_ani_info.sts_class_extends:
                     inherit_ty = inherit.ty
                     inherit_ani_info = TypeAniInfo.get(self.am, inherit_ty)
-                    inherits.append(inherit_ani_info.sts_type_in(self.target))
+                    inherits.append(inherit_ani_info.sts_type_in(target))
                 inherits_str = ", ".join(inherits) if inherits else ""
                 sts_decl = f"{sts_decl} extends {inherits_str}"
             if iface_ani_info.sts_iface_extends:
@@ -876,7 +842,7 @@ class StsIfaceGenerator:
                 for implement in iface_ani_info.sts_iface_extends:
                     implement_ty = implement.ty
                     implement_ani_info = TypeAniInfo.get(self.am, implement_ty)
-                    implements.append(implement_ani_info.sts_type_in(self.target))
+                    implements.append(implement_ani_info.sts_type_in(target))
                 implements_str = ", ".join(implements) if implements else ""
                 sts_decl = f"{sts_decl} implements {implements_str}"
             if iface_ani_info.is_default:
@@ -886,49 +852,49 @@ class StsIfaceGenerator:
         else:
             sts_decl = f"{sts_decl} implements {iface_ani_info.sts_type_name}"
 
-        with self.target.indented(
+        with target.indented(
             f"{sts_decl} {{",
             f"}}",
         ):
             # TODO: hack inject
             for injected in iface_ani_info.class_injected_codes:
-                self.target.write_block(injected)
+                target.write_block(injected)
 
             if not iface_ani_info.sts_class_extends:
-                self.target.writelns(
+                target.writelns(
                     f"{iface_ani_info.vtbl_ptr}: long;",
                     f"{iface_ani_info.data_ptr}: long;",
                 )
-                with self.target.indented(
+                with target.indented(
                     f"{iface_ani_info.register}(): void {{",
                     f"}}",
                 ):
-                    self.target.writelns(
+                    target.writelns(
                         f"{package_ani_info.ns.mod.registry}.register(this, this.{iface_ani_info.data_ptr});",
                     )
-                with self.target.indented(
+                with target.indented(
                     f"constructor(vtblPtr: long, dataPtr: long) {{",
                     f"}}",
                 ):
-                    self.target.writelns(
+                    target.writelns(
                         f"this.{iface_ani_info.vtbl_ptr} = vtblPtr;",
                         f"this.{iface_ani_info.data_ptr} = dataPtr;",
                         f"this.{iface_ani_info.register}();",
                     )
             else:
-                with self.target.indented(
+                with target.indented(
                     f"constructor(vtblPtr: long, dataPtr: long) {{",
                     f"}}",
                 ):
-                    self.target.writelns(
+                    target.writelns(
                         f"super(vtblPtr, dataPtr);",
                     )
 
-            with self.target.indented(
+            with target.indented(
                 f"constructor(other: {iface_ani_info.sts_impl_name}) {{",
                 f"}}",
             ):
-                self.target.writelns(
+                target.writelns(
                     f"this(other.{iface_ani_info.vtbl_ptr}, {package_ani_info.ns.mod.obj_dup}(other.{iface_ani_info.data_ptr}));",
                 )
 
@@ -937,10 +903,9 @@ class StsIfaceGenerator:
                 for method in ancestor.methods:
                     native_func_generator = StsNativeFuncGenerator(
                         self.am,
-                        self.target,
                         method,
                     )
-                    native_func_generator.gen_native_func()
+                    native_func_generator.gen_native_func(target)
 
             # methods
             meth_overload_register = OverloadRegister()
@@ -950,34 +915,31 @@ class StsIfaceGenerator:
                 for method in ancestor.methods:
                     any_func_generator = StsAnyFuncGenerator(
                         self.am,
-                        self.target,
                         method,
                         meth_kind,
                         "",
                         meth_overload_register,
                         meth_on_off_register,
                     )
-                    any_func_generator.gen_any_func()
+                    any_func_generator.gen_any_func(target)
             for name, info in meth_overload_register.infos.items():
                 overload_func_generator = StsOverloadFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     meth_kind,
                     "",
                 )
-                overload_func_generator.gen_overload_func()
+                overload_func_generator.gen_overload_func(target)
             for name, info in meth_on_off_register.infos.items():
                 on_off_func_generator = StsOnOffFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     meth_kind,
                     "",
                 )
-                on_off_func_generator.gen_half_on_off_func()
+                on_off_func_generator.gen_half_on_off_func(target)
 
             # ctors
             ctor_overload_register = OverloadRegister()
@@ -986,34 +948,31 @@ class StsIfaceGenerator:
             for ctor in self.ctors:
                 any_ctor_generator = StsAnyCtorGenerator(
                     self.am,
-                    self.target,
                     ctor,
                     ctor_kind,
                     "",
                     ctor_overload_register,
                     ctor_on_off_register,
                 )
-                any_ctor_generator.gen_any_ctor()
+                any_ctor_generator.gen_any_ctor(target)
             for name, info in ctor_overload_register.infos.items():
                 overload_ctor_generator = StsOverloadCtorGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     ctor_kind,
                     "",
                 )
-                overload_ctor_generator.gen_overload_ctor()
+                overload_ctor_generator.gen_overload_ctor(target)
             for name, info in ctor_on_off_register.infos.items():
                 on_off_ctor_generator = StsOnOffCtorGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     ctor_kind,
                     "",
                 )
-                on_off_ctor_generator.gen_full_on_off_ctor()
+                on_off_ctor_generator.gen_full_on_off_ctor(target)
 
             # funcs
             func_overload_register = OverloadRegister()
@@ -1022,43 +981,40 @@ class StsIfaceGenerator:
             for func in self.funcs:
                 any_func_generator = StsAnyFuncGenerator(
                     self.am,
-                    self.target,
                     func,
                     func_kind,
                     "",
                     func_overload_register,
                     func_on_off_register,
                 )
-                any_func_generator.gen_any_func()
+                any_func_generator.gen_any_func(target)
             for name, info in func_overload_register.infos.items():
                 overload_func_generator = StsOverloadFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     func_kind,
                     "",
                 )
-                overload_func_generator.gen_overload_func()
+                overload_func_generator.gen_overload_func(target)
             for name, info in func_on_off_register.infos.items():
                 on_off_func_generator = StsOnOffFuncGenerator(
                     self.am,
-                    self.target,
                     name,
                     info,
                     func_kind,
                     "",
                 )
-                on_off_func_generator.gen_full_on_off_func()
+                on_off_func_generator.gen_full_on_off_func(target)
 
-    def gen_iface_ctor(self):
+    def gen_iface_ctor(self, target: StsWriter):
         iface_ani_info = IfaceAniInfo.get(self.am, self.iface)
 
-        with self.target.indented(
+        with target.indented(
             f"function {iface_ani_info.sts_ctor_name}(vtblPtr: long, dataPtr: long): {iface_ani_info.sts_impl_name} {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"return new {iface_ani_info.sts_impl_name}(vtblPtr, dataPtr);",
             )
 
@@ -1067,29 +1023,25 @@ class StsNativeFuncGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         func: GlobFuncDecl | IfaceMethodDecl,
     ):
         self.am = am
-        self.target = target
         self.func = func
 
-    def gen_native_func(self):
+    def gen_native_func(self, target: StsWriter):
         func_ani_info = NamedFunctionLikeAniInfo.get(self.am, self.func)
         params_sts = []
         for param in self.func.params:
             param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
-            params_sts.append(
-                f"{param.name}: {param_ty_ani_info.sts_type_in(self.target)}"
-            )
+            params_sts.append(f"{param.name}: {param_ty_ani_info.sts_type_in(target)}")
         params_sts_str = ", ".join(params_sts)
         if isinstance(return_ty := self.func.return_ty, NonVoidType):
             return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
-            return_ty_sts_name = return_ty_ani_info.sts_type_in(self.target)
+            return_ty_sts_name = return_ty_ani_info.sts_type_in(target)
         else:
             return_ty_sts_name = "void"
 
-        self.target.writelns(
+        target.writelns(
             f"{func_ani_info.native_prefix}{func_ani_info.native_name}({params_sts_str}): {return_ty_sts_name};",
         )
 
@@ -1098,7 +1050,6 @@ class StsAnyFuncDeclGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         func: GlobFuncDecl | IfaceMethodDecl,
         func_kind: FuncKind,
         decl_prefix: str,
@@ -1106,14 +1057,13 @@ class StsAnyFuncDeclGenerator:
         on_off_register: OnOffRegister,
     ):
         self.am = am
-        self.target = target
         self.func = func
         self.func_kind = func_kind
         self.decl_prefix = decl_prefix
         self.overload_register = overload_register
         self.on_off_register = on_off_register
 
-    def gen_any_func_decl(self):
+    def gen_any_func_decl(self, target: StsWriter):
         func_ani_info = NamedFunctionLikeAniInfo.get(self.am, self.func)
         params_ty_sts_sig = []
         params_ty_sts_name = []
@@ -1123,19 +1073,19 @@ class StsAnyFuncDeclGenerator:
             opt = "?" if OptionalAttr.get(param) else ""
             param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
             params_ty_sts_sig.append(param_ty_ani_info.type_sig)
-            params_ty_sts_name.append(param_ty_ani_info.sts_type_in(self.target))
-            params_sts.append(
-                f"{param.name}{opt}: {param_ty_ani_info.sts_type_in(self.target)}"
-            )
+            sts_name = param_ty_ani_info.sts_type_in(target)
+            params_ty_sts_name.append(sts_name)
+            params_sts.append(f"{param.name}{opt}: {sts_name}")
             args_sts.append(param.name)
         if isinstance(return_ty := self.func.return_ty, NonVoidType):
             return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
-            return_ty_sts_name = return_ty_ani_info.sts_type_in(self.target)
+            return_ty_sts_name = return_ty_ani_info.sts_type_in(target)
         else:
             return_ty_sts_name = "void"
 
         if (norm_name := func_ani_info.norm_name) is not None:
             self.gen_normal_func_decl(
+                target,
                 norm_name,
                 func_ani_info.gen_async_name,
                 func_ani_info.gen_promise_name,
@@ -1148,6 +1098,7 @@ class StsAnyFuncDeclGenerator:
             )
         if (async_name := func_ani_info.async_name) is not None:
             self.gen_async_func_decl(
+                target,
                 async_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1158,6 +1109,7 @@ class StsAnyFuncDeclGenerator:
             )
         if (promise_name := func_ani_info.promise_name) is not None:
             self.gen_promise_func_decl(
+                target,
                 promise_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1168,12 +1120,14 @@ class StsAnyFuncDeclGenerator:
             )
         if (get_name := func_ani_info.get_name) is not None:
             self.gen_getter_decl(
+                target,
                 get_name,
                 params_sts,
                 return_ty_sts_name,
             )
         if (set_name := func_ani_info.set_name) is not None:
             self.gen_setter_decl(
+                target,
                 set_name,
                 params_sts,
                 return_ty_sts_name,
@@ -1181,30 +1135,33 @@ class StsAnyFuncDeclGenerator:
 
     def gen_getter_decl(
         self,
+        target: StsWriter,
         get_name: str,
         params_sts: list[str],
         return_ty_sts_name: str,
     ):
         params_sts_str = ", ".join(params_sts)
 
-        self.target.writelns(
+        target.writelns(
             f"{self.decl_prefix}{self.func_kind.get_prefix}{get_name}({params_sts_str}): {return_ty_sts_name};",
         )
 
     def gen_setter_decl(
         self,
+        target: StsWriter,
         set_name: str,
         params_sts: list[str],
         return_ty_sts_name: str,
     ):
         params_sts_str = ", ".join(params_sts)
 
-        self.target.writelns(
+        target.writelns(
             f"{self.decl_prefix}{self.func_kind.set_prefix}{set_name}({params_sts_str});",
         )
 
     def gen_normal_func_decl(
         self,
+        target: StsWriter,
         norm_name: str,
         async_name: str | None,
         promise_name: str | None,
@@ -1217,7 +1174,7 @@ class StsAnyFuncDeclGenerator:
     ):
         params_sts_str = ", ".join(params_sts)
 
-        self.target.writelns(
+        target.writelns(
             f"{self.decl_prefix}{self.func_kind.func_prefix}{norm_name}({params_sts_str}): {return_ty_sts_name};",
         )
 
@@ -1234,6 +1191,7 @@ class StsAnyFuncDeclGenerator:
 
         if promise_name is not None:
             self.gen_promise_func_decl(
+                target,
                 promise_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1244,6 +1202,7 @@ class StsAnyFuncDeclGenerator:
             )
         if async_name is not None:
             self.gen_async_func_decl(
+                target,
                 async_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1255,6 +1214,7 @@ class StsAnyFuncDeclGenerator:
 
     def gen_promise_func_decl(
         self,
+        target: StsWriter,
         promise_name: str,
         params_ty_sts_sig: list[str],
         params_sts: list[str],
@@ -1266,7 +1226,7 @@ class StsAnyFuncDeclGenerator:
         params_sts_str = ", ".join(params_sts)
         promise_ty = f"Promise<{return_ty_sts_name}>"
 
-        self.target.writelns(
+        target.writelns(
             f"{self.decl_prefix}{self.func_kind.func_prefix}{promise_name}({params_sts_str}): {promise_ty};",
         )
 
@@ -1283,6 +1243,7 @@ class StsAnyFuncDeclGenerator:
 
     def gen_async_func_decl(
         self,
+        target: StsWriter,
         async_name: str,
         params_ty_sts_sig: list[str],
         params_sts: list[str],
@@ -1299,7 +1260,7 @@ class StsAnyFuncDeclGenerator:
         callback_sts = f"{cbname}: {callback_ty_sts_name}"
         params_with_callback_sts_str = ", ".join([*params_sts, callback_sts])
 
-        self.target.writelns(
+        target.writelns(
             f"{self.decl_prefix}{self.func_kind.func_prefix}{async_name}({params_with_callback_sts_str}): void;",
         )
 
@@ -1319,7 +1280,6 @@ class StsAnyFuncGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         func: GlobFuncDecl | IfaceMethodDecl,
         func_kind: FuncKind,
         mode_prefix: str,
@@ -1327,14 +1287,13 @@ class StsAnyFuncGenerator:
         on_off_register: OnOffRegister,
     ):
         self.am = am
-        self.target = target
         self.func = func
         self.func_kind = func_kind
         self.mode_prefix = mode_prefix
         self.overload_register = overload_register
         self.on_off_register = on_off_register
 
-    def gen_any_func(self):
+    def gen_any_func(self, target: StsWriter):
         func_ani_info = NamedFunctionLikeAniInfo.get(self.am, self.func)
         params_ty_sts_sig = []
         params_ty_sts_name = []
@@ -1344,10 +1303,9 @@ class StsAnyFuncGenerator:
             opt = "?" if OptionalAttr.get(param) else ""
             param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
             params_ty_sts_sig.append(param_ty_ani_info.type_sig)
-            params_ty_sts_name.append(param_ty_ani_info.sts_type_in(self.target))
-            params_sts.append(
-                f"{param.name}{opt}: {param_ty_ani_info.sts_type_in(self.target)}"
-            )
+            sts_name = param_ty_ani_info.sts_type_in(target)
+            params_ty_sts_name.append(sts_name)
+            params_sts.append(f"{param.name}{opt}: {sts_name}")
             args_sts.append(param.name)
         args_sts = func_ani_info.as_native_args(args_sts)
         args_sts_str = ", ".join(args_sts)
@@ -1356,12 +1314,13 @@ class StsAnyFuncGenerator:
         )
         if isinstance(return_ty := self.func.return_ty, NonVoidType):
             return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
-            return_ty_sts_name = return_ty_ani_info.sts_type_in(self.target)
+            return_ty_sts_name = return_ty_ani_info.sts_type_in(target)
         else:
             return_ty_sts_name = "void"
 
         if (norm_name := func_ani_info.norm_name) is not None:
             self.gen_normal_func(
+                target,
                 norm_name,
                 func_ani_info.gen_async_name,
                 func_ani_info.gen_promise_name,
@@ -1375,6 +1334,7 @@ class StsAnyFuncGenerator:
             )
         if (promise_name := func_ani_info.promise_name) is not None:
             self.gen_promise_func(
+                target,
                 promise_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1386,6 +1346,7 @@ class StsAnyFuncGenerator:
             )
         if (async_name := func_ani_info.async_name) is not None:
             self.gen_async_func(
+                target,
                 async_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1397,6 +1358,7 @@ class StsAnyFuncGenerator:
             )
         if (get_name := func_ani_info.get_name) is not None:
             self.gen_getter(
+                target,
                 get_name,
                 params_sts,
                 return_ty_sts_name,
@@ -1404,6 +1366,7 @@ class StsAnyFuncGenerator:
             )
         if (set_name := func_ani_info.set_name) is not None:
             self.gen_setter(
+                target,
                 set_name,
                 params_sts,
                 return_ty_sts_name,
@@ -1412,6 +1375,7 @@ class StsAnyFuncGenerator:
 
     def gen_getter(
         self,
+        target: StsWriter,
         get_name: str,
         params_sts: list[str],
         return_ty_sts_name: str,
@@ -1419,16 +1383,17 @@ class StsAnyFuncGenerator:
     ):
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.get_prefix}{get_name}({params_sts_str}): {return_ty_sts_name} {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"return {result_sts};",
             )
 
     def gen_setter(
         self,
+        target: StsWriter,
         set_name: str,
         params_sts: list[str],
         return_ty_sts_name: str,
@@ -1436,16 +1401,17 @@ class StsAnyFuncGenerator:
     ):
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.set_prefix}{set_name}({params_sts_str}) {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"return {result_sts};",
             )
 
     def gen_normal_func(
         self,
+        target: StsWriter,
         norm_name: str,
         async_name: str | None,
         promise_name: str | None,
@@ -1459,11 +1425,11 @@ class StsAnyFuncGenerator:
     ):
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.func_prefix}{norm_name}({params_sts_str}): {return_ty_sts_name} {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"return {result_sts};",
             )
 
@@ -1480,6 +1446,7 @@ class StsAnyFuncGenerator:
 
         if promise_name is not None:
             self.gen_promise_func(
+                target,
                 promise_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1491,6 +1458,7 @@ class StsAnyFuncGenerator:
             )
         if async_name is not None:
             self.gen_async_func(
+                target,
                 async_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1503,6 +1471,7 @@ class StsAnyFuncGenerator:
 
     def gen_promise_func(
         self,
+        target: StsWriter,
         promise_name: str,
         params_ty_sts_sig: list[str],
         params_sts: list[str],
@@ -1515,39 +1484,39 @@ class StsAnyFuncGenerator:
         params_sts_str = ", ".join(params_sts)
         promise_ty_sts_name = f"Promise<{return_ty_sts_name}>"
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.func_prefix}{promise_name}({params_sts_str}): {promise_ty_sts_name} {{",
             f"}}",
         ):
-            with self.target.indented(
+            with target.indented(
                 f"return new {promise_ty_sts_name}((resolve, reject): void => {{",
                 f"}});",
             ):
-                with self.target.indented(
+                with target.indented(
                     f"launch<void, () => void>(() => {{",
                     f"}})",
                 ):
-                    with self.target.indented(
+                    with target.indented(
                         f"try {{",
                         f"}}",
                     ):
                         if return_ty_sts_name == "void":
-                            self.target.writelns(
+                            target.writelns(
                                 f"{result_sts};",
                                 f"let res = undefined;",
                             )
                         else:
-                            self.target.writelns(
+                            target.writelns(
                                 f"let res = {result_sts};",
                             )
-                        self.target.writelns(
+                        target.writelns(
                             f"resolve(res);",
                         )
-                    with self.target.indented(
+                    with target.indented(
                         f"catch(err) {{",
                         f"}};",
                     ):
-                        self.target.writelns(
+                        target.writelns(
                             f"reject(err as Error);",
                         )
 
@@ -1564,6 +1533,7 @@ class StsAnyFuncGenerator:
 
     def gen_async_func(
         self,
+        target: StsWriter,
         async_name: str,
         params_ty_sts_sig: list[str],
         params_sts: list[str],
@@ -1581,35 +1551,35 @@ class StsAnyFuncGenerator:
         callback_sts = f"{cbname}: {callback_ty_sts_name}"
         params_with_callback_sts_str = ", ".join([*params_sts, callback_sts])
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.func_prefix}{async_name}({params_with_callback_sts_str}): void {{",
             f"}}",
         ):
-            with self.target.indented(
+            with target.indented(
                 f"launch<void, () => void>(() => {{",
                 f"}})",
             ):
-                with self.target.indented(
+                with target.indented(
                     f"try {{",
                     f"}}",
                 ):
                     if return_ty_sts_name == "void":
-                        self.target.writelns(
+                        target.writelns(
                             f"{result_sts};",
                             f"let res = undefined;",
                         )
                     else:
-                        self.target.writelns(
+                        target.writelns(
                             f"let res = {result_sts};",
                         )
-                    self.target.writelns(
+                    target.writelns(
                         f"{cbname}(null, res);",
                     )
-                with self.target.indented(
+                with target.indented(
                     f"catch(err) {{",
                     f"}}",
                 ):
-                    self.target.writelns(
+                    target.writelns(
                         f"{cbname}(err as {pkg_ani_info.ns.mod.BEType}, undefined);",
                     )
 
@@ -1629,7 +1599,6 @@ class StsAnyCtorGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         ctor: GlobFuncDecl,
         ctor_kind: CtorKind,
         mode_prefix: str,
@@ -1637,14 +1606,13 @@ class StsAnyCtorGenerator:
         on_off_register: OnOffRegister,
     ):
         self.am = am
-        self.target = target
         self.ctor = ctor
         self.ctor_kind = ctor_kind
         self.mode_prefix = mode_prefix
         self.overload_register = overload_register
         self.on_off_register = on_off_register
 
-    def gen_any_ctor(self):
+    def gen_any_ctor(self, target: StsWriter):
         ctor_ani_info = GlobFuncAniInfo.get(self.am, self.ctor)
         params_ty_sts_sig = []
         params_ty_sts_name = []
@@ -1654,10 +1622,9 @@ class StsAnyCtorGenerator:
             opt = "?" if OptionalAttr.get(param) else ""
             param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
             params_ty_sts_sig.append(param_ty_ani_info.type_sig)
-            params_ty_sts_name.append(param_ty_ani_info.sts_type_in(self.target))
-            params_sts.append(
-                f"{param.name}{opt}: {param_ty_ani_info.sts_type_in(self.target)}"
-            )
+            sts_name = param_ty_ani_info.sts_type_in(target)
+            params_ty_sts_name.append(sts_name)
+            params_sts.append(f"{param.name}{opt}: {sts_name}")
             args_sts.append(param.name)
         args_sts = ctor_ani_info.as_native_args(args_sts)
         args_sts_str = ", ".join(args_sts)
@@ -1666,12 +1633,13 @@ class StsAnyCtorGenerator:
         )
         if isinstance(return_ty := self.ctor.return_ty, NonVoidType):
             return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
-            return_ty_sts_name = return_ty_ani_info.sts_type_in(self.target)
+            return_ty_sts_name = return_ty_ani_info.sts_type_in(target)
         else:
             return_ty_sts_name = "void"
 
         if (ctor_name := ctor_ani_info.norm_name) is not None:
             self.gen_ctor(
+                target,
                 ctor_name,
                 params_ty_sts_sig,
                 params_sts,
@@ -1684,6 +1652,7 @@ class StsAnyCtorGenerator:
 
     def gen_ctor(
         self,
+        target: StsWriter,
         ctor_name: str,
         params_ty_sts_sig: list[str],
         params_sts: list[str],
@@ -1695,11 +1664,11 @@ class StsAnyCtorGenerator:
     ):
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.ctor_kind.func_prefix}{ctor_name}({params_sts_str}) {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"this({result_sts});",
             )
 
@@ -1719,26 +1688,24 @@ class StsOverloadFuncGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         overload_name: str,
         overload_info: OverloadInfo,
         func_kind: FuncKind,
         mode_prefix: str,
     ):
         self.am = am
-        self.target = target
         self.overload_name = overload_name
         self.overload_info = overload_info
         self.func_kind = func_kind
         self.mode_prefix = mode_prefix
 
-    def gen_overload_func(self):
-        with self.target.indented(
+    def gen_overload_func(self, target: StsWriter):
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.overload_prefix}{self.overload_name} {{",
             f"}}",
         ):
             for orig in self.overload_info:
-                self.target.writelns(
+                target.writelns(
                     f"{orig},",
                 )
 
@@ -1747,22 +1714,20 @@ class StsOnOffFuncGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         on_off_name: str,
         on_off_info: OnOffInfo,
         func_kind: FuncKind,
         mode_prefix: str,
     ):
         self.am = am
-        self.target = target
         self.on_off_name = on_off_name
         self.on_off_info = on_off_info
         self.func_kind = func_kind
         self.mode_prefix = mode_prefix
 
-    def gen_full_on_off_func(self):
+    def gen_full_on_off_func(self, target: StsWriter):
         if not any(len(funcs) > 1 for funcs in self.on_off_info.values()):
-            return self.gen_half_on_off_func()
+            return self.gen_half_on_off_func(target)
         params_len = max(
             len(params_ty_sts_sig) for params_ty_sts_sig in self.on_off_info
         )
@@ -1770,11 +1735,11 @@ class StsOnOffFuncGenerator:
         params_sts = ["type: Object", *(f"{arg_sts}?: Object" for arg_sts in args_sts)]
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.func_kind.func_prefix}{self.on_off_name}({params_sts_str}): Any {{",
             f"}}",
         ):
-            with self.target.indented(
+            with target.indented(
                 f"switch (type as string) {{",
                 f"}}",
                 indent="",
@@ -1791,14 +1756,14 @@ class StsOnOffFuncGenerator:
                                 args_sts, params_ty_sts_name, strict=False
                             )
                         )
-                        self.target.writelns(
+                        target.writelns(
                             f'case "{on_off_type}": return {self.func_kind.call_from_local(orig_name)}({args_sts_str});',
                         )
-                self.target.writelns(
+                target.writelns(
                     f"default: throw new Error(`Unknown tag: ${{type}}`);",
                 )
 
-    def gen_half_on_off_func(self):
+    def gen_half_on_off_func(self, target: StsWriter):
         for params_ty_sts_sig, on_off_cases in self.on_off_info.items():
             params_ty_sts_sum: list[set[str]] = [
                 set() for _ in range(len(params_ty_sts_sig))
@@ -1821,11 +1786,11 @@ class StsOnOffFuncGenerator:
             args_sts_str = ", ".join(args_sts)
             return_ty = " | ".join(return_ty_sts_sum)
 
-            with self.target.indented(
+            with target.indented(
                 f"{self.mode_prefix}{self.func_kind.func_prefix}{self.on_off_name}({params_sts_str}): {return_ty} {{",
                 f"}}",
             ):
-                with self.target.indented(
+                with target.indented(
                     f"switch (type) {{",
                     f"}}",
                     indent="",
@@ -1841,10 +1806,10 @@ class StsOnOffFuncGenerator:
                                 args_sts, params_ty_sts_name, strict=True
                             )
                         )
-                        self.target.writelns(
+                        target.writelns(
                             f'case "{on_off_type}": return {self.func_kind.call_from_local(orig_name)}({args_sts_str});',
                         )
-                    self.target.writelns(
+                    target.writelns(
                         f"default: throw new Error(`Unknown tag: ${{type}}`);",
                     )
 
@@ -1853,26 +1818,24 @@ class StsOverloadCtorGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         overload_name: str,
         overload_info: OverloadInfo,
         ctor_kind: CtorKind,
         mode_prefix: str,
     ):
         self.am = am
-        self.target = target
         self.overload_name = overload_name
         self.overload_info = overload_info
         self.ctor_kind = ctor_kind
         self.mode_prefix = mode_prefix
 
-    def gen_overload_ctor(self):
-        with self.target.indented(
+    def gen_overload_ctor(self, target: StsWriter):
+        with target.indented(
             f"{self.mode_prefix}{self.ctor_kind.overload_prefix}{self.overload_name} {{",
             f"}}",
         ):
             for orig in self.overload_info:
-                self.target.writelns(
+                target.writelns(
                     f"{orig},",
                 )
 
@@ -1881,22 +1844,20 @@ class StsOnOffCtorGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         on_off_name: str,
         on_off_info: OnOffInfo,
         ctor_kind: CtorKind,
         mode_prefix: str,
     ):
         self.am = am
-        self.target = target
         self.on_off_name = on_off_name
         self.on_off_info = on_off_info
         self.ctor_kind = ctor_kind
         self.mode_prefix = mode_prefix
 
-    def gen_full_on_off_ctor(self):
+    def gen_full_on_off_ctor(self, target: StsWriter):
         if not any(len(funcs) > 1 for funcs in self.on_off_info.values()):
-            return self.gen_half_on_off_ctor()
+            return self.gen_half_on_off_ctor(target)
         params_len = max(
             len(params_ty_sts_sig) for params_ty_sts_sig in self.on_off_info
         )
@@ -1904,11 +1865,11 @@ class StsOnOffCtorGenerator:
         params_sts = ["type: Object", *(f"{arg_sts}?: Object" for arg_sts in args_sts)]
         params_sts_str = ", ".join(params_sts)
 
-        with self.target.indented(
+        with target.indented(
             f"{self.mode_prefix}{self.ctor_kind.func_prefix}{self.on_off_name}({params_sts_str}) {{",
             f"}}",
         ):
-            with self.target.indented(
+            with target.indented(
                 f"switch (type as object) {{",
                 f"}}",
                 indent="",
@@ -1925,14 +1886,14 @@ class StsOnOffCtorGenerator:
                                 args_sts, params_ty_sts_name, strict=False
                             )
                         )
-                        self.target.writelns(
+                        target.writelns(
                             f'case "{on_off_type}": {self.ctor_kind.call_from_local(orig_name)}({args_sts_str});',
                         )
-                self.target.writelns(
+                target.writelns(
                     f"default: throw new Error(`Unknown tag: ${{type}}`);",
                 )
 
-    def gen_half_on_off_ctor(self):
+    def gen_half_on_off_ctor(self, target: StsWriter):
         for params_ty_sts_sig, on_off_cases in self.on_off_info.items():
             params_ty_sts_sum: list[set[str]] = [
                 set() for _ in range(len(params_ty_sts_sig))
@@ -1955,11 +1916,11 @@ class StsOnOffCtorGenerator:
             args_sts_str = ", ".join(args_sts)
             return_ty = " | ".join(return_ty_sts_sum)
 
-            with self.target.indented(
+            with target.indented(
                 f"{self.mode_prefix}{self.ctor_kind.func_prefix}{self.on_off_name}({params_sts_str}) {{",
                 f"}}",
             ):
-                with self.target.indented(
+                with target.indented(
                     f"switch (type) {{",
                     f"}}",
                     indent="",
@@ -1975,10 +1936,10 @@ class StsOnOffCtorGenerator:
                                 args_sts, params_ty_sts_name, strict=True
                             )
                         )
-                        self.target.writelns(
+                        target.writelns(
                             f'case "{on_off_type}": {self.ctor_kind.call_from_local(orig_name)}({args_sts_str});',
                         )
-                    self.target.writelns(
+                    target.writelns(
                         f"default: throw new Error(`Unknown tag: ${{type}}`);",
                     )
 
@@ -1987,87 +1948,83 @@ class StsReverseFuncGenerator:
     def __init__(
         self,
         am: AnalysisManager,
-        target: StsWriter,
         func: GlobFuncDecl | IfaceMethodDecl,
         func_kind: FuncKind | CtorKind,
     ):
         self.am = am
-        self.target = target
         self.func = func
         self.func_kind = func_kind
 
-    def gen_reverse_func(self):
+    def gen_reverse_func(self, target: StsWriter):
         func_ani_info = NamedFunctionLikeAniInfo.get(self.am, self.func)
         args_sts = []
         params_sts = self.func_kind.reverse_base_params()
         for param in self.func.params:
             param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
             args_sts.append(param.name)
-            params_sts.append(
-                f"{param.name}: {param_ty_ani_info.sts_type_in(self.target)}"
-            )
+            params_sts.append(f"{param.name}: {param_ty_ani_info.sts_type_in(target)}")
         args_sts = func_ani_info.as_normal_args(args_sts)
         params_sts_str = ", ".join(params_sts)
         if isinstance(return_ty := self.func.return_ty, NonVoidType):
             return_ty_ani_info = TypeAniInfo.get(self.am, return_ty)
-            return_ty_sts_name = return_ty_ani_info.sts_type_in(self.target)
-            return_ty_sts_real = return_ty_ani_info.sts_type_in(self.target)
+            return_ty_sts_name = return_ty_ani_info.sts_type_in(target)
+            return_ty_sts_real = return_ty_ani_info.sts_type_in(target)
         else:
             return_ty_sts_name = "void"
             return_ty_sts_real = "undefined"
 
-        with self.target.indented(
+        with target.indented(
             f"function {func_ani_info.reverse_name}({params_sts_str}): {return_ty_sts_name} {{",
             f"}}",
         ):
             if (norm_name := func_ani_info.norm_name) is not None:
                 args_sts_str = ", ".join(args_sts)
-                self.target.writelns(
+                target.writelns(
                     f"return {self.func_kind.call_from_reverse(norm_name)}({args_sts_str});",
                 )
             elif (get_name := func_ani_info.get_name) is not None:
-                self.target.writelns(
+                target.writelns(
                     f"return {self.func_kind.call_from_reverse(get_name)};",
                 )
             elif (set_name := func_ani_info.set_name) is not None:
-                self.target.writelns(
+                target.writelns(
                     f"{self.func_kind.call_from_reverse(set_name)} = {args_sts[0]};",
                 )
             elif (promise_name := func_ani_info.promise_name) is not None:
                 args_sts_str = ", ".join(args_sts)
-                self.target.writelns(
+                target.writelns(
                     f"return await {self.func_kind.call_from_reverse(promise_name)}({args_sts_str});",
                 )
             elif (async_name := func_ani_info.async_name) is not None:
                 pkg_ani_info = PackageAniInfo.get(self.am, self.func.parent_pkg)
 
-                with self.target.indented(
+                with target.indented(
                     f"return await new Promise<{return_ty_sts_name}>((resolve, reject) => {{",
                     f"}});",
                 ):
-                    with self.target.indented(
+                    with target.indented(
                         f"let callback: {pkg_ani_info.ns.mod.ACType}<{return_ty_sts_name}> = (err: {pkg_ani_info.ns.mod.BEType} | null, res?: {return_ty_sts_real}): void => {{",
                         f"}}",
                     ):
-                        with self.target.indented(
+                        with target.indented(
                             f"if (err !== null) {{",
                             f"}}",
                         ):
-                            self.target.writelns(
+                            target.writelns(
                                 f"reject(err);",
                             )
-                        with self.target.indented(
+                        with target.indented(
                             f"else {{",
                             f"}}",
                         ):
-                            self.target.writelns(
+                            target.writelns(
                                 f"resolve(res as {return_ty_sts_real});",
                             )
                     args_with_cbname_sts_str = ", ".join([*args_sts, "callback"])
-                    self.target.writelns(
+                    target.writelns(
                         f"{self.func_kind.call_from_reverse(async_name)}({args_with_cbname_sts_str});",
                     )
             else:
-                self.target.writelns(
+                target.writelns(
                     f"throw new Error(`No valid reverse function found`);",
                 )

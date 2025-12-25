@@ -38,43 +38,42 @@ from taihe.utils.outputs import FileKind, OutputManager
 
 
 class CImplHeadersGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pg: PackageGroup):
         self.am = am
+        self.pg = pg
 
-    def generate(self, pg: PackageGroup):
-        for pkg in pg.packages:
-            CMacroPackageGenerator(self.om, self.am, pkg).gen_package_file()
+    def generate(self, om: OutputManager):
+        for pkg in self.pg.packages:
+            CMacroPackageGenerator(self.am, pkg).gen_package_file(om)
             for iface in pkg.interfaces:
-                CMacroIfaceGenerator(self.om, self.am, iface).gen_iface_file()
+                CMacroIfaceGenerator(self.am, iface).gen_iface_file(om)
 
 
 class CMacroPackageGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, pkg: PackageDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pkg: PackageDecl):
         self.am = am
         self.pkg = pkg
+
+    def gen_package_file(self, om: OutputManager):
         pkg_c_impl_info = PackageCImplInfo.get(self.am, self.pkg)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{pkg_c_impl_info.header}",
             FileKind.C_HEADER,
         )
-
-    def gen_package_file(self):
         pkg_abi_info = PackageAbiInfo.get(self.am, self.pkg)
-        with self.target:
-            self.target.add_include("taihe/common.h", pkg_abi_info.header)
+        with target:
+            target.add_include("taihe/common.h", pkg_abi_info.header)
             for func in self.pkg.functions:
                 for param in func.params:
                     param_ty_abi_info = TypeAbiInfo.get(self.am, param.ty)
-                    self.target.add_include(*param_ty_abi_info.impl_headers)
+                    target.add_include(*param_ty_abi_info.impl_headers)
                 if isinstance(return_ty := func.return_ty, NonVoidType):
                     return_ty_abi_info = TypeAbiInfo.get(self.am, return_ty)
-                    self.target.add_include(*return_ty_abi_info.impl_headers)
-                self.gen_func(func)
+                    target.add_include(*return_ty_abi_info.impl_headers)
+                self.gen_func(target, func)
 
-    def gen_func(self, func: GlobFuncDecl):
+    def gen_func(self, target: CHeaderWriter, func: GlobFuncDecl):
         func_abi_info = GlobFuncAbiInfo.get(self.am, func)
         func_c_impl_info = GlobFuncCImplInfo.get(self.am, func)
         func_impl = "C_FUNC_IMPL"
@@ -91,7 +90,7 @@ class CMacroPackageGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        self.target.writelns(
+        target.writelns(
             f"#define {func_c_impl_info.macro}({func_impl}) \\",
             f"    {return_ty_abi_name} {func_abi_info.impl_name}({params_str}) {{ \\",
             f"        return {func_impl}({args_str}); \\",
@@ -100,31 +99,30 @@ class CMacroPackageGenerator:
 
 
 class CMacroIfaceGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, iface: IfaceDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, iface: IfaceDecl):
         self.am = am
         self.iface = iface
+
+    def gen_iface_file(self, om: OutputManager):
+        iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
         iface_c_impl_info = IfaceCImplInfo.get(self.am, self.iface)
-        self.target = CHeaderWriter(
-            self.om,
+        target = CHeaderWriter(
+            om,
             f"include/{iface_c_impl_info.header}",
             FileKind.C_HEADER,
         )
-
-    def gen_iface_file(self):
-        iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
-        with self.target:
-            self.target.add_include("taihe/common.h", iface_abi_info.impl_header)
+        with target:
+            target.add_include("taihe/common.h", iface_abi_info.impl_header)
             for method in self.iface.methods:
                 for param in method.params:
                     param_ty_abi_info = TypeAbiInfo.get(self.am, param.ty)
-                    self.target.add_include(*param_ty_abi_info.impl_headers)
+                    target.add_include(*param_ty_abi_info.impl_headers)
                 if isinstance(return_ty := method.return_ty, NonVoidType):
                     return_ty_abi_info = TypeAbiInfo.get(self.am, return_ty)
-                    self.target.add_include(*return_ty_abi_info.impl_headers)
-                self.gen_method(method)
+                    target.add_include(*return_ty_abi_info.impl_headers)
+                self.gen_method(target, method)
 
-    def gen_method(self, method: IfaceMethodDecl):
+    def gen_method(self, target: CHeaderWriter, method: IfaceMethodDecl):
         method_abi_info = IfaceMethodAbiInfo.get(self.am, method)
         method_c_impl_info = IfaceMethodCImplInfo.get(self.am, method)
         method_impl = "C_METHOD_IMPL"
@@ -144,7 +142,7 @@ class CMacroIfaceGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        self.target.writelns(
+        target.writelns(
             f"#define {method_c_impl_info.macro}({method_impl}) \\",
             f"    {return_ty_abi_name} {method_abi_info.impl_name}({params_str}) {{ \\",
             f"        return {method_impl}({args_str}); \\",
@@ -153,37 +151,36 @@ class CMacroIfaceGenerator:
 
 
 class CImplSourcesGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pg: PackageGroup):
         self.am = am
+        self.pg = pg
 
-    def generate(self, pg: PackageGroup):
-        for pkg in pg.packages:
-            CTemplatePackageGenerator(self.om, self.am, pkg).gen_package_file()
+    def generate(self, om: OutputManager):
+        for pkg in self.pg.packages:
+            CTemplatePackageGenerator(self.am, pkg).gen_package_file(om)
             for iface in pkg.interfaces:
-                CTemplateIfaceGenerator(self.om, self.am, iface).gen_iface_file()
+                CTemplateIfaceGenerator(self.am, iface).gen_iface_file(om)
 
 
 class CTemplatePackageGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, pkg: PackageDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, pkg: PackageDecl):
         self.am = am
         self.pkg = pkg
+
+    def gen_package_file(self, om: OutputManager):
         pkg_c_impl_info = PackageCImplInfo.get(self.am, self.pkg)
-        self.target = CSourceWriter(
-            self.om,
+        target = CSourceWriter(
+            om,
             f"temp/{pkg_c_impl_info.source}",
             FileKind.C_TEMPLATE,
         )
-
-    def gen_package_file(self):
         pkg_c_impl_info = PackageCImplInfo.get(self.am, self.pkg)
-        with self.target:
-            self.target.add_include(pkg_c_impl_info.header)
+        with target:
+            target.add_include(pkg_c_impl_info.header)
             for func in self.pkg.functions:
-                self.gen_func(func)
+                self.gen_func(target, func)
 
-    def gen_func(self, func: GlobFuncDecl):
+    def gen_func(self, target: CSourceWriter, func: GlobFuncDecl):
         func_c_impl_info = GlobFuncCImplInfo.get(self.am, func)
         params = []
         for param in func.params:
@@ -195,38 +192,36 @@ class CTemplatePackageGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        with self.target.indented(
+        with target.indented(
             f"{return_ty_abi_name} {func_c_impl_info.function}({params_str}) {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"// TODO",
             )
-        self.target.writelns(
+        target.writelns(
             f"{func_c_impl_info.macro}({func_c_impl_info.function});",
         )
 
 
 class CTemplateIfaceGenerator:
-    def __init__(self, om: OutputManager, am: AnalysisManager, iface: IfaceDecl):
-        self.om = om
+    def __init__(self, am: AnalysisManager, iface: IfaceDecl):
         self.am = am
         self.iface = iface
+
+    def gen_iface_file(self, om: OutputManager):
         iface_c_impl_info = IfaceCImplInfo.get(self.am, self.iface)
-        self.target = CSourceWriter(
-            self.om,
+        target = CSourceWriter(
+            om,
             f"temp/{iface_c_impl_info.source}",
             FileKind.C_TEMPLATE,
         )
-
-    def gen_iface_file(self):
-        iface_c_impl_info = IfaceCImplInfo.get(self.am, self.iface)
-        with self.target:
-            self.target.add_include(iface_c_impl_info.header)
+        with target:
+            target.add_include(iface_c_impl_info.header)
             for method in self.iface.methods:
-                self.gen_method(method)
+                self.gen_method(target, method)
 
-    def gen_method(self, method: IfaceMethodDecl):
+    def gen_method(self, target: CSourceWriter, method: IfaceMethodDecl):
         method_c_impl_info = IfaceMethodCImplInfo.get(self.am, method)
         params = []
         iface_abi_info = IfaceAbiInfo.get(self.am, self.iface)
@@ -240,13 +235,13 @@ class CTemplateIfaceGenerator:
             return_ty_abi_name = return_ty_abi_info.as_owner
         else:
             return_ty_abi_name = "void"
-        with self.target.indented(
+        with target.indented(
             f"{return_ty_abi_name} {method_c_impl_info.function}({params_str}) {{",
             f"}}",
         ):
-            self.target.writelns(
+            target.writelns(
                 f"// TODO",
             )
-        self.target.writelns(
+        target.writelns(
             f"{method_c_impl_info.macro}({method_c_impl_info.function});",
         )
