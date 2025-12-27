@@ -66,6 +66,22 @@ struct as_abi<void> {
     using type = void;
 };
 
+template<class From, class To>
+struct copy_cv {
+    using U = std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+    using type = std::conditional_t<std::is_volatile_v<From>, std::add_volatile_t<U>, U>;
+};
+
+template<class From, class To>
+using copy_cv_t = typename copy_cv<From, To>::type;
+
+template<typename cpp_t>
+struct as_abi<cpp_t, std::enable_if_t<std::is_reference_v<cpp_t>>> {
+    using raw = std::remove_reference_t<cpp_t>;
+    using base = as_abi_t<std::remove_cv_t<raw>>;
+    using type = std::add_pointer_t<copy_cv_t<raw, base>>;
+};
+
 template<typename cpp_t, std::enable_if_t<!std::is_reference_v<cpp_t>, int> = 0>
 inline as_abi_t<cpp_t> into_abi(cpp_t &&cpp_val)
 {

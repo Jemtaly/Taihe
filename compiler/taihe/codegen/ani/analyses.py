@@ -424,6 +424,15 @@ class ArkTsModule(ArkTsModuleOrNamespace):
     make_callback = "_taihe_makeCallback"
     bigint_to_arrbuf = "_taihe_fromBigIntToArrayBuffer"
     arrbuf_to_bigint = "_taihe_fromArrayBufferToBigInt"
+    record_set = "_taihe_recordSet"
+    record_insert = "_taihe_recordInsert"
+    map_set = "_taihe_mapSet"
+    map_insert = "_taihe_mapInsert"
+    set_insert = "_taihe_setInsert"
+    vector_at = "_taihe_vecAt"
+    vector_set = "_taihe_vecSet"
+    vector_insert = "_taihe_vecInsert"
+    vector_remove = "_taihe_vecRemove"
     BEType = "_taihe_BusinessError"
     ACType = "_taihe_AsyncCallback"
 
@@ -2091,6 +2100,8 @@ class RecordTypeAniInfo(TypeAniInfo):
         self.record_attr = record_attr
         self.ani_type = ANI_OBJECT
         self.sig_type = AniRuntimeClassType("std.core.Record")
+        self.decl_header = "taihe.Map.ani.0.hpp"
+        self.impl_header = "taihe.Map.ani.1.hpp"
 
     @override
     def sts_type_in(self, target: StsWriter) -> str:
@@ -2108,51 +2119,14 @@ class RecordTypeAniInfo(TypeAniInfo):
         ani_value: str,
         cpp_after: str,
     ):
-        ani_iter = f"{cpp_after}_ani_iter"
-        ani_item = f"{cpp_after}_ani_item"
-        ani_next = f"{cpp_after}_ani_next"
-        ani_done = f"{cpp_after}_ani_done"
-        ani_key = f"{cpp_after}_ani_key"
-        ani_val = f"{cpp_after}_ani_val"
-        cpp_key = f"{cpp_after}_cpp_key"
-        cpp_val = f"{cpp_after}_cpp_val"
-        key_ty_ani_info = TypeAniInfo.get(self.am, self.t.key_ty)
-        val_ty_ani_info = TypeAniInfo.get(self.am, self.t.val_ty)
+        from taihe.codegen.ani.gen_ani import AniMapDeclGenerator, AniMapImplGenerator
+
+        target.add_include(self.impl_header)
+        AniMapDeclGenerator(target._om, self.am, self.t).gen_decl_file()
+        AniMapImplGenerator(target._om, self.am, self.t).gen_impl_file()
         target.writelns(
-            f"ani_object {ani_iter} = {{}};",
-            f'{env}->Object_CallMethod_Ref({ani_value}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Record", "entries", ":C{{std.core.IterableIterator}}"), reinterpret_cast<ani_ref*>(&{ani_iter}));',
-            f"{self.cpp_info.as_owner} {cpp_after};",
+            f"{self.cpp_info.as_owner} {cpp_after} = ::taihe::from_ani<{self.cpp_info.as_owner}>({env}, {ani_value});",
         )
-        with target.indented(
-            f"while (true) {{",
-            f"}}",
-        ):
-            target.writelns(
-                f"ani_object {ani_next} = {{}};",
-                f"ani_boolean {ani_done} = {{}};",
-                f'{env}->Object_CallMethod_Ref({ani_iter}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Iterator", "next", ":C{{std.core.IteratorResult}}"), reinterpret_cast<ani_ref*>(&{ani_next}));',
-                f'{env}->Object_GetField_Boolean({ani_next}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "done"), &{ani_done});',
-            )
-            with target.indented(
-                f"if ({ani_done}) {{;",
-                f"}};",
-            ):
-                target.writelns(
-                    f"break;",
-                )
-            target.writelns(
-                f"ani_tuple_value {ani_item} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_next},  TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "value"), reinterpret_cast<ani_ref*>(&{ani_item}));',
-                f"ani_ref {ani_key} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_item}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.Tuple2", "$0"), &{ani_key});',
-                f"ani_ref {ani_val} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_item}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.Tuple2", "$1"), &{ani_val});',
-            )
-            key_ty_ani_info.from_ani_boxed(target, env, ani_key, cpp_key)
-            val_ty_ani_info.from_ani_boxed(target, env, ani_val, cpp_val)
-            target.writelns(
-                f"{cpp_after}.emplace(std::move({cpp_key}), std::move({cpp_val}));",
-            )
 
     @override
     def into_ani(
@@ -2170,7 +2144,7 @@ class RecordTypeAniInfo(TypeAniInfo):
         ani_val = f"{ani_after}_ani_val"
         target.writelns(
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "std.core.Record"), TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Record", "<ctor>", ":"), &{ani_after});',
+            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", ":"), &{ani_after});',
         )
         with target.indented(
             f"for (const auto& [{cpp_key}, {cpp_val}] : {cpp_value}) {{",
@@ -2179,7 +2153,7 @@ class RecordTypeAniInfo(TypeAniInfo):
             key_ty_ani_info.into_ani_boxed(target, env, cpp_key, ani_key)
             val_ty_ani_info.into_ani_boxed(target, env, cpp_val, ani_val)
             target.writelns(
-                f'{env}->Object_CallMethod_Void({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Record", "$_set", "X{{C{{std.core.BaseEnum}}C{{std.core.Numeric}}C{{std.core.String}}}}Y:"), {ani_key}, {ani_val});',
+                f'{env}->Object_CallMethod_Void({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "$_set", "X{{C{{std.core.BaseEnum}}C{{std.core.Numeric}}C{{std.core.String}}}}Y:"), {ani_key}, {ani_val});',
             )
 
 
@@ -2190,6 +2164,8 @@ class MapTypeAniInfo(TypeAniInfo):
         self.t = t
         self.ani_type = ANI_OBJECT
         self.sig_type = AniRuntimeClassType("std.core.Map")
+        self.decl_header = "taihe.Map.ani.0.hpp"
+        self.impl_header = "taihe.Map.ani.1.hpp"
 
     @override
     def sts_type_in(self, target: StsWriter) -> str:
@@ -2207,51 +2183,14 @@ class MapTypeAniInfo(TypeAniInfo):
         ani_value: str,
         cpp_after: str,
     ):
-        ani_iter = f"{cpp_after}_ani_iter"
-        ani_item = f"{cpp_after}_ani_item"
-        ani_next = f"{cpp_after}_ani_next"
-        ani_done = f"{cpp_after}_ani_done"
-        ani_key = f"{cpp_after}_ani_key"
-        ani_val = f"{cpp_after}_ani_val"
-        cpp_key = f"{cpp_after}_cpp_key"
-        cpp_val = f"{cpp_after}_cpp_val"
-        key_ty_ani_info = TypeAniInfo.get(self.am, self.t.key_ty)
-        val_ty_ani_info = TypeAniInfo.get(self.am, self.t.val_ty)
+        from taihe.codegen.ani.gen_ani import AniMapDeclGenerator, AniMapImplGenerator
+
+        target.add_include(self.impl_header)
+        AniMapDeclGenerator(target._om, self.am, self.t).gen_decl_file()
+        AniMapImplGenerator(target._om, self.am, self.t).gen_impl_file()
         target.writelns(
-            f"ani_object {ani_iter} = {{}};",
-            f'{env}->Object_CallMethod_Ref({ani_value}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Map", "entries", ":C{{std.core.IterableIterator}}"), reinterpret_cast<ani_ref*>(&{ani_iter}));',
-            f"{self.cpp_info.as_owner} {cpp_after};",
+            f"{self.cpp_info.as_owner} {cpp_after} = ::taihe::from_ani<{self.cpp_info.as_owner}>({env}, {ani_value});",
         )
-        with target.indented(
-            f"while (true) {{",
-            f"}}",
-        ):
-            target.writelns(
-                f"ani_object {ani_next} = {{}};",
-                f"ani_boolean {ani_done} = {{}};",
-                f'{env}->Object_CallMethod_Ref({ani_iter}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Iterator", "next", ":C{{std.core.IteratorResult}}"), reinterpret_cast<ani_ref*>(&{ani_next}));',
-                f'{env}->Object_GetField_Boolean({ani_next}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "done"), &{ani_done});',
-            )
-            with target.indented(
-                f"if ({ani_done}) {{;",
-                f"}};",
-            ):
-                target.writelns(
-                    f"break;",
-                )
-            target.writelns(
-                f"ani_tuple_value {ani_item} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_next},  TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "value"), reinterpret_cast<ani_ref*>(&{ani_item}));',
-                f"ani_ref {ani_key} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_item}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.Tuple2", "$0"), &{ani_key});',
-                f"ani_ref {ani_val} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_item}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.Tuple2", "$1"), &{ani_val});',
-            )
-            key_ty_ani_info.from_ani_boxed(target, env, ani_key, cpp_key)
-            val_ty_ani_info.from_ani_boxed(target, env, ani_val, cpp_val)
-            target.writelns(
-                f"{cpp_after}.emplace(std::move({cpp_key}), std::move({cpp_val}));",
-            )
 
     @override
     def into_ani(
@@ -2269,7 +2208,7 @@ class MapTypeAniInfo(TypeAniInfo):
         ani_val = f"{ani_after}_ani_val"
         target.writelns(
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "std.core.Map"), TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Map", "<ctor>", ":"), &{ani_after});',
+            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", ":"), &{ani_after});',
         )
         with target.indented(
             f"for (const auto& [{cpp_key}, {cpp_val}] : {cpp_value}) {{",
@@ -2278,7 +2217,7 @@ class MapTypeAniInfo(TypeAniInfo):
             key_ty_ani_info.into_ani_boxed(target, env, cpp_key, ani_key)
             val_ty_ani_info.into_ani_boxed(target, env, cpp_val, ani_val)
             target.writelns(
-                f'{env}->Object_CallMethod_Ref({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Map", "set", "YY:C{{std.core.Map}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_key}, {ani_val});',
+                f'{env}->Object_CallMethod_Ref({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "set", "YY:C{{{self.type_desc}}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_key}, {ani_val});',
             )
 
 
@@ -2289,6 +2228,8 @@ class SetTypeAniInfo(TypeAniInfo):
         self.t = t
         self.ani_type = ANI_OBJECT
         self.sig_type = AniRuntimeClassType("std.core.Set")
+        self.decl_header = "taihe.Set.ani.0.hpp"
+        self.impl_header = "taihe.Set.ani.1.hpp"
 
     @override
     def sts_type_in(self, target: StsWriter) -> str:
@@ -2304,43 +2245,14 @@ class SetTypeAniInfo(TypeAniInfo):
         ani_value: str,
         cpp_after: str,
     ):
-        ani_iter = f"{cpp_after}_ani_iter"
-        ani_item = f"{cpp_after}_ani_item"
-        ani_next = f"{cpp_after}_ani_next"
-        ani_done = f"{cpp_after}_ani_done"
-        ani_val = f"{cpp_after}_ani_val"
-        cpp_val = f"{cpp_after}_cpp_val"
-        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.key_ty)
+        from taihe.codegen.ani.gen_ani import AniSetDeclGenerator, AniSetImplGenerator
+
+        target.add_include(self.impl_header)
+        AniSetDeclGenerator(target._om, self.am, self.t).gen_decl_file()
+        AniSetImplGenerator(target._om, self.am, self.t).gen_impl_file()
         target.writelns(
-            f"ani_object {ani_iter} = {{}};",
-            f'{env}->Object_CallMethod_Ref({ani_value}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Set", "values", ":C{{std.core.IterableIterator}}"), reinterpret_cast<ani_ref*>(&{ani_iter}));',
-            f"{self.cpp_info.as_owner} {cpp_after};",
+            f"{self.cpp_info.as_owner} {cpp_after} = ::taihe::from_ani<{self.cpp_info.as_owner}>({env}, {ani_value});",
         )
-        with target.indented(
-            f"while (true) {{",
-            f"}}",
-        ):
-            target.writelns(
-                f"ani_object {ani_next} = {{}};",
-                f"ani_boolean {ani_done} = {{}};",
-                f'{env}->Object_CallMethod_Ref({ani_iter}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Iterator", "next", ":C{{std.core.IteratorResult}}"), reinterpret_cast<ani_ref*>(&{ani_next}));',
-                f'{env}->Object_GetField_Boolean({ani_next}, TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "done"), &{ani_done});',
-            )
-            with target.indented(
-                f"if ({ani_done}) {{;",
-                f"}};",
-            ):
-                target.writelns(
-                    f"break;",
-                )
-            target.writelns(
-                f"ani_ref {ani_val} = {{}};",
-                f'{env}->Object_GetField_Ref({ani_next},  TH_ANI_FIND_CLASS_FIELD({env}, "std.core.IteratorResult", "value"), &{ani_val});',
-            )
-            item_ty_ani_info.from_ani_boxed(target, env, ani_val, cpp_val)
-            target.writelns(
-                f"{cpp_after}.emplace(std::move({cpp_val}));",
-            )
 
     @override
     def into_ani(
@@ -2355,7 +2267,7 @@ class SetTypeAniInfo(TypeAniInfo):
         ani_val = f"{ani_after}_ani_val"
         target.writelns(
             f"ani_object {ani_after} = {{}};",
-            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "std.core.Set"), TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Set", "<ctor>", ":"), &{ani_after});',
+            f'{env}->Object_New(TH_ANI_FIND_CLASS({env}, "{self.type_desc}"), TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "<ctor>", ":"), &{ani_after});',
         )
         with target.indented(
             f"for (const auto& {cpp_val} : {cpp_value}) {{",
@@ -2363,7 +2275,7 @@ class SetTypeAniInfo(TypeAniInfo):
         ):
             item_ty_ani_info.into_ani_boxed(target, env, cpp_val, ani_val)
             target.writelns(
-                f'{env}->Object_CallMethod_Ref({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "std.core.Set", "add", "Y:C{{std.core.Set}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_val});',
+                f'{env}->Object_CallMethod_Ref({ani_after}, TH_ANI_FIND_CLASS_METHOD({env}, "{self.type_desc}", "add", "Y:C{{{self.type_desc}}}"), reinterpret_cast<ani_ref*>(&{ani_after}), {ani_val});',
             )
 
 
@@ -2373,7 +2285,9 @@ class VectorTypeAniInfo(TypeAniInfo):
         self.am = am
         self.t = t
         self.ani_type = ANI_ARRAY
-        self.sig_type = AniRuntimeClassType("std.core.Array")
+        self.sig_type = AniRuntimeClassType("escompat.Array")
+        self.decl_header = "taihe.Vector.ani.0.hpp"
+        self.impl_header = "taihe.Vector.ani.1.hpp"
 
     @override
     def sts_type_in(self, target: StsWriter) -> str:
@@ -2389,29 +2303,17 @@ class VectorTypeAniInfo(TypeAniInfo):
         ani_value: str,
         cpp_after: str,
     ):
-        ani_size = f"{cpp_after}_ani_size"
-        ani_item = f"{cpp_after}_ani_item"
-        cpp_item = f"{cpp_after}_cpp_item"
-        iterator = f"{cpp_after}_iterator"
-        item_ty_ani_info = TypeAniInfo.get(self.am, self.t.val_ty)
-        target.writelns(
-            f"ani_size {ani_size} = {{}};",
-            f"{env}->Array_GetLength({ani_value}, &{ani_size});",
-            f"{self.cpp_info.as_owner} {cpp_after};",
-            f"{cpp_after}.reserve({ani_size});",
+        from taihe.codegen.ani.gen_ani import (
+            AniVectorDeclGenerator,
+            AniVectorImplGenerator,
         )
-        with target.indented(
-            f"for (size_t {iterator} = 0; {iterator} < {ani_size}; {iterator}++) {{",
-            f"}}",
-        ):
-            target.writelns(
-                f"ani_ref {ani_item} = {{}};",
-                f"{env}->Array_Get({ani_value}, {iterator}, &{ani_item});",
-            )
-            item_ty_ani_info.from_ani_boxed(target, env, ani_item, cpp_item)
-            target.writelns(
-                f"{cpp_after}.push_back(std::move({cpp_item}));",
-            )
+
+        target.add_include(self.impl_header)
+        AniVectorDeclGenerator(target._om, self.am, self.t).gen_decl_file()
+        AniVectorImplGenerator(target._om, self.am, self.t).gen_impl_file()
+        target.writelns(
+            f"{self.cpp_info.as_owner} {cpp_after} = ::taihe::from_ani<{self.cpp_info.as_owner}>({env}, {ani_value});",
+        )
 
     @override
     def into_ani(

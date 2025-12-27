@@ -13,25 +13,26 @@
  * limitations under the License.
  */
 
-// This file is a test file.
-// NOLINTBEGIN
-#include "userSettings.impl.hpp"
-#include "stdexcept"
-#include "taihe/runtime.hpp"
-#include "userSettings.proj.hpp"
+#include "map_test.ani.hpp"
 
-using namespace taihe;
+#if __has_include(<ani.h>)
+#include <ani.h>
+#elif __has_include(<ani/ani.h>)
+#include <ani/ani.h>
+#else
+#error "ani.h not found. Please ensure the Ani SDK is correctly installed."
+#endif
 
-namespace {
-optional<string> getUserSetting(map_view<string, string> settings, string_view key)
+ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
 {
-    bool contained = settings.contains(key);
-    if (!contained) {
-        return optional<string>(std::nullopt);
+    ani_env *env;
+    if (ANI_OK != vm->GetEnv(ANI_VERSION_1, &env)) {
+        return ANI_ERROR;
     }
-    return optional<string>(std::in_place, settings[key]);
+    if (ANI_OK != map_test::ANIRegister(env)) {
+        std::cerr << "Error from map_test::ANIRegister" << std::endl;
+        return ANI_ERROR;
+    }
+    *result = ANI_VERSION_1;
+    return ANI_OK;
 }
-}  // namespace
-
-TH_EXPORT_CPP_API_getUserSetting(getUserSetting);
-// NOLINTEND

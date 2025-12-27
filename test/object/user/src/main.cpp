@@ -21,7 +21,7 @@
 #include "object.Left.proj.1.hpp"
 #include "object.user.hpp"
 #include "taihe/callback.hpp"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/object.hpp"
 
 class Named {
@@ -229,9 +229,9 @@ void testCallbackB()
 
     map<callback_type_b, int> callback_b_map;
 
-    callback_b_map.emplace<1>(callback_b, 1);
-    callback_b_map.emplace<1>(callback_b_as_callback_b, 2);
-    callback_b_map.emplace<0>(callback_b_as_weak_callback_b, 3);
+    callback_b_map.set(callback_b, 1);
+    callback_b_map.set(callback_b_as_callback_b, 2);
+    callback_b_map.insert(callback_b_as_weak_callback_b, 3);
 
     std::cout << "callback_b_map size: " << callback_b_map.size() << std::endl;
 }

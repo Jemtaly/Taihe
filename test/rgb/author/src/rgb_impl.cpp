@@ -132,7 +132,7 @@ vector<IBase> makeVec(array_view<IBase> src)
     size_t n = src.size();
     vector<IBase> res;
     for (std::size_t i = 0; i < n; i++) {
-        res.emplace_back(src[i]);
+        res.push_back(src[i]);
     }
     return res;
 }
@@ -141,7 +141,7 @@ void fillVec(array_view<IBase> src, vector_view<IBase> dst)
 {
     size_t n = src.size();
     for (std::size_t i = 0; i < n; i++) {
-        dst.emplace_back(src[i]);
+        dst.push_back(src[i]);
     }
 }
 
@@ -150,7 +150,7 @@ map<string, IBase> makeMap(array_view<string> keys, array_view<IBase> src)
     size_t n = std::min(keys.size(), src.size());
     map<string, IBase> res;
     for (std::size_t i = 0; i < n; i++) {
-        res.emplace(keys[i], src[i]);
+        res.insert(keys[i], src[i]);
     }
     return res;
 }
@@ -159,7 +159,7 @@ void fillMap(array_view<string> keys, array_view<IBase> src, map_view<string, IB
 {
     size_t n = std::min(keys.size(), src.size());
     for (std::size_t i = 0; i < n; i++) {
-        dst.emplace(keys[i], src[i]);
+        dst.insert(keys[i], src[i]);
     }
 }
 
@@ -168,7 +168,7 @@ set<string> makeSet(array_view<string> src)
     size_t n = src.size();
     set<string> res;
     for (std::size_t i = 0; i < n; i++) {
-        res.emplace(src[i]);
+        res.insert(src[i]);
     }
     return res;
 }
@@ -177,7 +177,7 @@ void fillSet(array_view<string> src, set_view<string> dst)
 {
     size_t n = src.size();
     for (std::size_t i = 0; i < n; i++) {
-        dst.emplace(src[i]);
+        dst.insert(src[i]);
     }
 }
 

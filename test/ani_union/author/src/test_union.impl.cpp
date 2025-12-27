@@ -191,11 +191,6 @@ public:
         return "func_union_array_map9";
     }
 
-    string FuncUnionArrayMap10(::test_union::UnionArrayMap1 const &data1, ::test_union::UnionArrayMap2 const &data2)
-    {
-        return "func_union_array_map10";
-    }
-
     string FuncUnionMix(::test_union::union_mix const &data1, ::test_union::union_mix const &data2,
                         ::test_union::union_mix const &data3, ::test_union::union_mix const &data4,
                         ::test_union::union_mix const &data5)

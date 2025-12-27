@@ -214,7 +214,7 @@ public:
     {
         map<string, NullableString> result;
         for (auto it = key.begin(); it != key.end(); ++it) {
-            result.emplace(*it, NullableString::make_str(""));
+            result.insert(*it, NullableString::make_str(""));
         }
         return result;
     }

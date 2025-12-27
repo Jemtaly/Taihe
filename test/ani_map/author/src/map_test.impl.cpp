@@ -15,15 +15,15 @@
 
 // This file is a test file.
 // NOLINTBEGIN
-#include "record_test.impl.hpp"
+#include "map_test.impl.hpp"
 
-#include "record_test.Color.proj.1.hpp"
-#include "record_test.Data.proj.1.hpp"
-#include "record_test.ICpu.proj.2.hpp"
-#include "record_test.ICpuInfo.proj.2.hpp"
-#include "record_test.ICpuZero.proj.2.hpp"
-#include "record_test.Pair.proj.1.hpp"
-#include "record_test.TypeUnion.proj.1.hpp"
+#include "map_test.Color.proj.1.hpp"
+#include "map_test.Data.proj.1.hpp"
+#include "map_test.ICpu.proj.2.hpp"
+#include "map_test.ICpuInfo.proj.2.hpp"
+#include "map_test.ICpuZero.proj.2.hpp"
+#include "map_test.Pair.proj.1.hpp"
+#include "map_test.TypeUnion.proj.1.hpp"
 #include "stdexcept"
 #include "taihe/array.hpp"
 #include "taihe/containers/map.hpp"
@@ -72,12 +72,12 @@ public:
     }
 };
 
-::record_test::ICpu MakeCpu()
+::map_test::ICpu MakeCpu()
 {
-    return make_holder<ICpu, ::record_test::ICpu>();
+    return make_holder<ICpu, ::map_test::ICpu>();
 }
 
-int32_t GetCpuSize(map_view<string, ::record_test::ICpu> r)
+int32_t GetCpuSize(map_view<string, ::map_test::ICpu> r)
 {
     return r.size();
 }
@@ -101,7 +101,7 @@ map<string, string> CreateStringString(int32_t a)
     return m;
 }
 
-map<string, int32_t> GetMapfromArray(array_view<::record_test::Data> d)
+map<string, int32_t> GetMapfromArray(array_view<::map_test::Data> d)
 {
     map<string, int32_t> m;
     for (std::size_t i = 0; i < d.size(); ++i) {
@@ -110,7 +110,7 @@ map<string, int32_t> GetMapfromArray(array_view<::record_test::Data> d)
     return m;
 }
 
-::record_test::Data GetDatafromMap(map_view<string, ::record_test::Data> m, string_view k)
+::map_test::Data GetDatafromMap(map_view<string, ::map_test::Data> m, string_view k)
 {
     bool contains = m.contains(k);
     if (!contains) {
@@ -297,37 +297,37 @@ bool Mapfunc15(map_view<string, array<string>> m)
     return true;
 }
 
-bool Mapfunc16(map_view<string, record_test::TypeUnion> m)
+bool Mapfunc16(map_view<string, map_test::TypeUnion> m)
 {
     return true;
 }
 
-bool Mapfunc17(map_view<string, record_test::Color> m)
+bool Mapfunc17(map_view<string, map_test::Color> m)
 {
     return true;
 }
 
-bool Mapfunc18(map_view<string, record_test::Pair> m)
+bool Mapfunc18(map_view<string, map_test::Pair> m)
 {
     return true;
 }
 
-::record_test::ICpuZero MakeICpuZero()
+::map_test::ICpuZero MakeICpuZero()
 {
-    return make_holder<ICpuZero, ::record_test::ICpuZero>();
+    return make_holder<ICpuZero, ::map_test::ICpuZero>();
 }
 
-bool Mapfunc19(map_view<string, record_test::ICpuZero> m)
+bool Mapfunc19(map_view<string, map_test::ICpuZero> m)
 {
     return true;
 }
 
-::record_test::ICpuInfo MakeICpuInfo()
+::map_test::ICpuInfo MakeICpuInfo()
 {
-    return make_holder<ICpuInfo, ::record_test::ICpuInfo>();
+    return make_holder<ICpuInfo, ::map_test::ICpuInfo>();
 }
 
-bool Mapfunc20(map_view<string, record_test::ICpuInfo> m)
+bool Mapfunc20(map_view<string, map_test::ICpuInfo> m)
 {
     return true;
 }
@@ -537,32 +537,32 @@ map<string, array<string>> Mapfunc40()
     return result;
 }
 
-map<string, record_test::TypeUnion> Mapfunc41()
+map<string, map_test::TypeUnion> Mapfunc41()
 {
     int32_t const value = 123;
-    map<string, record_test::TypeUnion> result;
-    result.insert("key1", record_test::TypeUnion::make_a(value));
-    result.insert("key2", record_test::TypeUnion::make_b(true));
-    result.insert("key3", record_test::TypeUnion::make_c("value"));
+    map<string, map_test::TypeUnion> result;
+    result.insert("key1", map_test::TypeUnion::make_a(value));
+    result.insert("key2", map_test::TypeUnion::make_b(true));
+    result.insert("key3", map_test::TypeUnion::make_c("value"));
     return result;
 }
 
-map<string, record_test::Color> Mapfunc42()
+map<string, map_test::Color> Mapfunc42()
 {
-    map<string, record_test::Color> result;
-    result.insert("key1", record_test::Color::key_t::RED);
-    result.insert("key2", record_test::Color::key_t::GREEN);
+    map<string, map_test::Color> result;
+    result.insert("key1", map_test::Color::key_t::RED);
+    result.insert("key2", map_test::Color::key_t::GREEN);
     return result;
 }
 
-map<string, record_test::Pair> Mapfunc43()
+map<string, map_test::Pair> Mapfunc43()
 {
-    map<string, record_test::Pair> result;
-    record_test::Pair p1 {
+    map<string, map_test::Pair> result;
+    map_test::Pair p1 {
         .a = "one",
         .b = true,
     };
-    record_test::Pair p2 {
+    map_test::Pair p2 {
         .a = "two",
         .b = false,
     };
@@ -571,19 +571,19 @@ map<string, record_test::Pair> Mapfunc43()
     return result;
 }
 
-map<string, record_test::ICpuZero> Mapfunc44()
+map<string, map_test::ICpuZero> Mapfunc44()
 {
-    map<string, record_test::ICpuZero> result;
-    result.insert("key1", make_holder<ICpuZero, ::record_test::ICpuZero>());
-    result.insert("key2", make_holder<ICpuZero, ::record_test::ICpuZero>());
+    map<string, map_test::ICpuZero> result;
+    result.insert("key1", make_holder<ICpuZero, ::map_test::ICpuZero>());
+    result.insert("key2", make_holder<ICpuZero, ::map_test::ICpuZero>());
     return result;
 }
 
-map<string, record_test::ICpuInfo> Mapfunc45()
+map<string, map_test::ICpuInfo> Mapfunc45()
 {
-    map<string, record_test::ICpuInfo> result;
-    result.insert("key1", make_holder<ICpuInfo, ::record_test::ICpuInfo>());
-    result.insert("key2", make_holder<ICpuInfo, ::record_test::ICpuInfo>());
+    map<string, map_test::ICpuInfo> result;
+    result.insert("key1", make_holder<ICpuInfo, ::map_test::ICpuInfo>());
+    result.insert("key2", make_holder<ICpuInfo, ::map_test::ICpuInfo>());
     return result;
 }
 

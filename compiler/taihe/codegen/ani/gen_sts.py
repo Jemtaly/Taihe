@@ -250,6 +250,97 @@ class StsModuleGenerator:
         )
 
         self.target.writelns(
+            f"function {self.mod.record_set}<K extends Numeric | string | BaseEnum<Int> | BaseEnum<Long> | BaseEnum<string>, V>(mp: Record<K, V>, key: K, val: V): boolean {{",
+            f"    let newKey: boolean = false;",
+            f"    if (!mp.has(key)) {{",
+            f"        newKey = true;",
+            f"    }}",
+            f"    mp.set(key, val);",
+            f"    return newKey;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.record_insert}<K extends Numeric | string | BaseEnum<Int> | BaseEnum<Long> | BaseEnum<string>, V>(mp: Record<K, V>, key: K, val: V): boolean {{",
+            f"    if (mp.has(key)) {{",
+            f"        return false;",
+            f"    }}",
+            f"    mp.set(key, val);",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.map_set}<K, V>(mp: Map<K, V>, key: K, val: V): boolean {{",
+            f"    let newKey: boolean = false;",
+            f"    if (!mp.has(key)) {{",
+            f"        newKey = true;",
+            f"    }}",
+            f"    mp.set(key, val);",
+            f"    return newKey;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.map_insert}<K, V>(mp: Map<K, V>, key: K, val: V): boolean {{",
+            f"    if (mp.has(key)) {{",
+            f"        return false;",
+            f"    }}",
+            f"    mp.set(key, val);",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.set_insert}<K>(set: Set<K>, key: K): boolean {{",
+            f"    if (set.has(key)) {{",
+            f"        return false;",
+            f"    }}",
+            f"    set.add(key);",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.vector_at}<T>(arr: Array<T>, idx: int): T | undefined {{",
+            f"    if (idx >= arr.length) {{",
+            f"        return undefined;",
+            f"    }}",
+            f"    return arr[idx];",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.vector_set}<T>(arr: Array<T>, idx: int, val: T): boolean {{",
+            f"    if (idx >= arr.length) {{",
+            f"        return false;",
+            f"    }}",
+            f"    arr[idx] = val;",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.vector_insert}<T>(arr: Array<T>, idx: int, val: T): boolean {{",
+            f"    if (idx > arr.length) {{",
+            f"        return false;",
+            f"    }}",
+            f"    arr.splice(idx, 0, val);",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
+            f"function {self.mod.vector_remove}<T>(arr: Array<T>, idx: int): boolean {{",
+            f"    if (idx >= arr.length) {{",
+            f"        return false;",
+            f"    }}",
+            f"    arr.splice(idx, 1);",
+            f"    return true;",
+            f"}}",
+        )
+
+        self.target.writelns(
             f"native function {self.mod.native_invoke}(",
             f"    castPtr: long, funcPtr: long, dataPtr: long,",
             f"    arg_0?: Object, arg_1?: Object, arg_2?: Object, arg_3?: Object,",

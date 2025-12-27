@@ -67,7 +67,7 @@ auto converte_iterator(Iterator it, Converter converter)
 {
     taihe::map<::taihe::string, ::taihe::string> m;
     for (auto const &[k, v] : serialized) {
-        m.emplace(k, v);
+        m.insert(k, v);
     }
     return m;
 }
@@ -76,7 +76,7 @@ auto converte_iterator(Iterator it, Converter converter)
 {
     auto arr = taihe::array<::test::Pair>(taihe::copy_data,
                                           converte_iterator(m.begin(),
-                                                            [](auto &kv) -> ::test::Pair {
+                                                            [](auto const &kv) -> ::test::Pair {
                                                                 return ::test::Pair {std::move(kv.first),
                                                                                      std::move(kv.second)};
                                                             }),
@@ -88,7 +88,7 @@ auto converte_iterator(Iterator it, Converter converter)
 {
     taihe::set<::taihe::string> s;
     for (auto const &v : serialized) {
-        s.emplace(v);
+        s.insert(v);
     }
     return s;
 }
@@ -97,7 +97,7 @@ auto converte_iterator(Iterator it, Converter converter)
 {
     return taihe::array<::taihe::string>(taihe::copy_data,
                                          converte_iterator(s.begin(),
-                                                           [](auto &item) -> ::taihe::string {
+                                                           [](auto const &item) -> ::taihe::string {
                                                                return std::move(item);
                                                            }),
                                          s.size());
@@ -116,7 +116,7 @@ auto converte_iterator(Iterator it, Converter converter)
 {
     return taihe::array<::taihe::string>(taihe::copy_data,
                                          converte_iterator(v.begin(),
-                                                           [](auto &item) -> ::taihe::string {
+                                                           [](auto const &item) -> ::taihe::string {
                                                                return std::move(item);
                                                            }),
                                          v.size());

@@ -53,11 +53,11 @@ map<string, int32_t> MapBookToYear(MapOption const &opt)
     // 通过 get_tag() 判断类型，通过 get_xxx_ref() 获得对应的值。
     if (opt.get_tag() == MapOption::tag_t::one_book) {
         Book const &book = opt.get_one_book_ref();
-        ret.emplace(book.title, book.year);
+        ret.insert(book.title, book.year);
     } else {
         // 使用标准的 STL 风格访问 many_books 数组。
         for (auto const &book : opt.get_many_books_ref()) {
-            ret.emplace(book.title, book.year);
+            ret.insert(book.title, book.year);
         }
     }
     return ret;

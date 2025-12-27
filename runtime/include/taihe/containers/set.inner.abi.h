@@ -13,20 +13,25 @@
  * limitations under the License.
  */
 
-#ifndef TAIHE_VECTOR_ABI_H
-#define TAIHE_VECTOR_ABI_H
+#ifndef TAIHE_CONTAINERS_SET_INNER_ABI_H
+#define TAIHE_CONTAINERS_SET_INNER_ABI_H
 
 #include <taihe/common.h>
 
-struct TVectorHandle {
+struct TSetNode {
+    TSetNode *next;
+    char data[];
+};
+
+struct TSetHandle {
     TRefCount count;
     size_t cap;
-    void *bucket;
+    TSetNode **bucket;
     size_t length;
 };
 
-struct TVector {
-    TVectorHandle *m_handle;
+struct TSetInner {
+    TSetHandle *m_handle;
 };
 
-#endif  // TAIHE_VECTOR_ABI_H
+#endif  // TAIHE_CONTAINERS_SET_INNER_ABI_H

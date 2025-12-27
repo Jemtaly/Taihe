@@ -24,7 +24,7 @@
 #include "array_test.Data.proj.1.hpp"
 #include "array_test.impl.hpp"
 #include "stdexcept"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/runtime.hpp"
 #include "taihe/string.hpp"
 
@@ -160,7 +160,7 @@ public:
                                                                             int64_t valLong)
     {
         map<string, int64_t> record;
-        record.emplace(valStr, valLong);
+        record.insert(valStr, valLong);
         ::taihe::array<::taihe::map<::taihe::string, int64_t>> res = {record, record, record};
         return res;
     }
@@ -175,7 +175,7 @@ public:
     ::taihe::array<::taihe::map<::taihe::string, int8_t>> ArrayRecordValue(::taihe::string_view valStr, int8_t valNum)
     {
         map<string, int8_t> record;
-        record.emplace(valStr, valNum);
+        record.insert(valStr, valNum);
         ::taihe::array<::taihe::map<::taihe::string, int8_t>> res = {record, record, record};
         return res;
     }
@@ -190,7 +190,7 @@ public:
     ::taihe::array<::taihe::map<::taihe::string, float>> ArrayRecordValue(::taihe::string_view valStr, float valNum)
     {
         map<string, float> record;
-        record.emplace(valStr, valNum);
+        record.insert(valStr, valNum);
         ::taihe::array<::taihe::map<::taihe::string, float>> res = {record, record, record};
         return res;
     }
@@ -205,7 +205,7 @@ public:
     ::taihe::array<::taihe::map<::taihe::string, double>> ArrayRecordValue(::taihe::string_view valStr, double valNum)
     {
         map<string, double> record;
-        record.emplace(valStr, valNum);
+        record.insert(valStr, valNum);
         ::taihe::array<::taihe::map<::taihe::string, double>> res = {record, record, record};
         return res;
     }
@@ -220,7 +220,7 @@ public:
     ::taihe::array<::taihe::map<::taihe::string, bool>> ArrayRecordValue(::taihe::string_view valStr, bool valNum)
     {
         map<string, bool> record;
-        record.emplace(valStr, valNum);
+        record.insert(valStr, valNum);
         ::taihe::array<::taihe::map<::taihe::string, bool>> res = {record, record, record};
         return res;
     }
@@ -458,7 +458,7 @@ array<::array_test::Color> MakeEnumArray(::array_test::Color value, int32_t num)
 array<map<string, int64_t>> MakeRecordArray(string_view key, int64_t val, int32_t num)
 {
     map<string, int64_t> record;
-    record.emplace(key, val);
+    record.insert(key, val);
     return array<map<string, int64_t>>::make(num, record);
 }
 
@@ -485,7 +485,7 @@ array<map<string, int64_t>> ChangeRecordArray(array_view<map<string, int64_t>> v
 {
     auto result = array<map<string, int64_t>>::make(value.size(), value[0]);
     map<string, int64_t> record;
-    record.emplace(k, v);
+    record.insert(k, v);
     std::transform(value.begin(), value.end(), result.begin(), [record](map<string, int64_t> m) {
         return record;
     });

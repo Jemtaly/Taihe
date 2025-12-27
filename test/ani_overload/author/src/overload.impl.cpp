@@ -21,7 +21,7 @@
 #include "overload.Mystruct.proj.1.hpp"
 #include "overload.OverloadInterface.proj.2.hpp"
 #include "taihe/array.hpp"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/string.hpp"
 
 using namespace taihe;

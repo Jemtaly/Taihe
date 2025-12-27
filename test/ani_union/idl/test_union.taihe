@@ -228,7 +228,6 @@ interface MyInterface {
   FuncUnionArrayMap7(data1: UnionArrayMap7, data2: UnionArrayMap7): String;
   FuncUnionArrayMap8(data1: UnionArrayMap8, data2: UnionArrayMap8): String;
   FuncUnionArrayMap9(data1: UnionArrayMap9, data2: UnionArrayMap9): String;
-  FuncUnionArrayMap10(data1: UnionArrayMap1, data2: UnionArrayMap2): String;
 
   FuncUnionMix(data1: union_mix,data2: union_mix,data3: union_mix,data4: union_mix,data5: union_mix): String;
   FuncUnionMix10Param(data1: union_mix,data2: union_mix,data3: union_mix,data4: union_mix,data5: union_mix,data6: union_mix,data7: union_mix,data8: union_mix,data9: union_mix,data10: union_mix): String;

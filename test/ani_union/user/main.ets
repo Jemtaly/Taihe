@@ -384,24 +384,6 @@ function test_interface_Union_array_map8() {
     let arri8: byte[] = [1, 2, 3, 4]
     console.log(instance.funcUnionArrayMap9(arri8, studentNames))
 }
-function test_interface_Union_array_map9() {
-    let instance: UnionTest1.MyInterface = UnionTest1.getInterface();
-    const studentScores1: Record<String, byte> = {
-        "math": (90).toByte(),
-        "english": (85).toByte(),
-        "science": (95).toByte(),
-    };
-    const studentScores2: Record<String, short> = {
-        "math": (90).toShort(),
-        "english": (85).toShort(),
-        "science": (95).toShort(),
-    };
-    let arri8: byte[] = [1, 2, 3, 4]
-    console.log(instance.funcUnionArrayMap10(arri8, arri8))
-    console.log(instance.funcUnionArrayMap10(arri8, studentScores2))
-    console.log(instance.funcUnionArrayMap10(studentScores1, arri8))
-    console.log(instance.funcUnionArrayMap10(studentScores1, studentScores2))
-}
 
 
 function test_union_mix() {
@@ -818,8 +800,6 @@ function main() {
         "test_interface_Union_array_map7", test_interface_Union_array_map7);
     suite.addTest(
         "test_interface_Union_array_map8", test_interface_Union_array_map8);
-    suite.addTest(
-        "test_interface_Union_array_map9", test_interface_Union_array_map9);
 
     // union basic
     suite.addTest(

@@ -20,7 +20,7 @@
 #include "bar.TypedArray1.proj.1.hpp"
 #include "bar.proj.hpp"
 #include "stdexcept"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/runtime.hpp"
 
 #include <cmath>
@@ -593,7 +593,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<uint8_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -603,7 +603,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<int8_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -613,7 +613,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<uint16_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -623,7 +623,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<int16_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -633,7 +633,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<uint32_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -643,7 +643,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<int32_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -653,7 +653,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<uint64_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -663,7 +663,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<int64_t>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -673,7 +673,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<float>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }
@@ -683,7 +683,7 @@ public:
     {
         ::taihe::map<::taihe::string, ::taihe::array<double>> result;
         for (auto const &val : m) {
-            result.emplace(val.first, val.second);
+            result.insert(val.first, val.second);
         }
         return result;
     }

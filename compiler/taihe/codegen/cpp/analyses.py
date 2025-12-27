@@ -281,9 +281,18 @@ class OptionalTypeCppInfo(TypeCppInfo):
 class VectorTypeCppInfo(TypeCppInfo):
     def __init__(self, am: AnalysisManager, t: VectorType) -> None:
         val_ty_cpp_info = TypeCppInfo.get(am, t.val_ty)
-        self.decl_headers = ["taihe/vector.hpp", *val_ty_cpp_info.decl_headers]
-        self.defn_headers = ["taihe/vector.hpp", *val_ty_cpp_info.decl_headers]
-        self.impl_headers = ["taihe/vector.hpp", *val_ty_cpp_info.impl_headers]
+        self.decl_headers = [
+            "taihe/containers/vector.hpp",
+            *val_ty_cpp_info.decl_headers,
+        ]
+        self.defn_headers = [
+            "taihe/containers/vector.hpp",
+            *val_ty_cpp_info.decl_headers,
+        ]
+        self.impl_headers = [
+            "taihe/containers/vector.hpp",
+            *val_ty_cpp_info.impl_headers,
+        ]
         self.as_owner = f"::taihe::vector<{val_ty_cpp_info.as_owner}>"
         self.as_param = f"::taihe::vector_view<{val_ty_cpp_info.as_owner}>"
 
@@ -293,17 +302,17 @@ class MapTypeCppInfo(TypeCppInfo):
         key_ty_cpp_info = TypeCppInfo.get(am, t.key_ty)
         val_ty_cpp_info = TypeCppInfo.get(am, t.val_ty)
         self.decl_headers = [
-            "taihe/map.hpp",
+            "taihe/containers/map.hpp",
             *key_ty_cpp_info.decl_headers,
             *val_ty_cpp_info.decl_headers,
         ]
         self.defn_headers = [
-            "taihe/map.hpp",
+            "taihe/containers/map.hpp",
             *key_ty_cpp_info.decl_headers,
             *val_ty_cpp_info.decl_headers,
         ]
         self.impl_headers = [
-            "taihe/map.hpp",
+            "taihe/containers/map.hpp",
             *key_ty_cpp_info.impl_headers,
             *val_ty_cpp_info.impl_headers,
         ]
@@ -318,9 +327,9 @@ class MapTypeCppInfo(TypeCppInfo):
 class SetTypeCppInfo(TypeCppInfo):
     def __init__(self, am: AnalysisManager, t: SetType) -> None:
         key_ty_cpp_info = TypeCppInfo.get(am, t.key_ty)
-        self.decl_headers = ["taihe/set.hpp", *key_ty_cpp_info.decl_headers]
-        self.defn_headers = ["taihe/set.hpp", *key_ty_cpp_info.decl_headers]
-        self.impl_headers = ["taihe/set.hpp", *key_ty_cpp_info.impl_headers]
+        self.decl_headers = ["taihe/containers/set.hpp", *key_ty_cpp_info.decl_headers]
+        self.defn_headers = ["taihe/containers/set.hpp", *key_ty_cpp_info.decl_headers]
+        self.impl_headers = ["taihe/containers/set.hpp", *key_ty_cpp_info.impl_headers]
         self.as_owner = f"::taihe::set<{key_ty_cpp_info.as_owner}>"
         self.as_param = f"::taihe::set_view<{key_ty_cpp_info.as_owner}>"
 

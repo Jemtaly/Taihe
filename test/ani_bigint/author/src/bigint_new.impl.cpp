@@ -113,7 +113,7 @@ void SetupStructAndPrint(::bigint_new::BigInt1 const &v)
 {
     map<string, array<uint64_t>> result;
     for (auto const &val : a) {
-        result.emplace(val.first, val.second);
+        result.insert(val.first, val.second);
     }
     return result;
 }

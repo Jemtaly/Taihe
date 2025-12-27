@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-#ifndef TAIHE_SET_ABI_H
-#define TAIHE_SET_ABI_H
+#ifndef TAIHE_CONTAINERS_MAP_INNER_ABI_H
+#define TAIHE_CONTAINERS_MAP_INNER_ABI_H
 
 #include <taihe/common.h>
 
-struct TSetNode {
-    TSetNode *next;
+struct TMapNode {
+    TMapNode *next;
     char data[];
 };
 
-struct TSetHandle {
+struct TMapHandle {
     TRefCount count;
     size_t cap;
-    TSetNode **bucket;
+    TMapNode **bucket;
     size_t length;
 };
 
-struct TSet {
-    TSetHandle *m_handle;
+struct TMapInner {
+    TMapHandle *m_handle;
 };
 
-#endif  // TAIHE_SET_ABI_H
+#endif  // TAIHE_CONTAINERS_MAP_INNER_ABI_H

@@ -19,6 +19,8 @@
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <map>
+#include <stdexcept>
 #include <string>
 #include <taihe/callback.hpp>
 #include <taihe/object.hpp>
@@ -27,6 +29,7 @@
 #include <unordered_set>
 
 #include "rgb.base.user.hpp"
+#include "rgb.show.IBase.proj.1.hpp"
 #include "rgb.show.IShape.proj.1.hpp"
 #include "rgb.show.user.hpp"
 
@@ -231,90 +234,612 @@ void testOptional()
 
 void testVector()
 {
-    array<IBase> src = {
-        make_holder<UserType, IBase>("a"),
-        make_holder<UserType, IBase>("b"),
-        make_holder<UserType, IBase>("c"),
-    };
+    {
+        array<IBase> src = {
+            make_holder<UserType, IBase>("a"),
+            make_holder<UserType, IBase>("b"),
+            make_holder<UserType, IBase>("c"),
+        };
 
-    vector<IBase> res = makeVec(src);
-    Tester::assert(res.size() == src.size(), "Vector result size should be %zu, got %zu", src.size(), res.size());
-    for (size_t i = 0; i < src.size(); i++) {
-        Tester::assert(res[i]->getId() == src[i]->getId(), "res[%zu] should be %s, got %s", i, src[i]->getId().c_str(),
-                       res[i]->getId().c_str());
+        vector<IBase> res = makeVec(src);
+        Tester::assert(res.size() == src.size(), "Vector result size should be %zu, got %zu", src.size(), res.size());
+        for (size_t i = 0; i < src.size(); i++) {
+            Tester::assert(res[i]->getId() == src[i]->getId(), "res[%zu] should be %s, got %s", i,
+                           src[i]->getId().c_str(), res[i]->getId().c_str());
+        }
+
+        vector<IBase> buf;
+        fillVec(src, buf);
+        Tester::assert(buf.size() == src.size(), "Vector buffer size should be %zu, got %zu", src.size(), buf.size());
+        for (size_t i = 0; i < src.size(); i++) {
+            Tester::assert(buf[i]->getId() == src[i]->getId(), "buf[%zu] should be %s, got %s", i,
+                           src[i]->getId().c_str(), buf[i]->getId().c_str());
+        }
     }
 
-    vector<IBase> buf;
-    fillVec(src, buf);
-    Tester::assert(buf.size() == src.size(), "Vector buffer size should be %zu, got %zu", src.size(), buf.size());
-    for (size_t i = 0; i < src.size(); i++) {
-        Tester::assert(buf[i]->getId() == src[i]->getId(), "buf[%zu] should be %s, got %s", i, src[i]->getId().c_str(),
-                       buf[i]->getId().c_str());
+    // empty/size + at/[]
+    {
+        vector<int> v;
+        Tester::assert(v.empty(), "new vector should be empty");
+        Tester::assert(v.size() == 0, "new vector size should be 0");
+
+        {
+            bool ok = false;
+            try {
+                (void)v.at(0);
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "at(0) on empty should throw out_of_range");
+        }
+        {
+            bool ok = false;
+            try {
+                (void)v[0];
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "operator on empty should throw out_of_range");
+        }
+
+        v.push_back(10);
+        Tester::assert(!v.empty(), "vector should not be empty after push_back");
+        Tester::assert(v.size() == 1, "size should be 1 after push_back");
+        Tester::assert(v.at(0) == 10, "at(0) should be 10");
+
+        {
+            bool ok = false;
+            try {
+                (void)v.at(1);
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "at(1) should throw out_of_range when size=1");
+        }
+    }
+
+    // set
+    {
+        vector<int> v;
+        v.push_back(1);
+        v.push_back(2);
+        v.push_back(3);
+
+        v.set(1, 20);
+        Tester::assert(v.size() == 3, "set should not change size");
+        Tester::assert(v.at(0) == 1 && v.at(1) == 20 && v.at(2) == 3, "set should update element at idx");
+
+        {
+            bool ok = false;
+            try {
+                v.set(3, 30);
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "set(idx==size) should throw out_of_range");
+        }
+    }
+
+    // insert/push_back/pop_back/remove/clear
+    {
+        vector<int> v;
+
+        // pop_back on empty
+        {
+            bool ok = false;
+            try {
+                v.pop_back();
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "pop_back on empty should throw out_of_range");
+        }
+        // remove on empty
+        {
+            bool ok = false;
+            try {
+                v.remove(0);
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "remove(0) on empty should throw out_of_range");
+        }
+
+        // insert(0) on empty ==> push_back
+        {
+            bool ok = true;
+            try {
+                v.insert(0, 1);
+            } catch (...) {
+                ok = false;
+            }
+            Tester::assert(ok, "insert(0) on empty should succeed");
+            Tester::assert(v.size() == 1 && v.at(0) == 1, "after insert(0,1), vector should be [1]");
+        }
+
+        // insert(size) ==> push_back
+        {
+            bool ok = true;
+            try {
+                v.insert(v.size(), 3);
+            } catch (...) {
+                ok = false;
+            }
+            Tester::assert(ok, "insert(size, val) should succeed");
+            Tester::assert(v.size() == 2 && v.at(0) == 1 && v.at(1) == 3,
+                           "after insert(size,3), vector should be [1,3]");
+        }
+
+        // insert middle
+        v.insert(1, 2);  // [1,2,3]
+        Tester::assert(v.size() == 3, "insert middle should increase size");
+        Tester::assert(v.at(0) == 1 && v.at(1) == 2 && v.at(2) == 3, "insert should shift right");
+
+        // insert(idx > size)
+        {
+            bool ok = false;
+            try {
+                v.insert(v.size() + 1, 4);
+            } catch (std::out_of_range const &) {
+                ok = true;
+            } catch (...) {
+            }
+            Tester::assert(ok, "insert(idx>size) should throw out_of_range");
+        }
+
+        v.remove(1);  // [1,3]
+        Tester::assert(v.size() == 2, "remove should decrease size");
+        Tester::assert(v.at(0) == 1 && v.at(1) == 3, "remove should shift left");
+
+        v.pop_back();  // [1]
+        Tester::assert(v.size() == 1 && v.at(0) == 1, "pop_back should remove tail");
+
+        v.clear();
+        Tester::assert(v.size() == 0 && v.empty(), "clear should make vector empty");
+    }
+
+    // fill
+    {
+        vector<int> v;
+        v.push_back(7);
+        v.push_back(8);
+        v.push_back(9);
+        v.fill(42);
+        Tester::assert(v.size() == 3, "fill should not change size");
+        Tester::assert(v.at(0) == 42 && v.at(1) == 42 && v.at(2) == 42, "fill should overwrite all elements");
+    }
+
+    // find/npos
+    {
+        vector<int> v;
+        v.push_back(1);
+        v.push_back(2);
+        v.push_back(2);
+        v.push_back(3);
+
+        Tester::assert(v.find(1) == 0, "find(1) should be 0");
+        Tester::assert(v.find(2) == 1, "find(2) should return first match");
+        Tester::assert(v.find(2, 2) == 2, "find(2,2) should be 2");
+        Tester::assert(v.find(4) == vector<int>::npos, "find(4) should be npos");
+        Tester::assert(v.find(1, 4) == vector<int>::npos, "find(start==size) should be npos");
+        Tester::assert(v.find(1, 5) == vector<int>::npos, "find(start>size) should be npos");
+    }
+
+    // iter：LIVE + fail-fast
+    {
+        vector<int> v;
+        v.push_back(1);
+        v.push_back(2);
+        v.push_back(3);
+
+        {
+            auto it = v.iter();
+            Tester::assert(!it.is_end(), "iter() should not be end at start");
+            Tester::assert(it.get() == 1, "first element should be 1");
+
+            v.set(1, 20);
+            it.move_next();
+            Tester::assert(it.get() == 20, "iterator should observe updated value (LIVE)");
+        }
+
+        {
+            auto it = v.iter();
+            v.push_back(4);
+            bool ok = false;
+            try {
+                (void)it.get();
+            } catch (std::logic_error const &e) {
+                ok = true;
+            }
+            Tester::assert(ok, "iterator.get after push_back should fail-fast");
+        }
+
+        {
+            auto it = v.iter();
+            v.remove(0);
+            bool ok = false;
+            try {
+                it.move_next();
+            } catch (std::logic_error const &e) {
+                ok = true;
+            }
+            Tester::assert(ok, "iterator.move_next after remove should fail-fast");
+        }
+
+        {
+            vector<int> w;
+            w.push_back(1);
+            auto it = w.iter();
+            Tester::assert(!it.is_end(), "single-element iter start not end");
+            Tester::assert(it.get() == 1, "single-element get should be 1");
+            it.move_next();
+            Tester::assert(it.is_end(), "after move_next, iterator should be end");
+
+            {
+                bool ok = false;
+                try {
+                    (void)it.get();
+                } catch (std::out_of_range const &) {
+                    ok = true;
+                }
+                Tester::assert(ok, "iterator.get at end should throw");
+            }
+            {
+                bool ok = false;
+                try {
+                    it.move_next();
+                } catch (std::out_of_range const &) {
+                    ok = true;
+                }
+                Tester::assert(ok, "iterator.move_next at end should throw");
+            }
+        }
     }
 }
 
 void testMap()
 {
-    array<string> keys = {"a", "b", "c", "a"};
-    array<IBase> src = {
-        make_holder<UserType, IBase>("a"),
-        make_holder<UserType, IBase>("b"),
-        make_holder<UserType, IBase>("c"),
-        make_holder<UserType, IBase>("d"),
-    };
+    // empty map
+    {
+        taihe::map<int, taihe::string> m;
 
-    std::unordered_map<std::string, IBase> expected;
-    size_t n = std::min(keys.size(), src.size());
-    for (size_t i = 0; i < n; i++) {
-        expected.emplace(std::string(keys[i]), src[i]);
+        Tester::assert(m.size() == 0, "Empty map size should be 0, got %zu", m.size());
+        Tester::assert(!m.contains(42), "Empty map contains should be false");
+
+        auto it = m.iter();
+        Tester::assert(it.is_end(), "Empty map iterator should be at end");
     }
 
-    map<string, IBase> res = makeMap(keys, src);
-    Tester::assert(res.size() == expected.size(), "Map result size should be %zu, got %zu", expected.size(),
-                   res.size());
-    for (auto const &[key, value] : expected) {
-        auto it = res.find_item(key);
-        Tester::assert(it, "Map should contain key %s", key.c_str());
-        Tester::assert(it->second->getId() == value->getId(), "Map[%s] should be %s, got %s", key.c_str(),
-                       value->getId().c_str(), it->second->getId().c_str());
+    // set + get + contains + size
+    {
+        taihe::map<int, taihe::string> m;
+
+        m.set(1, "one");
+        m.set(2, "two");
+        m.set(3, "three");
+
+        Tester::assert(m.size() == 3, "Map size after 3 set() should be 3, got %zu", m.size());
+        Tester::assert(m.contains(1), "Map should contain key=1");
+        Tester::assert(m.contains(2), "Map should contain key=2");
+        Tester::assert(m.contains(3), "Map should contain key=3");
+        Tester::assert(!m.contains(99), "Map should NOT contain key=99");
+
+        taihe::string out = m[2];
+        Tester::assert(out == "two", "Map[2] should return \"two\", got \"%s\"", out.c_str());
+
+        bool threw = false;
+        try {
+            (void)m[99];
+        } catch (std::out_of_range const &) {
+            threw = true;
+        }
+        Tester::assert(threw, "Map get(missing_key) should throw (out_of_range)");
     }
 
-    map<string, IBase> buf;
-    fillMap(keys, src, buf);
-    Tester::assert(buf.size() == expected.size(), "Map buffer size should be %zu, got %zu", expected.size(),
-                   buf.size());
-    for (auto const &[key, value] : expected) {
-        auto it = buf.find_item(key);
-        Tester::assert(it, "buffer should contain key %s", key.c_str());
-        Tester::assert(it->second->getId() == value->getId(), "buffer[%s] should be %s, got %s", key.c_str(),
-                       value->getId().c_str(), it->second->getId().c_str());
+    // insert
+    {
+        taihe::map<int, taihe::string> m;
+
+        m.set(1, "one");
+        m.set(2, "two");
+
+        bool inserted = m.insert(2, "TWO");
+        Tester::assert(!inserted, "Map insert(existing_key) should return false");
+        Tester::assert(m[2] == "two",
+                       "Map insert(existing_key) should NOT change existing value, "
+                       "map[2] should be \"two\", got \"%s\"",
+                       m[2].c_str());
+
+        inserted = m.insert(3, "three");
+        Tester::assert(inserted, "Map insert(new_key) should return true");
+        Tester::assert(m.size() == 3,
+                       "Map size after insert(new_key) should increase, "
+                       "size should be 3, got %zu",
+                       m.size());
+        Tester::assert(m.get(3) == "three",
+                       "Map insert(new_key) should write value correctly, "
+                       "map[3] should be \"three\", got \"%s\"",
+                       m[3].c_str());
+    }
+
+    // remove / clear
+    {
+        taihe::map<int, taihe::string> m;
+
+        m.set(1, "one");
+        m.set(2, "two");
+        m.set(3, "three");
+
+        bool removed = m.remove(2);
+        Tester::assert(removed, "Map remove(existing_key) should return true, got false");
+        Tester::assert(!m.contains(2), "Map removed key=2 should NOT be contained");
+        Tester::assert(m.size() == 2,
+                       "Map size after remove(existing_key) should decrease, "
+                       "size should be 2, got %zu",
+                       m.size());
+
+        removed = m.remove(42);
+        Tester::assert(!removed, "Map remove(missing_key) should return false, got true");
+        Tester::assert(m.size() == 2,
+                       "Map size after remove(missing_key) should NOT change, "
+                       "size should be 2, got %zu",
+                       m.size());
+
+        m.clear();
+        Tester::assert(m.size() == 0, "Map size after clear() should be 0, got %zu", m.size());
+        Tester::assert(!m.contains(1) && !m.contains(3), "Map map should contain NO keys after clear()");
+    }
+
+    // Iteration
+    {
+        taihe::array<taihe::string> keys = {"a", "b", "c", "a"};
+        taihe::array<IBase> src = {
+            make_holder<UserType, IBase>("a"),
+            make_holder<UserType, IBase>("b"),
+            make_holder<UserType, IBase>("c"),
+            make_holder<UserType, IBase>("d"),
+        };
+
+        std::unordered_map<std::string, IBase> expected;
+        size_t n = std::min(keys.size(), src.size());
+        for (size_t i = 0; i < n; i++) {
+            expected.emplace(std::string(keys[i]), src[i]);
+        }
+
+        taihe::map<taihe::string, IBase> res = makeMap(keys, src);
+        Tester::assert(res.size() == expected.size(), "Map result size should be %zu, got %zu", expected.size(),
+                       res.size());
+        for (auto const &[key, value] : expected) {
+            bool has_val = res.contains(key);
+            Tester::assert(has_val, "Map should contain key=%s", key.c_str());
+            Tester::assert(res[key]->getId() == value->getId(), "Map[%s] should be %s, got %s", key.c_str(),
+                           value->getId().c_str(), res[key]->getId().c_str());
+        }
+
+        taihe::map<taihe::string, IBase> buf;
+        fillMap(keys, src, buf);
+        Tester::assert(buf.size() == expected.size(), "Map buffer size should be %zu, got %zu", expected.size(),
+                       buf.size());
+        for (auto const &[key, value] : expected) {
+            bool has_val = buf.contains(key);
+            Tester::assert(has_val, "buffer should contain key=%s", key.c_str());
+            Tester::assert(res.get(key)->getId() == value->getId(), "buffer[%s] should be %s, got %s", key.c_str(),
+                           value->getId().c_str(), res[key]->getId().c_str());
+        }
+    }
+
+    // iterator fail-fast
+    {
+        taihe::map<int, taihe::string> m;
+        m.set(1, "one");
+        m.set(2, "two");
+        m.set(3, "three");
+
+        auto it = m.iter();
+        if (!it.is_end()) {
+            bool inserted = m.insert(42, "forty-two");
+            (void)inserted;
+
+            bool threw = false;
+            try {
+                ++it;
+            } catch (std::logic_error const &) {
+                threw = true;
+            }
+
+            Tester::assert(threw, "Iterator should fail-fast after structural modification");
+        }
+    }
+
+    // nested map
+    {
+        taihe::map<int, taihe::map<taihe::string, taihe::string>> m;
+
+        taihe::map<taihe::string, taihe::string> inner;
+        inner.set("hello", "world");
+        m.set(1, inner);
+
+        Tester::assert(m.size() == 1, "Outer map size should be 1");
+        Tester::assert(m.contains(1), "Outer map should contain key=1");
+        Tester::assert(!m.contains(2), "Outer map should NOT contain key=2");
+
+        auto inner_retrieved = m[1];
+        Tester::assert(inner_retrieved.size() == 1, "inner map size should be 1");
+        Tester::assert(inner_retrieved.contains("hello"), "Inner map should contain key=\"hello\"");
+        Tester::assert(!inner_retrieved.contains("foo"), "Inner map should NOT contain key=\"foo\"");
+
+        taihe::string val = inner_retrieved["hello"];
+        Tester::assert(val == "world", "Inner map[\"hello\"] should return \"world\", got \"%s\"", val.c_str());
+
+        inner_retrieved.set("foo", "bar");
+        Tester::assert(m[1].contains("foo"), "Modifying retrieved inner map should affect outer map");
     }
 }
 
 void testSet()
 {
-    array<string> src = {"a", "b", "c", "a"};
+    // empty set
+    {
+        taihe::set<int> s;
 
-    std::unordered_set<std::string> expected;
-    for (size_t i = 0; i < src.size(); i++) {
-        expected.emplace(std::string(src[i]));
+        Tester::assert(s.size() == 0, "Empty set size should be 0, got %zu", s.size());
+        Tester::assert(s.empty(), "Empty set empty() should be true");
+        Tester::assert(!s.contains(42), "Empty set contains should be false");
+
+        auto it = s.iter();
+        Tester::assert(it.is_end(), "Empty set iterator should be at end");
     }
 
-    set<string> res = makeSet(src);
-    Tester::assert(res.size() == expected.size(), "Set result size should be %zu, got %zu", expected.size(),
-                   res.size());
-    for (auto const &key : expected) {
-        auto it = res.find_item(key);
-        Tester::assert(it, "Set should contain key %s", key.c_str());
+    // insert + contains + size
+    {
+        taihe::set<int> s;
+
+        bool inserted = s.insert(1);
+        Tester::assert(inserted, "Set insert(1) on empty set should return true");
+
+        inserted = s.insert(2);
+        Tester::assert(inserted, "Set insert(2) on set {1} should return true");
+
+        inserted = s.insert(3);
+        Tester::assert(inserted, "Set insert(3) on set {1,2} should return true");
+
+        Tester::assert(s.size() == 3, "Set size after 3 insert() should be 3, got %zu", s.size());
+        Tester::assert(s.contains(1), "Set should contain value=1");
+        Tester::assert(s.contains(2), "Set should contain value=2");
+        Tester::assert(s.contains(3), "Set should contain value=3");
+        Tester::assert(!s.contains(99), "Set should NOT contain value=99");
+
+        // duplicate insert
+        inserted = s.insert(2);
+        Tester::assert(!inserted, "Set insert(duplicate_value) should return false");
+        Tester::assert(s.size() == 3,
+                       "Set size after duplicate insert() should NOT change, "
+                       "size should be 3, got %zu",
+                       s.size());
     }
 
-    set<string> buf;
-    fillSet(src, buf);
-    Tester::assert(buf.size() == expected.size(), "Set buffer size should be %zu, got %zu", expected.size(),
-                   buf.size());
-    for (auto const &key : expected) {
-        auto it = buf.find_item(key);
-        Tester::assert(it, "buffer should contain key %s", key.c_str());
+    // remove / clear
+    {
+        taihe::set<int> s;
+
+        s.insert(1);
+        s.insert(2);
+        s.insert(3);
+
+        bool removed = s.remove(2);
+        Tester::assert(removed, "Set remove(existing_value) should return true, got false");
+        Tester::assert(!s.contains(2), "Set removed value=2 should NOT be contained");
+        Tester::assert(s.size() == 2,
+                       "Set size after remove(existing_value) should decrease, "
+                       "size should be 2, got %zu",
+                       s.size());
+
+        removed = s.remove(42);
+        Tester::assert(!removed, "Set remove(missing_value) should return false, got true");
+        Tester::assert(s.size() == 2,
+                       "Set size after remove(missing_value) should NOT change, "
+                       "size should be 2, got %zu",
+                       s.size());
+
+        s.clear();
+        Tester::assert(s.size() == 0, "Set size after clear() should be 0, got %zu", s.size());
+        Tester::assert(!s.contains(1) && !s.contains(3), "Set should contain NO values after clear()");
+    }
+
+    // Iteration
+    {
+        taihe::array<taihe::string> vals = {"a", "b", "c", "a"};
+
+        std::unordered_set<std::string> expected;
+        for (size_t i = 0; i < vals.size(); ++i) {
+            expected.emplace(std::string(vals[i]));
+        }
+
+        taihe::set<taihe::string> res;
+        for (size_t i = 0; i < vals.size(); ++i) {
+            res.insert(vals[i]);
+        }
+
+        Tester::assert(res.size() == expected.size(), "Set result size should be %zu, got %zu", expected.size(),
+                       res.size());
+
+        for (auto const &v : expected) {
+            Tester::assert(res.contains(v), "Set should contain value=%s", v.c_str());
+        }
+
+        std::unordered_set<std::string> actual;
+        auto it = res.iter();
+        while (!it.is_end()) {
+            taihe::string cur = *it;
+            actual.emplace(cur.c_str());
+            ++it;
+        }
+
+        Tester::assert(actual == expected, "Set iteration should visit all elements exactly once");
+
+        std::unordered_set<std::string> actual2;
+        for (auto const &cur : res) {
+            actual2.emplace(cur.c_str());
+        }
+
+        Tester::assert(actual2 == expected, "Set range-for iteration should visit all elements exactly once");
+    }
+
+    // iterator fail-fast
+    {
+        taihe::set<int> s;
+        s.insert(1);
+        s.insert(2);
+        s.insert(3);
+
+        auto it = s.iter();
+        if (!it.is_end()) {
+            bool inserted = s.insert(42);
+            (void)inserted;
+
+            bool threw = false;
+            try {
+                ++it;
+            } catch (std::logic_error const &) {
+                threw = true;
+            }
+
+            Tester::assert(threw,
+                           "Set iterator should fail-fast after structural "
+                           "modification");
+        }
+    }
+
+    {
+        taihe::array<taihe::string> src = {"a", "b", "c", "a"};
+
+        std::unordered_set<std::string> expected;
+        for (size_t i = 0; i < src.size(); i++) {
+            expected.emplace(std::string(src[i]));
+        }
+
+        taihe::set<taihe::string> res = makeSet(src);
+        Tester::assert(res.size() == expected.size(), "Set result size should be %zu, got %zu", expected.size(),
+                       res.size());
+
+        for (auto const &key : expected) {
+            Tester::assert(res.contains(key), "Set should contain key %s", key.c_str());
+        }
+
+        taihe::set<taihe::string> buf;
+        fillSet(src, buf);
+        Tester::assert(buf.size() == expected.size(), "Set buffer size should be %zu, got %zu", expected.size(),
+                       buf.size());
+
+        for (auto const &key : expected) {
+            Tester::assert(buf.contains(key), "buffer should contain key %s", key.c_str());
+        }
     }
 }
 
@@ -409,9 +934,9 @@ void testCompare()
 {
     // AutoCompareType uses default comparison
     map<IBase, string> auto_compare_map;
-    auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "a");
-    auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("b"), "b");
-    auto_compare_map.emplace(make_holder<AutoCompareType, IBase>("a"), "c");
+    auto_compare_map.insert(make_holder<AutoCompareType, IBase>("a"), "a");
+    auto_compare_map.insert(make_holder<AutoCompareType, IBase>("b"), "b");
+    auto_compare_map.insert(make_holder<AutoCompareType, IBase>("a"), "c");
     std::cout << "AutoCompareMap size: " << auto_compare_map.size() << std::endl;
     for (auto const &[key, value] : auto_compare_map) {
         std::cout << "AutoCompareMap: " << key->getId() << " -> " << value << std::endl;
@@ -419,9 +944,9 @@ void testCompare()
 
     // UserCompareType uses custom comparison
     map<IBase, string> user_compare_map;
-    user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "a");
-    user_compare_map.emplace(make_holder<UserCompareType, IBase>("b"), "b");
-    user_compare_map.emplace(make_holder<UserCompareType, IBase>("a"), "c");
+    user_compare_map.insert(make_holder<UserCompareType, IBase>("a"), "a");
+    user_compare_map.insert(make_holder<UserCompareType, IBase>("b"), "b");
+    user_compare_map.insert(make_holder<UserCompareType, IBase>("a"), "c");
     std::cout << "UserCompareMap size: " << user_compare_map.size() << std::endl;
     for (auto const &[key, value] : user_compare_map) {
         std::cout << "UserCompareMap: " << key->getId() << " -> " << value << std::endl;
@@ -453,12 +978,12 @@ void testHashAndSame()
     std::cout << "Comparing vector with a with itself: " << std::boolalpha << (vec == vec) << std::endl;
 
     taihe::set<IBase> s;
-    s.emplace(a);
+    s.insert(a);
     std::cout << "Hash of set with a: " << std::hash<set<IBase>>()(s) << std::endl;
     std::cout << "Comparing set with a with itself: " << std::boolalpha << (s == s) << std::endl;
 
     taihe::map<IBase, IBase> m;
-    m.emplace(a, a);
+    m.insert(a, a);
     std::cout << "Hash of map with a: " << std::hash<map<IBase, IBase>>()(m) << std::endl;
     std::cout << "Comparing map with a with itself: " << std::boolalpha << (m == m) << std::endl;
 

@@ -18,7 +18,7 @@
 #include "optional.impl.hpp"
 #include "optional.ExampleInterface.proj.2.hpp"
 #include "optional.Union.proj.1.hpp"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/optional.hpp"
 // Please delete <stdexcept> include when you implement
 using namespace taihe;

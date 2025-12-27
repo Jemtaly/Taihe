@@ -21,7 +21,7 @@
 #include "taihe/runtime.hpp"
 
 #include <iostream>
-#include <taihe/vector.hpp>
+#include <taihe/containers/vector.hpp>
 
 using namespace taihe;
 using namespace finalization_test;
@@ -41,7 +41,7 @@ public:
     void addCallback(callback_view<void()> callback)
     {
         std::cout << __PRETTY_FUNCTION__ << std::endl;
-        callbacks.emplace_back(callback);
+        callbacks.push_back(callback);
     }
 
     ~FooImpl()

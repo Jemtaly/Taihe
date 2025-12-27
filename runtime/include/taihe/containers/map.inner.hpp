@@ -13,28 +13,29 @@
  * limitations under the License.
  */
 
-#ifndef TAIHE_SET_HPP
-#define TAIHE_SET_HPP
+#ifndef TAIHE_CONTAINERS_MAP_INNER_HPP
+#define TAIHE_CONTAINERS_MAP_INNER_HPP
 
-#include <taihe/set.abi.h>
-#include <taihe/common.hpp>
-
+#include <functional>
 #include <utility>
 
-#define SET_GROWTH_FACTOR 2
-#define SET_DEFAULT_CAPACITY 16
+#include <taihe/common.hpp>
+#include <taihe/containers/map.inner.abi.h>
+
+#define MAP_GROWTH_FACTOR 2
+#define MAP_DEFAULT_CAPACITY 16
 
 namespace taihe {
-template<typename K>
-struct set_view;
+template<typename K, typename V>
+struct map_inner_view;
 
-template<typename K>
-struct set;
+template<typename K, typename V>
+struct map_inner;
 
-template<typename K>
-struct set_view {
+template<typename K, typename V>
+struct map_inner_view {
 public:
-    using item_t = K const;
+    using item_t = std::pair<K const, V>;
 
     struct node_t {
         node_t *next;
@@ -51,7 +52,7 @@ public:
             node_t *current = m_handle->bucket[i];
             while (current) {
                 node_t *next = current->next;
-                std::size_t index = std::hash<K>()(current->item) % cap;
+                std::size_t index = std::hash<K>()(current->item.first) % cap;
                 current->next = bucket[index];
                 bucket[index] = current;
                 current = next;
@@ -154,21 +155,15 @@ public:
         std::size_t cap;
     };
 
-    template<bool cover = false>
-    std::pair<iterator, bool> emplace(as_param_t<K> key) const
+    template<bool cover = false, typename... Args>
+    std::pair<iterator, bool> emplace(as_param_t<K> key, Args &&...args) const
     {
         std::size_t index = std::hash<K>()(key) % m_handle->cap;
         node_t **current_ptr = &m_handle->bucket[index];
         while (*current_ptr) {
-            if ((*current_ptr)->item == key) {
+            if ((*current_ptr)->item.first == key) {
                 if (cover) {
-                    node_t *replaced = new node_t {
-                        .next = (*current_ptr)->next,
-                        .item = std::forward<as_param_t<K>>(key),
-                    };
-                    node_t *current = *current_ptr;
-                    *current_ptr = replaced;
-                    delete current;
+                    (*current_ptr)->item.second = V {std::forward<Args>(args)...};
                 }
                 return {iterator(m_handle->bucket, *current_ptr, index, m_handle->cap), false};
             }
@@ -176,23 +171,28 @@ public:
         }
         node_t *node = new node_t {
             .next = m_handle->bucket[index],
-            .item = std::forward<as_param_t<K>>(key),
+            .item = {std::forward<as_param_t<K>>(key), V {std::forward<Args>(args)...}},
         };
         m_handle->bucket[index] = node;
         m_handle->size++;
         std::size_t required_cap = m_handle->size;
         if (required_cap >= m_handle->cap) {
-            reserve(required_cap * SET_GROWTH_FACTOR);
+            reserve(required_cap * MAP_GROWTH_FACTOR);
         }
         return {iterator(m_handle->bucket, node, index, m_handle->cap), true};
     }
 
-    iterator find_item(as_param_t<K> key) const
+    std::pair<iterator, bool> insert_or_assign(as_param_t<K> key, as_param_t<V> val) const
+    {
+        return emplace<true>(std::forward<as_param_t<K>>(key), std::forward<as_param_t<V>>(val));
+    }
+
+    iterator find(as_param_t<K> key) const
     {
         std::size_t index = std::hash<K>()(key) % m_handle->cap;
         node_t *current = m_handle->bucket[index];
         while (current) {
-            if (current->item == key) {
+            if (current->item.first == key) {
                 return iterator(m_handle->bucket, current, index, m_handle->cap);
             }
             current = current->next;
@@ -200,22 +200,12 @@ public:
         return end();
     }
 
-    // TODO: Change the return type to iterator
-    bool find(as_param_t<K> key) const
-    {
-        auto iter = find_item(key);
-        if (iter != end()) {
-            return true;
-        }
-        return false;
-    }
-
     bool erase(as_param_t<K> key) const
     {
         std::size_t index = std::hash<K>()(key) % m_handle->cap;
         node_t **current_ptr = &m_handle->bucket[index];
         while (*current_ptr) {
-            if ((*current_ptr)->item == key) {
+            if ((*current_ptr)->item.first == key) {
                 node_t *current = *current_ptr;
                 *current_ptr = (*current_ptr)->next;
                 delete current;
@@ -274,27 +264,27 @@ private:
         std::size_t size;
     } *m_handle;
 
-    explicit set_view(handle_t *handle) : m_handle(handle)
+    explicit map_inner_view(handle_t *handle) : m_handle(handle)
     {
     }
 
-    friend struct set<K>;
+    friend struct map_inner<K, V>;
 
-    friend struct std::hash<set<K>>;
+    friend struct std::hash<map_inner<K, V>>;
 
-    friend bool operator==(set_view lhs, set_view rhs)
+    friend bool operator==(map_inner_view lhs, map_inner_view rhs)
     {
         return lhs.m_handle == rhs.m_handle;
     }
 };
 
-template<typename K>
-struct set : set_view<K> {
-    using typename set_view<K>::node_t;
-    using typename set_view<K>::handle_t;
-    using set_view<K>::m_handle;
+template<typename K, typename V>
+struct map_inner : map_inner_view<K, V> {
+    using typename map_inner_view<K, V>::node_t;
+    using typename map_inner_view<K, V>::handle_t;
+    using map_inner_view<K, V>::m_handle;
 
-    explicit set(std::size_t cap = SET_DEFAULT_CAPACITY) : set(new handle_t)
+    explicit map_inner(std::size_t cap = MAP_DEFAULT_CAPACITY) : map_inner(new handle_t)
     {
         tref_init(&m_handle->count, 1);
         m_handle->cap = cap;
@@ -302,32 +292,32 @@ struct set : set_view<K> {
         m_handle->size = 0;
     }
 
-    set(set<K> &&other) noexcept : set(other.m_handle)
+    map_inner(map_inner<K, V> &&other) noexcept : map_inner(other.m_handle)
     {
         other.m_handle = nullptr;
     }
 
-    set(set<K> const &other) : set(other.m_handle)
+    map_inner(map_inner<K, V> const &other) : map_inner(other.m_handle)
     {
         if (m_handle) {
             tref_inc(&m_handle->count);
         }
     }
 
-    set(set_view<K> const &other) : set(other.m_handle)
+    map_inner(map_inner_view<K, V> const &other) : map_inner(other.m_handle)
     {
         if (m_handle) {
             tref_inc(&m_handle->count);
         }
     }
 
-    set &operator=(set other)
+    map_inner &operator=(map_inner other)
     {
         std::swap(this->m_handle, other.m_handle);
         return *this;
     }
 
-    ~set()
+    ~map_inner()
     {
         if (m_handle && tref_dec(&m_handle->count)) {
             this->clear();
@@ -337,36 +327,36 @@ struct set : set_view<K> {
     }
 
 private:
-    explicit set(handle_t *handle) : set_view<K>(handle)
+    explicit map_inner(handle_t *handle) : map_inner_view<K, V>(handle)
     {
     }
 };
 
-template<typename K>
-struct as_abi<set<K>> {
-    using type = TSet;
+template<typename K, typename V>
+struct as_abi<map_inner<K, V>> {
+    using type = TMapInner;
 };
 
-template<typename K>
-struct as_abi<set_view<K>> {
-    using type = TSet;
+template<typename K, typename V>
+struct as_abi<map_inner_view<K, V>> {
+    using type = TMapInner;
 };
 
-template<typename K>
-struct as_param<set<K>> {
-    using type = set_view<K>;
+template<typename K, typename V>
+struct as_param<map_inner<K, V>> {
+    using type = map_inner_view<K, V>;
 };
 }  // namespace taihe
 
-template<typename K>
-struct std::hash<taihe::set<K>> {
-    std::size_t operator()(taihe::set_view<K> val) const noexcept
+template<typename K, typename V>
+struct std::hash<taihe::map_inner<K, V>> {
+    std::size_t operator()(taihe::map_inner_view<K, V> val) const noexcept
     {
         return reinterpret_cast<std::size_t>(val.m_handle);
     }
 };
 
-#undef SET_GROWTH_FACTOR
-#undef SET_DEFAULT_CAPACITY
+#undef MAP_GROWTH_FACTOR
+#undef MAP_DEFAULT_CAPACITY
 
-#endif  // TAIHE_SET_HPP
+#endif  // TAIHE_CONTAINERS_MAP_INNER_HPP

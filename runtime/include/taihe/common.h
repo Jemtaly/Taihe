@@ -46,6 +46,14 @@
 #define TH_INLINE static inline
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define TH_LIKELY(x) (__builtin_expect(!!(x), 1))
+#define TH_UNLIKELY(x) (__builtin_expect(!!(x), 0))
+#else
+#define TH_LIKELY(x) (x)
+#define TH_UNLIKELY(x) (x)
+#endif
+
 ////////////////////////
 // REFERENCE COUNTING //
 ////////////////////////

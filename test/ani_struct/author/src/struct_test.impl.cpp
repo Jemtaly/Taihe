@@ -71,7 +71,7 @@ public:
         : structF({taihe::optional<taihe::string>(std::in_place_t {}, "optval"),
                    ::struct_test::UnionF::make_sValue("unionval"), taihe::map<taihe::string, taihe::string>()})
     {
-        this->structF.param3.emplace("rsK", "rsV");
+        this->structF.param3.insert("rsK", "rsV");
     }
 
     void SetStructF(::struct_test::FUnion const &f)

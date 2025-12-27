@@ -130,7 +130,7 @@ public:
     {
         ::taihe::map<::taihe::string, int32_t> res;
         static int32_t const input = 2025;
-        res.emplace("banana", input);
+        res.insert("banana", input);
         return res;
     }
 };

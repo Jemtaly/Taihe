@@ -48,14 +48,14 @@ void setRecord(::taihe::map_view<::taihe::string, ::taihe::string> rec)
 
 static ::taihe::map<::taihe::string, ::taihe::string> global_rec = [] {
     ::taihe::map<::taihe::string, ::taihe::string> rec;
-    rec.emplace("key0", "value0");
-    rec.emplace("key1", "value1");
-    rec.emplace("key2", "value2");
-    rec.emplace("key3", "value3");
-    rec.emplace("key4", "value4");
-    rec.emplace("key5", "value5");
-    rec.emplace("key6", "value6");
-    rec.emplace("key7", "value7");
+    rec.insert("key0", "value0");
+    rec.insert("key1", "value1");
+    rec.insert("key2", "value2");
+    rec.insert("key3", "value3");
+    rec.insert("key4", "value4");
+    rec.insert("key5", "value5");
+    rec.insert("key6", "value6");
+    rec.insert("key7", "value7");
     return rec;
 }();
 

@@ -22,7 +22,7 @@
 #include "ns_alltest.functiontest.Color.proj.1.hpp"
 #include "ns_alltest.functiontest.Data.proj.1.hpp"
 #include "taihe/array.hpp"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/optional.hpp"
 #include "taihe/runtime.hpp"
 #include "taihe/string.hpp"
@@ -164,7 +164,7 @@ public:
     {
         map<int16_t, ::ns_alltest::functiontest::Data> m;
         for (auto const &[key, value] : param1) {
-            m.emplace(key, value);
+            m.insert(key, value);
         }
         return m;
     }
@@ -613,14 +613,14 @@ public:
             .data3 = 100,
         };
         int32_t const getRecordTestAttributeKey1 = 100;
-        result.emplace(getRecordTestAttributeKey1, p1);
+        result.insert(getRecordTestAttributeKey1, p1);
         ::ns_alltest::functiontest::Data p2 {
             .data1 = "two",
             .data2 = false,
             .data3 = 101,
         };
         int32_t const getRecordTestAttributeKey2 = 101;
-        result.emplace(getRecordTestAttributeKey2, p2);
+        result.insert(getRecordTestAttributeKey2, p2);
         return result;
     }
 
@@ -932,7 +932,7 @@ map<string, int32_t> BaseFunctionTest29(map_view<string, int32_t> param1)
 {
     map<string, int32_t> m;
     for (std::size_t i = 0; i < param1.size(); ++i) {
-        m.emplace("test" + std::to_string(i), g_testIntAdd10 + static_cast<int32_t>(i));
+        m.insert("test" + std::to_string(i), g_testIntAdd10 + static_cast<int32_t>(i));
     }
     return m;
 }

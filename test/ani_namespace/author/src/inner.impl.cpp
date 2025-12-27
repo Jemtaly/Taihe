@@ -27,7 +27,7 @@
 #include "inner.union_primitive.proj.1.hpp"
 #include "stdexcept"
 #include "taihe/array.hpp"
-#include "taihe/map.hpp"
+#include "taihe/containers/map.hpp"
 #include "taihe/string.hpp"
 
 // Please delete <stdexcept> include when you implement
@@ -224,9 +224,9 @@ public:
         int const key1num = 1;
         int const key2num = 2;
         int const key3num = 3;
-        m.emplace("key1", static_cast<int8_t>(key1num));
-        m.emplace("key2", static_cast<int8_t>(key2num));
-        m.emplace("key3", static_cast<int8_t>(key3num));
+        m.insert("key1", static_cast<int8_t>(key1num));
+        m.insert("key2", static_cast<int8_t>(key2num));
+        m.insert("key3", static_cast<int8_t>(key3num));
         return m;
     }
 
