@@ -116,7 +116,7 @@ class BaseWriter:
     def newline(self, _show_debug: bool = True):
         """Writes a newline character."""
         if _show_debug:
-            self._write_debug(_getframe(1))  # type: ignore
+            self._write_debug(_getframe(1))
 
         self._out.write("\n")
 
@@ -127,7 +127,7 @@ class BaseWriter:
             line: The line to write (must not contain newlines)
         """
         if _show_debug:
-            self._write_debug(_getframe(1))  # type: ignore
+            self._write_debug(_getframe(1))
 
         assert "\n" not in line, "use write_block to write multi-line text block"
 
@@ -145,7 +145,7 @@ class BaseWriter:
             *lines: One or more lines to write
         """
         if _show_debug:
-            self._write_debug(_getframe(1))  # type: ignore
+            self._write_debug(_getframe(1))
 
         for line in lines:
             self.writeln(line, _show_debug=False)
@@ -157,7 +157,7 @@ class BaseWriter:
             text: The text to write. Can be multi-line.
         """
         if _show_debug:
-            self._write_debug(_getframe(1))  # type: ignore
+            self._write_debug(_getframe(1))
 
         for line in text.splitlines():
             self.writeln(line, _show_debug=False)
@@ -172,7 +172,7 @@ class BaseWriter:
             text: The comment text to write. Can be multi-line.
         """
         if _show_debug:
-            self._write_debug(_getframe(1))  # type: ignore
+            self._write_debug(_getframe(1))
 
         for line in text.splitlines():
             self.writeln(self._comment_prefix + line, _show_debug=False)
@@ -185,7 +185,7 @@ class BaseWriter:
         _show_debug: bool = True,
     ) -> Iterator[Self]:
         if _show_debug:
-            self._write_debug(_getframe(2))  # type: ignore
+            self._write_debug(_getframe(2))
 
         self._indent_stack.append(self._current_indent)
         self._current_indent = indent
@@ -202,7 +202,7 @@ class BaseWriter:
         _show_debug: bool = True,
     ) -> Iterator[Self]:
         if _show_debug:
-            self._write_debug(_getframe(2))  # type: ignore
+            self._write_debug(_getframe(2))
 
         if indent is None:
             indent = self._default_indent
@@ -233,7 +233,7 @@ class BaseWriter:
             A context manager that yields this BaseWriter
         """
         if _show_debug:
-            self._write_debug(_getframe(2))  # type: ignore
+            self._write_debug(_getframe(2))
 
         if prologue is not None:
             self.writeln(prologue, _show_debug=False)
@@ -539,7 +539,7 @@ class NullOutputConfig(OutputConfig):
                 super().__init__(debug_level=debug_level)
 
             def _open_impl(self, desc: FileDescriptor):
-                return Path(os.devnull).open("w", encoding="utf-8")
+                return open(os.devnull, "w", encoding="utf-8")
 
         return NullOutputManager(debug_level=self.debug_level)
 
