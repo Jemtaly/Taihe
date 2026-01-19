@@ -1524,8 +1524,8 @@ class StsAnyFuncGenerator:
                 f"}});",
             ):
                 with self.target.indented(
-                    f"launch<void, () => void>(() => {{",
-                    f"}})",
+                    f"launch() {{",
+                    f"}}",
                 ):
                     with self.target.indented(
                         f"try {{",
@@ -1586,8 +1586,8 @@ class StsAnyFuncGenerator:
             f"}}",
         ):
             with self.target.indented(
-                f"launch<void, () => void>(() => {{",
-                f"}})",
+                f"launch() {{",
+                f"}}",
             ):
                 with self.target.indented(
                     f"try {{",
