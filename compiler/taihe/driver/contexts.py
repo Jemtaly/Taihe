@@ -29,13 +29,12 @@
 """
 
 from dataclasses import dataclass, field
-from itertools import chain
 from pathlib import Path
 
 from typing_extensions import Self
 
 from taihe.driver.backend import Backend, BackendConfig
-from taihe.parse.convert import convert_ast
+from taihe.parse.convert import PackageCollector
 from taihe.semantics.analysis import analyze_semantics
 from taihe.semantics.attributes import AttributeRegistry
 from taihe.semantics.declarations import PackageGroup
@@ -152,11 +151,7 @@ class CompilerInstance:
     ##########################
 
     def collect(self):
-        """Adds all `.taihe` files inside a directory. Subdirectories are ignored."""
-        direct = self.invocation.src_files
-        scanned = chain.from_iterable(p.iterdir() for p in self.invocation.src_dirs)
-
-        for path in chain(direct, scanned):
+        for path in self.invocation.src_files:
             source = SourceFile(path)
             if reason := validate_source_file(path):
                 warn = IgnoredFileWarn(reason=reason, loc=SourceLocation(source))
@@ -164,15 +159,18 @@ class CompilerInstance:
             else:
                 self.source_manager.add_source(source)
 
+        for include_dir in self.invocation.src_dirs:
+            self.source_manager.add_include(include_dir)
+
         for b in self.backends:
             b.inject()
 
     def parse(self):
-        convert_ast(
+        PackageCollector(
             self.source_manager,
             self.package_group,
             self.diagnostics_manager,
-        )
+        ).parse_all()
 
         for b in self.backends:
             b.post_process()
