@@ -17,6 +17,9 @@
 #define TAIHE_RUNTIME_HPP
 
 #ifdef USE_ANI_RUNTIME
+// ANI (ArkTS Native Interface) runtime support.
+// Define USE_ANI_RUNTIME to enable ANI bindings. This is automatically set
+// by the ANI backend during code generation.
 #include <taihe/runtime_ani.hpp>
 #endif
 

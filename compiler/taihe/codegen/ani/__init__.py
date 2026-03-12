@@ -98,7 +98,8 @@ class AniBridgeBackendConfig(BackendConfig):
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
-                # Register ANI-specific runtime source
+                # Register ANI-specific runtime source (separate from common
+                # runtime sources in ABI backend since it depends on ANI SDK)
                 om.register_runtime_path(RUNTIME_CXX_SRC, "src/runtime_ani.cpp")
                 # Register macro definition for conditional ANI runtime include
                 om.register_var(MACRO_DEFINITION, "USE_ANI_RUNTIME")

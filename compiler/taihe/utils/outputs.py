@@ -398,11 +398,20 @@ class OutputManager(ABC):
             self._var_entries.setdefault(kind, []).append(value)
 
     def register_runtime_path(self, kind: PathKind, relative: str) -> None:
-        """Register a runtime path. Subclasses should resolve the path."""
+        """Register a runtime path relative to the runtime directory.
+
+        The base implementation is a no-op. Subclasses like CMakeOutputManager
+        override this to resolve relative paths against the runtime directory.
+        """
         return
 
     def register_generated_path(self, kind: PathKind, relative: str) -> None:
-        """Register a generated path. Subclasses should resolve the path."""
+        """Register a generated path relative to the generated output directory.
+
+        The base implementation is a no-op. Subclasses like BasicOutputManager
+        and CMakeOutputManager override this to resolve relative paths against
+        the output directory.
+        """
         return
 
     def post_generate(self) -> None:
