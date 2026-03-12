@@ -20,7 +20,7 @@ from typing import TextIO
 
 from typing_extensions import override
 
-from taihe.utils.outputs import FileKind, FileWriter, OutputManager
+from taihe.utils.outputs import GENERATED_C_TEMPLATE, FileWriter, OutputManager, PathKind
 
 C_DEFAULT_INDENT = "    "
 C_COMMENT_PREFIX = "// "
@@ -120,7 +120,7 @@ class CSourceWriter(FileWriter, CMacroManager):
         self,
         om: OutputManager,
         relative_path: str,
-        file_kind: FileKind,
+        file_kind: PathKind,
         *,
         include_guard: IncludeGuard | None = None,
     ):
@@ -134,7 +134,7 @@ class CSourceWriter(FileWriter, CMacroManager):
         CMacroManager.__init__(
             self,
             diag_settings={}
-            if file_kind == FileKind.C_TEMPLATE
+            if file_kind is GENERATED_C_TEMPLATE
             else DEFAULT_CLANG_DIAGNOSTIC_SETTINGS,
             include_guard=include_guard,
         )
@@ -157,7 +157,7 @@ class CHeaderWriter(CSourceWriter):
         self,
         om: OutputManager,
         relative_path: str,
-        file_kind: FileKind,
+        file_kind: PathKind,
     ):
         super().__init__(
             om,

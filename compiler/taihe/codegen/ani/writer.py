@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, TextIO
 
 from typing_extensions import override
 
-from taihe.utils.outputs import FileKind, FileWriter, OutputManager
+from taihe.utils.outputs import FileWriter, OutputManager, PathKind
 
 if TYPE_CHECKING:
     from taihe.codegen.ani.analyses import ArkTsModule
@@ -162,7 +162,7 @@ class StsWriter(FileWriter, ArkTsImportManager):
         self,
         om: OutputManager,
         mod: "ArkTsModule",
-        file_kind: FileKind,
+        file_kind: PathKind,
         *,
         is_static: bool = True,
     ):
