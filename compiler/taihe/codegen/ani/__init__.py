@@ -93,9 +93,15 @@ class AniBridgeBackendConfig(BackendConfig):
                             p.add_attribute(StsKeepNameAttr(loc=p.loc))
 
             def generate(self):
+                from taihe.utils.outputs import MACRO_DEFINITION, RUNTIME_CXX_SRC
+
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
+                # Register ANI-specific runtime source
+                om.register_runtime_path(RUNTIME_CXX_SRC, "src/runtime_ani.cpp")
+                # Register macro definition for conditional ANI runtime include
+                om.register_var(MACRO_DEFINITION, "USE_ANI_RUNTIME")
                 AniCodeGenerator(om, am).generate(pg)
                 StsCodeGenerator(om, am).generate(pg)
 

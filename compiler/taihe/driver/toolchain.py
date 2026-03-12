@@ -36,7 +36,6 @@ from taihe.utils.outputs import BasicOutputConfig, CMakeOutputConfig
 from taihe.utils.resources import (
     PandaVm,
     RuntimeHeader,
-    RuntimeSource,
 )
 
 logger = logging.getLogger(__name__)
@@ -160,8 +159,7 @@ def taihec(
         case "cmake":
             output_config = CMakeOutputConfig(
                 dst_dir=dst_dir,
-                runtime_include_dir=RuntimeHeader.resolve_path(),
-                runtime_src_dir=RuntimeSource.resolve_path(),
+                runtime_dir=RuntimeHeader.resolve_path().parent,
             )
         case _:
             if buildsys_name is not None:

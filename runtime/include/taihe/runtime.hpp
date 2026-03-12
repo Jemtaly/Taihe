@@ -16,6 +16,8 @@
 #ifndef TAIHE_RUNTIME_HPP
 #define TAIHE_RUNTIME_HPP
 
+#ifdef USE_ANI_RUNTIME
 #include <taihe/runtime_ani.hpp>
+#endif
 
 #endif  // TAIHE_RUNTIME_HPP

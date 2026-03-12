@@ -215,6 +215,7 @@ function(add_taihe_runtime)
     )
 
     target_include_directories(taihe_runtime PUBLIC ${TAIHE_RUNTIME_HEADER_DIR})
+    target_compile_definitions(taihe_runtime PUBLIC USE_ANI_RUNTIME)
   endif()
 endfunction()
 
@@ -431,6 +432,7 @@ function(add_taihe_library target_name idl_files)
   # compile static library
   add_library(${target_name} STATIC ${TAIHE_RUNTIME_SOURCES} ${GEN_ABI_C_FILES} ${GEN_BRIDGE_CPP_FILES} ${GEN_STDLIB_ABI_C_FILES})
   target_compile_options(${target_name} PRIVATE "-Wno-attributes")
+  target_compile_definitions(${target_name} PUBLIC USE_ANI_RUNTIME)
   set_target_properties(${target_name} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_options(${target_name} PRIVATE "-Wl,--no-undefined")
   target_include_directories(${target_name} PUBLIC ${GEN_INCLUDE_DIR} ${TAIHE_RUNTIME_HEADER_DIR})

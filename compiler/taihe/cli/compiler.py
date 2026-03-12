@@ -28,7 +28,6 @@ from taihe.utils.outputs import BasicOutputConfig, CMakeOutputConfig
 from taihe.utils.resources import (
     ResourceContext,
     RuntimeHeader,
-    RuntimeSource,
 )
 
 
@@ -126,8 +125,7 @@ def main():
         case "cmake":
             output_config = CMakeOutputConfig(
                 dst_dir=dst_dir,
-                runtime_include_dir=RuntimeHeader.resolve_path(),
-                runtime_src_dir=RuntimeSource.resolve_path(),
+                runtime_dir=RuntimeHeader.resolve_path().parent,
             )
         case _:
             if args.buildsys is not None:

@@ -51,6 +51,7 @@ class BuildSystem(ABC):
     author_includes: list[Path]
 
     runtime_sources: list[Path]
+    extra_compile_flags: list[str]
 
     author_backend_names: list[str]
     user_backend_names: list[str]
@@ -86,6 +87,7 @@ class BuildSystem(ABC):
         self.lib_target = self.build_dir / f"lib{self.lib_name}.so"
 
         self.author_backend_names = ["cpp-author"]
+        self.extra_compile_flags = []
 
     def create(self) -> None:
         """Create a simple example project."""
@@ -176,7 +178,7 @@ class BuildSystem(ABC):
             self.build_runtime_src_dir,
             self.runtime_sources,
             self.runtime_includes,
-            compile_flags=[f"-O{opt_level}"],
+            compile_flags=[f"-O{opt_level}", *self.extra_compile_flags],
         )
 
         create_directory(self.build_generated_src_dir)
@@ -184,7 +186,7 @@ class BuildSystem(ABC):
             self.build_generated_src_dir,
             self.generated_src_dir.glob("*.[cC]*"),
             self.generated_includes,
-            compile_flags=[f"-O{opt_level}"],
+            compile_flags=[f"-O{opt_level}", *self.extra_compile_flags],
         )
 
         create_directory(self.build_author_src_dir)
@@ -192,7 +194,7 @@ class BuildSystem(ABC):
             self.build_author_src_dir,
             self.author_src_dir.glob("*.[cC]*"),
             self.author_includes,
-            compile_flags=[f"-O{opt_level}"],
+            compile_flags=[f"-O{opt_level}", *self.extra_compile_flags],
         )
 
         # Link all objects
@@ -331,6 +333,8 @@ class StsBuildSystem(BuildSystem):
             runtime_src_dir / "object.cpp",
             runtime_src_dir / "runtime_ani.cpp",
         ]
+
+        self.extra_compile_flags = ["-DUSE_ANI_RUNTIME"]
 
         self.abc_target = self.build_dir / "main.abc"
         self.arktsconfig_file = self.build_dir / "arktsconfig.json"

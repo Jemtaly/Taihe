@@ -40,9 +40,21 @@ class AbiHeaderBackendConfig(BackendConfig):
                 self._ci = ci
 
             def generate(self):
+                from taihe.utils.outputs import (
+                    GENERATED_INCLUDE,
+                    RUNTIME_CXX_SRC,
+                    RUNTIME_INCLUDE,
+                )
+
                 om = self._ci.output_manager
                 am = self._ci.analysis_manager
                 pg = self._ci.package_group
+                # Register runtime include and source paths
+                om.register_runtime_path(RUNTIME_INCLUDE, "include")
+                om.register_runtime_path(RUNTIME_CXX_SRC, "src/string.cpp")
+                om.register_runtime_path(RUNTIME_CXX_SRC, "src/object.cpp")
+                # Register generated include directory
+                om.register_generated_path(GENERATED_INCLUDE, "include")
                 AbiHeadersGenerator(om, am).generate(pg)
 
         return AbiHeaderBackendImpl(instance)
