@@ -22,7 +22,6 @@ from pathlib import Path
 from taihe.driver.toolchain import (
     ArkToolchain,
     CppToolchain,
-    TryitOutputConfig,
     TryitOutputManager,
     clean_directory,
     create_directory,
@@ -31,6 +30,11 @@ from taihe.driver.toolchain import (
     taihec,
 )
 from taihe.utils.logging import setup_logger
+from taihe.utils.outputs import (
+    GEN_C_SRC_GROUP,
+    GEN_CXX_SRC_GROUP,
+    GEN_ETS_GROUP,
+)
 from taihe.utils.resources import (
     ResourceContext,
     RuntimeHeader,
@@ -111,35 +115,29 @@ class BuildSystem(ABC):
 
         logger.info("Generating author and ani codes...")
 
-        # Generate author codes
         backend_names: list[str] = []
         backend_names.extend(self.author_backend_names)
         backend_names.extend(self.user_backend_names)
 
-        # Use TryitOutputConfig for the default (non-cmake) case so that the
-        # output manager collects runtime and generated source files for the
-        # subsequent build step.
-        output_config = (
-            TryitOutputConfig(
+        if buildsys_name is None:
+            # taihec always returns TryitOutputManager when buildsys_name is None
+            self._tryit_om = taihec(
                 dst_dir=self.generated_dir,
-                runtime_src_dir=RuntimeSource.resolve_path(),
+                src_files=list(self.idl_dir.glob("*")),
+                backend_names=backend_names,
+                buildsys_name=None,
+                extra=extra,
+                debug=self.should_run_pretty_print,
             )
-            if buildsys_name is None
-            else None
-        )
-
-        om = taihec(
-            dst_dir=self.generated_dir,
-            src_files=list(self.idl_dir.glob("*")),
-            backend_names=backend_names,
-            buildsys_name=buildsys_name,
-            extra=extra,
-            debug=self.should_run_pretty_print,
-            output_config=output_config,
-        )
-
-        if isinstance(om, TryitOutputManager):
-            self._tryit_om = om
+        else:
+            taihec(
+                dst_dir=self.generated_dir,
+                src_files=list(self.idl_dir.glob("*")),
+                backend_names=backend_names,
+                buildsys_name=buildsys_name,
+                extra=extra,
+                debug=self.should_run_pretty_print,
+            )
 
     def build(self, opt_level: str) -> None:
         """Run the complete build process."""
@@ -193,22 +191,25 @@ class BuildSystem(ABC):
         """Compile the shared library."""
         logger.info("Compiling shared library...")
 
-        # Use runtime sources collected by TryitOutputManager when available
-        # (i.e., when generate() was called in the same session); otherwise
-        # fall back to the hardcoded list set in __init__.
-        runtime_sources = (
-            self._tryit_om.runtime_sources
-            if self._tryit_om is not None
-            else self.runtime_sources
-        )
-
-        # Use generated source files collected by TryitOutputManager when
-        # available; otherwise fall back to a glob of the generated src dir.
-        generated_sources = (
-            self._tryit_om.generated_sources
-            if self._tryit_om is not None
-            else list(self.generated_src_dir.glob("*.[cC]*"))
-        )
+        if self._tryit_om is not None:
+            # Use sources collected by TryitOutputManager (registered by backends
+            # during the generate step).  Paths are relative to the runtime src
+            # dir and the generated dir respectively — resolved here in tryit.py.
+            runtime_src_dir = RuntimeSource.resolve_path()
+            runtime_sources: list[Path] = [
+                runtime_src_dir / path
+                for group_paths in self._tryit_om.runtime_src_files.values()
+                for path in group_paths
+            ]
+            generated_sources: list[Path] = [
+                self.generated_dir / path
+                for group in (GEN_C_SRC_GROUP, GEN_CXX_SRC_GROUP)
+                for path in self._tryit_om.gen_src_files.get(group, [])
+            ]
+        else:
+            # Fallback for build-only invocations (no prior generate in this session).
+            runtime_sources = self.runtime_sources
+            generated_sources = list(self.generated_src_dir.glob("*.[cC]*"))
 
         create_directory(self.build_runtime_src_dir)
         runtime_objects = self.cpp_toolchain.compile(
@@ -396,11 +397,13 @@ class StsBuildSystem(BuildSystem):
 
         # Use ETS source files collected by TryitOutputManager when available;
         # otherwise fall back to a glob of the generated directory.
-        generated_ets_sources = (
-            self._tryit_om.generated_ets_sources
-            if self._tryit_om is not None
-            else list(self.generated_dir.glob("*.ets"))
-        )
+        if self._tryit_om is not None:
+            generated_ets_sources: list[Path] = [
+                self.generated_dir / path
+                for path in self._tryit_om.gen_src_files.get(GEN_ETS_GROUP, [])
+            ]
+        else:
+            generated_ets_sources = list(self.generated_dir.glob("*.ets"))
 
         paths: dict[str, Path] = {}
         for path in generated_ets_sources:
