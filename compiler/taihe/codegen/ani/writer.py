@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, TextIO
 
 from typing_extensions import override
 
-from taihe.utils.outputs import FileWriter, OutputManager
+from taihe.utils.outputs import GEN_ETS_GROUP, FileWriter, OutputManager
 
 if TYPE_CHECKING:
     from taihe.codegen.ani.analyses import ArkTsModule
@@ -168,7 +168,7 @@ class StsWriter(FileWriter, ArkTsImportManager):
         super().__init__(
             om,
             "/".join(mod.relative_path),
-            group=None,
+            group=GEN_ETS_GROUP,
             default_indent=ETS_DEFAULT_INDENT,
             comment_prefix=ETS_COMMENT_PREFIX,
         )

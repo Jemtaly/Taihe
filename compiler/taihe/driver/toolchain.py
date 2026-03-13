@@ -21,7 +21,10 @@ import subprocess
 import tarfile
 import time
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from typing_extensions import override
 
 from taihe.driver.backend import BackendRegistry
 from taihe.driver.contexts import (
@@ -32,7 +35,19 @@ from taihe.driver.options import OptionRegistry
 from taihe.semantics import PrettyPrintBackendConfig
 from taihe.utils.diagnostics import ConsoleDiagnosticsManager
 from taihe.utils.exceptions import AdhocError
-from taihe.utils.outputs import BasicOutputConfig, CMakeOutputConfig
+from taihe.utils.outputs import (
+    GEN_C_SRC_GROUP,
+    GEN_CXX_SRC_GROUP,
+    GEN_ETS_GROUP,
+    BasicOutputConfig,
+    BasicOutputManager,
+    CMakeOutputConfig,
+    DebugLevel,
+    GeneratedFileGroup,
+    OutputConfig,
+    OutputManager,
+    RuntimeSourceGroup,
+)
 from taihe.utils.resources import (
     PandaVm,
     RuntimeHeader,
@@ -125,6 +140,73 @@ def extract_file(
     logger.info("Extracted %s to %s", target_file, extract_dir)
 
 
+@dataclass
+class TryitOutputConfig(BasicOutputConfig):
+    """Output configuration for the tryit compilation flow.
+
+    Extends BasicOutputConfig by tracking runtime source files and generated
+    source files for use in the direct compilation pipeline.
+    """
+
+    runtime_src_dir: Path = field(kw_only=True)
+
+    def construct(self) -> "TryitOutputManager":
+        return TryitOutputManager(
+            self.dst_dir,
+            debug_level=self.debug_level,
+            runtime_src_dir=self.runtime_src_dir,
+        )
+
+
+class TryitOutputManager(BasicOutputManager):
+    """Output manager that collects compilation info for the tryit flow.
+
+    In addition to writing generated files, this manager accumulates runtime
+    source files and generated C/C++/ETS source files so that the build
+    system can use them directly without resorting to glob patterns or
+    hardcoded file lists.
+    """
+
+    def __init__(
+        self,
+        dst_dir: Path,
+        *,
+        debug_level: DebugLevel,
+        runtime_src_dir: Path,
+    ):
+        super().__init__(dst_dir, debug_level=debug_level)
+        self.runtime_src_dir = runtime_src_dir
+        self._runtime_sources: list[Path] = []
+        self._generated_sources: list[Path] = []
+        self._generated_ets_sources: list[Path] = []
+
+    @override
+    def register_runtime_src(self, group: RuntimeSourceGroup, relative_path: str):
+        self._runtime_sources.append(self.runtime_src_dir / relative_path)
+
+    @override
+    def register_generated_file(self, group: GeneratedFileGroup, relative_path: str):
+        if group in (GEN_C_SRC_GROUP, GEN_CXX_SRC_GROUP):
+            self._generated_sources.append(self.dst_dir / relative_path)
+        elif group == GEN_ETS_GROUP:
+            self._generated_ets_sources.append(self.dst_dir / relative_path)
+
+    @property
+    def runtime_sources(self) -> list[Path]:
+        """Absolute paths of runtime source files registered by backends."""
+        return list(self._runtime_sources)
+
+    @property
+    def generated_sources(self) -> list[Path]:
+        """Absolute paths of generated C/C++ source files."""
+        return list(self._generated_sources)
+
+    @property
+    def generated_ets_sources(self) -> list[Path]:
+        """Absolute paths of generated ETS source files."""
+        return list(self._generated_ets_sources)
+
+
 def taihec(
     dst_dir: Path,
     src_files: list[Path],
@@ -132,7 +214,8 @@ def taihec(
     buildsys_name: str | None = None,
     extra: list[str] | None = None,
     debug: bool = False,
-) -> None:
+    output_config: OutputConfig | None = None,
+) -> OutputManager:
     registry = BackendRegistry()
     registry.register_all()
 
@@ -156,19 +239,20 @@ def taihec(
         )
         backend_configs.append(pretty_print_backend_config)
 
-    match buildsys_name:
-        case "cmake":
-            output_config = CMakeOutputConfig(
-                dst_dir=dst_dir,
-                runtime_include_dir=RuntimeHeader.resolve_path(),
-                runtime_src_dir=RuntimeSource.resolve_path(),
-            )
-        case _:
-            if buildsys_name is not None:
-                dm.emit(AdhocError(f"unknown build system {buildsys_name!r}"))
-            output_config = BasicOutputConfig(
-                dst_dir=dst_dir,
-            )
+    if output_config is None:
+        match buildsys_name:
+            case "cmake":
+                output_config = CMakeOutputConfig(
+                    dst_dir=dst_dir,
+                    runtime_include_dir=RuntimeHeader.resolve_path(),
+                    runtime_src_dir=RuntimeSource.resolve_path(),
+                )
+            case _:
+                if buildsys_name is not None:
+                    dm.emit(AdhocError(f"unknown build system {buildsys_name!r}"))
+                output_config = BasicOutputConfig(
+                    dst_dir=dst_dir,
+                )
 
     if dm.has_error:
         raise RuntimeError("Failed to parse options for backends")
@@ -183,6 +267,8 @@ def taihec(
 
     if dm.has_error:
         raise RuntimeError("Compilation failed with errors")
+
+    return instance.output_manager
 
 
 class CppToolchain:

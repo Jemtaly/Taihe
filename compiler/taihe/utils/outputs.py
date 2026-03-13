@@ -258,6 +258,7 @@ class VariableRecordGroup:
 
 GEN_C_SRC_GROUP = GeneratedFileGroup("TAIHE_GEN_C_SRC")
 GEN_CXX_SRC_GROUP = GeneratedFileGroup("TAIHE_GEN_CXX_SRC")
+GEN_ETS_GROUP = GeneratedFileGroup("TAIHE_GEN_ETS")
 RUNTIME_C_SRC_GROUP = RuntimeSourceGroup("TAIHE_RUNTIME_C_SRC_INNER")
 RUNTIME_CXX_SRC_GROUP = RuntimeSourceGroup("TAIHE_RUNTIME_CXX_SRC_INNER")
 

@@ -22,6 +22,8 @@ from pathlib import Path
 from taihe.driver.toolchain import (
     ArkToolchain,
     CppToolchain,
+    TryitOutputConfig,
+    TryitOutputManager,
     clean_directory,
     create_directory,
     extract_file,
@@ -87,6 +89,9 @@ class BuildSystem(ABC):
 
         self.author_backend_names = ["cpp-author"]
 
+        # Set after generate() when TryitOutputConfig is used; None otherwise.
+        self._tryit_om: TryitOutputManager | None = None
+
     def create(self) -> None:
         """Create a simple example project."""
         self._create_idl_files()
@@ -110,14 +115,31 @@ class BuildSystem(ABC):
         backend_names: list[str] = []
         backend_names.extend(self.author_backend_names)
         backend_names.extend(self.user_backend_names)
-        taihec(
+
+        # Use TryitOutputConfig for the default (non-cmake) case so that the
+        # output manager collects runtime and generated source files for the
+        # subsequent build step.
+        output_config = (
+            TryitOutputConfig(
+                dst_dir=self.generated_dir,
+                runtime_src_dir=RuntimeSource.resolve_path(),
+            )
+            if buildsys_name is None
+            else None
+        )
+
+        om = taihec(
             dst_dir=self.generated_dir,
             src_files=list(self.idl_dir.glob("*")),
             backend_names=backend_names,
             buildsys_name=buildsys_name,
             extra=extra,
             debug=self.should_run_pretty_print,
+            output_config=output_config,
         )
+
+        if isinstance(om, TryitOutputManager):
+            self._tryit_om = om
 
     def build(self, opt_level: str) -> None:
         """Run the complete build process."""
@@ -171,10 +193,27 @@ class BuildSystem(ABC):
         """Compile the shared library."""
         logger.info("Compiling shared library...")
 
+        # Use runtime sources collected by TryitOutputManager when available
+        # (i.e., when generate() was called in the same session); otherwise
+        # fall back to the hardcoded list set in __init__.
+        runtime_sources = (
+            self._tryit_om.runtime_sources
+            if self._tryit_om is not None
+            else self.runtime_sources
+        )
+
+        # Use generated source files collected by TryitOutputManager when
+        # available; otherwise fall back to a glob of the generated src dir.
+        generated_sources = (
+            self._tryit_om.generated_sources
+            if self._tryit_om is not None
+            else list(self.generated_src_dir.glob("*.[cC]*"))
+        )
+
         create_directory(self.build_runtime_src_dir)
         runtime_objects = self.cpp_toolchain.compile(
             self.build_runtime_src_dir,
-            self.runtime_sources,
+            runtime_sources,
             self.runtime_includes,
             compile_flags=[f"-O{opt_level}"],
         )
@@ -182,7 +221,7 @@ class BuildSystem(ABC):
         create_directory(self.build_generated_src_dir)
         generated_objects = self.cpp_toolchain.compile(
             self.build_generated_src_dir,
-            self.generated_src_dir.glob("*.[cC]*"),
+            generated_sources,
             self.generated_includes,
             compile_flags=[f"-O{opt_level}"],
         )
@@ -355,8 +394,16 @@ class StsBuildSystem(BuildSystem):
         """Compile and link ABC files."""
         logger.info("Compiling and linking ABC files...")
 
+        # Use ETS source files collected by TryitOutputManager when available;
+        # otherwise fall back to a glob of the generated directory.
+        generated_ets_sources = (
+            self._tryit_om.generated_ets_sources
+            if self._tryit_om is not None
+            else list(self.generated_dir.glob("*.ets"))
+        )
+
         paths: dict[str, Path] = {}
-        for path in self.generated_dir.glob("*.ets"):
+        for path in generated_ets_sources:
             paths[path.stem] = path
         for path in self.user_dir.glob("*.ets"):
             paths[path.stem] = path
@@ -366,7 +413,7 @@ class StsBuildSystem(BuildSystem):
         create_directory(self.build_generated_dir)
         generated_abc = self.ark_toolchain.compile(
             self.build_generated_dir,
-            self.generated_dir.glob("*.ets"),
+            generated_ets_sources,
             self.arktsconfig_file,
         )
 
