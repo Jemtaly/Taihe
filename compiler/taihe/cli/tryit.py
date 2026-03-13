@@ -93,7 +93,9 @@ class BuildSystem(ABC):
 
         self.author_backend_names = ["cpp-author"]
 
-        # Set after generate() when TryitOutputConfig is used; None otherwise.
+        # Output manager returned by generate(); used by build methods to
+        # retrieve the source file lists collected by backends. None if
+        # generate() was not called in this session.
         self._tryit_om: TryitOutputManager | None = None
 
     def create(self) -> None:
@@ -104,7 +106,6 @@ class BuildSystem(ABC):
 
     def generate(
         self,
-        buildsys_name: str | None,
         extra: list[str],
     ) -> None:
         """Generate code from IDL files."""
@@ -119,25 +120,15 @@ class BuildSystem(ABC):
         backend_names.extend(self.author_backend_names)
         backend_names.extend(self.user_backend_names)
 
-        if buildsys_name is None:
-            # taihec always returns TryitOutputManager when buildsys_name is None
-            self._tryit_om = taihec(
-                dst_dir=self.generated_dir,
-                src_files=list(self.idl_dir.glob("*")),
-                backend_names=backend_names,
-                buildsys_name=None,
-                extra=extra,
-                debug=self.should_run_pretty_print,
-            )
-        else:
-            taihec(
-                dst_dir=self.generated_dir,
-                src_files=list(self.idl_dir.glob("*")),
-                backend_names=backend_names,
-                buildsys_name=buildsys_name,
-                extra=extra,
-                debug=self.should_run_pretty_print,
-            )
+        # taihec always returns TryitOutputManager when buildsys_name is None
+        self._tryit_om = taihec(
+            dst_dir=self.generated_dir,
+            src_files=list(self.idl_dir.glob("*")),
+            backend_names=backend_names,
+            buildsys_name=None,
+            extra=extra,
+            debug=self.should_run_pretty_print,
+        )
 
     def build(self, opt_level: str) -> None:
         """Run the complete build process."""
@@ -522,13 +513,6 @@ class TaiheTryitParser(argparse.ArgumentParser):
 
     def register_generate_configs(self) -> None:
         self.add_argument(
-            "--build",
-            "-B",
-            dest="buildsys",
-            choices=["cmake"],
-            help="build system to use for generated sources",
-        )
-        self.add_argument(
             "--codegen",
             "-C",
             dest="config",
@@ -621,7 +605,6 @@ def main():
                 build_system.create()
             if args.command in ("generate", "test"):
                 build_system.generate(
-                    buildsys_name=args.buildsys,
                     extra=args.config,
                 )
             if args.command in ("build", "test"):
