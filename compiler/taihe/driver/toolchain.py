@@ -23,7 +23,6 @@ import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import overload
 
 from typing_extensions import override
 
@@ -35,20 +34,15 @@ from taihe.driver.contexts import (
 from taihe.driver.options import OptionRegistry
 from taihe.semantics import PrettyPrintBackendConfig
 from taihe.utils.diagnostics import ConsoleDiagnosticsManager
-from taihe.utils.exceptions import AdhocError
 from taihe.utils.outputs import (
     BasicOutputConfig,
     BasicOutputManager,
-    CMakeOutputConfig,
     DebugLevel,
     GeneratedFileGroup,
-    OutputManager,
     RuntimeSourceGroup,
 )
 from taihe.utils.resources import (
     PandaVm,
-    RuntimeHeader,
-    RuntimeSource,
 )
 
 logger = logging.getLogger(__name__)
@@ -137,6 +131,9 @@ def extract_file(
     logger.info("Extracted %s to %s", target_file, extract_dir)
 
 
+MANIFEST_FILENAME = ".taihe_manifest.json"
+
+
 @dataclass
 class TryitOutputConfig(BasicOutputConfig):
     """Output configuration for the tryit compilation flow.
@@ -177,37 +174,57 @@ class TryitOutputManager(BasicOutputManager):
     def register_generated_file(self, group: GeneratedFileGroup, relative_path: str):
         self.gen_src_files.setdefault(group, []).append(relative_path)
 
+    @override
+    def post_generate(self) -> None:
+        """Write a build manifest so the build step can run independently."""
+        manifest_data = {
+            "runtime_src_files": {
+                group.var_name: paths for group, paths in self.runtime_src_files.items()
+            },
+            "gen_src_files": {
+                group.var_name: paths for group, paths in self.gen_src_files.items()
+            },
+        }
+        manifest_path = self.dst_dir / MANIFEST_FILENAME
+        with open(manifest_path, "w") as f:
+            json.dump(manifest_data, f, indent=2)
+        logger.debug("Written build manifest: %s", manifest_path)
 
-@overload
+
+@dataclass
+class TryitManifest:
+    """Persisted metadata from a generate step, consumed by a standalone build step.
+
+    Written to ``generated/.taihe_manifest.json`` by :meth:`TryitOutputManager.post_generate`.
+    """
+
+    runtime_src_files: dict[str, list[str]]
+    gen_src_files: dict[str, list[str]]
+
+    @classmethod
+    def load(cls, generated_dir: Path) -> "TryitManifest":
+        """Load the manifest written by a previous generate step."""
+        manifest_path = generated_dir / MANIFEST_FILENAME
+        if not manifest_path.exists():
+            raise FileNotFoundError(
+                f"Build manifest not found at '{manifest_path}'. "
+                "Run 'generate' before 'build'."
+            )
+        with open(manifest_path) as f:
+            data = json.load(f)
+        return cls(
+            runtime_src_files=data["runtime_src_files"],
+            gen_src_files=data["gen_src_files"],
+        )
+
+
 def taihec(
     dst_dir: Path,
     src_files: list[Path],
     backend_names: list[str],
-    buildsys_name: None = ...,
-    extra: list[str] | None = ...,
-    debug: bool = ...,
-) -> TryitOutputManager: ...
-
-
-@overload
-def taihec(
-    dst_dir: Path,
-    src_files: list[Path],
-    backend_names: list[str],
-    buildsys_name: str,
-    extra: list[str] | None = ...,
-    debug: bool = ...,
-) -> OutputManager: ...
-
-
-def taihec(
-    dst_dir: Path,
-    src_files: list[Path],
-    backend_names: list[str],
-    buildsys_name: str | None = None,
     extra: list[str] | None = None,
     debug: bool = False,
-) -> OutputManager:
+) -> TryitOutputManager:
     registry = BackendRegistry()
     registry.register_all()
 
@@ -231,17 +248,7 @@ def taihec(
         )
         backend_configs.append(pretty_print_backend_config)
 
-    match buildsys_name:
-        case "cmake":
-            output_config = CMakeOutputConfig(
-                dst_dir=dst_dir,
-                runtime_include_dir=RuntimeHeader.resolve_path(),
-                runtime_src_dir=RuntimeSource.resolve_path(),
-            )
-        case _:
-            if buildsys_name is not None:
-                dm.emit(AdhocError(f"unknown build system {buildsys_name!r}"))
-            output_config = TryitOutputConfig(dst_dir=dst_dir)
+    output_config = TryitOutputConfig(dst_dir=dst_dir)
 
     if dm.has_error:
         raise RuntimeError("Failed to parse options for backends")
@@ -257,7 +264,10 @@ def taihec(
     if dm.has_error:
         raise RuntimeError("Compilation failed with errors")
 
-    return instance.output_manager
+    om = instance.output_manager
+    if not isinstance(om, TryitOutputManager):
+        raise TypeError(f"Expected TryitOutputManager, got {type(om).__name__}")
+    return om
 
 
 class CppToolchain:

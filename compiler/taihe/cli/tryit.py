@@ -22,7 +22,7 @@ from pathlib import Path
 from taihe.driver.toolchain import (
     ArkToolchain,
     CppToolchain,
-    TryitOutputManager,
+    TryitManifest,
     clean_directory,
     create_directory,
     extract_file,
@@ -55,8 +55,6 @@ class BuildSystem(ABC):
     runtime_includes: list[Path]
     generated_includes: list[Path]
     author_includes: list[Path]
-
-    runtime_sources: list[Path]
 
     author_backend_names: list[str]
     user_backend_names: list[str]
@@ -93,11 +91,6 @@ class BuildSystem(ABC):
 
         self.author_backend_names = ["cpp-author"]
 
-        # Output manager returned by generate(); used by build methods to
-        # retrieve the source file lists collected by backends. None if
-        # generate() was not called in this session.
-        self._tryit_om: TryitOutputManager | None = None
-
     def create(self) -> None:
         """Create a simple example project."""
         self._create_idl_files()
@@ -120,12 +113,10 @@ class BuildSystem(ABC):
         backend_names.extend(self.author_backend_names)
         backend_names.extend(self.user_backend_names)
 
-        # taihec always returns TryitOutputManager when buildsys_name is None
-        self._tryit_om = taihec(
+        taihec(
             dst_dir=self.generated_dir,
             src_files=list(self.idl_dir.glob("*")),
             backend_names=backend_names,
-            buildsys_name=None,
             extra=extra,
             debug=self.should_run_pretty_print,
         )
@@ -182,25 +173,18 @@ class BuildSystem(ABC):
         """Compile the shared library."""
         logger.info("Compiling shared library...")
 
-        if self._tryit_om is not None:
-            # Use sources collected by TryitOutputManager (registered by backends
-            # during the generate step).  Paths are relative to the runtime src
-            # dir and the generated dir respectively — resolved here in tryit.py.
-            runtime_src_dir = RuntimeSource.resolve_path()
-            runtime_sources: list[Path] = [
-                runtime_src_dir / path
-                for group_paths in self._tryit_om.runtime_src_files.values()
-                for path in group_paths
-            ]
-            generated_sources: list[Path] = [
-                self.generated_dir / path
-                for group in (GEN_C_SRC_GROUP, GEN_CXX_SRC_GROUP)
-                for path in self._tryit_om.gen_src_files.get(group, [])
-            ]
-        else:
-            # Fallback for build-only invocations (no prior generate in this session).
-            runtime_sources = self.runtime_sources
-            generated_sources = list(self.generated_src_dir.glob("*.[cC]*"))
+        manifest = TryitManifest.load(self.generated_dir)
+        runtime_src_dir = RuntimeSource.resolve_path()
+        runtime_sources: list[Path] = [
+            runtime_src_dir / path
+            for paths in manifest.runtime_src_files.values()
+            for path in paths
+        ]
+        generated_sources: list[Path] = [
+            self.generated_dir / path
+            for group_name in (GEN_C_SRC_GROUP.var_name, GEN_CXX_SRC_GROUP.var_name)
+            for path in manifest.gen_src_files.get(group_name, [])
+        ]
 
         create_directory(self.build_runtime_src_dir)
         runtime_objects = self.cpp_toolchain.compile(
@@ -269,12 +253,6 @@ class CppBuildSystem(BuildSystem):
         self.generated_includes = [*self.runtime_includes, self.generated_include_dir]
         self.author_includes = [*self.generated_includes, self.author_include_dir]
         self.user_includes = [*self.generated_includes, self.user_include_dir]
-
-        runtime_src_dir = RuntimeSource.resolve_path()
-        self.runtime_sources = [
-            runtime_src_dir / "string.cpp",
-            runtime_src_dir / "object.cpp",
-        ]
 
         self.exe_target = self.build_dir / "main"
 
@@ -356,13 +334,6 @@ class StsBuildSystem(BuildSystem):
         self.generated_includes = [*self.runtime_includes, self.generated_include_dir]
         self.author_includes = [*self.generated_includes, self.author_include_dir]
 
-        runtime_src_dir = RuntimeSource.resolve_path()
-        self.runtime_sources = [
-            runtime_src_dir / "string.cpp",
-            runtime_src_dir / "object.cpp",
-            runtime_src_dir / "runtime_ani.cpp",
-        ]
-
         self.abc_target = self.build_dir / "main.abc"
         self.arktsconfig_file = self.build_dir / "arktsconfig.json"
 
@@ -386,15 +357,11 @@ class StsBuildSystem(BuildSystem):
         """Compile and link ABC files."""
         logger.info("Compiling and linking ABC files...")
 
-        # Use ETS source files collected by TryitOutputManager when available;
-        # otherwise fall back to a glob of the generated directory.
-        if self._tryit_om is not None:
-            generated_ets_sources: list[Path] = [
-                self.generated_dir / path
-                for path in self._tryit_om.gen_src_files.get(GEN_ETS_GROUP, [])
-            ]
-        else:
-            generated_ets_sources = list(self.generated_dir.glob("*.ets"))
+        manifest = TryitManifest.load(self.generated_dir)
+        generated_ets_sources: list[Path] = [
+            self.generated_dir / path
+            for path in manifest.gen_src_files.get(GEN_ETS_GROUP.var_name, [])
+        ]
 
         paths: dict[str, Path] = {}
         for path in generated_ets_sources:
