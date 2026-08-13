@@ -21,6 +21,7 @@ from io import StringIO
 import shutil
 import subprocess
 import sys
+import time
 from typing import TYPE_CHECKING, Final
 from pathlib import Path
 import platform
@@ -170,7 +171,15 @@ class PythonBundle:
         env['UV_CONNECT_TIMEOUT'] = '300'
         uv_args = ["uv", "pip", "install", f"--target={self.sitepkg_dir}"]
         uv_args += ["--", str(wheel)]
-        subprocess.run(uv_args, check=True, env=env)
+        # Retry transient failures up to 10 times.
+        for attempt in range(11):
+            try:
+                subprocess.run(uv_args, check=True, env=env)
+                return
+            except subprocess.CalledProcessError:
+                if attempt == 10:
+                    raise
+                time.sleep(3)
 
     def create_script(self, binary: str, pymod: str):
         if self.platform.is_windows():
