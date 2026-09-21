@@ -55,9 +55,8 @@ struct array_view {
     using value_type = cpp_owner_t;
     using size_type = std::size_t;
     using reference = value_type &;
-    using const_reference = value_type const &;
     using pointer = value_type *;
-    using const_pointer = value_type const *;
+
     using iterator = value_type *;
     using const_iterator = value_type const *;
     using reverse_iterator = std::reverse_iterator<iterator>;
@@ -215,8 +214,8 @@ struct array_view {
     }
 
 protected:
-    cpp_owner_t *m_data;
-    std::size_t m_size;
+    pointer m_data;
+    size_type m_size;
 };
 
 template<typename cpp_owner_t>
@@ -300,6 +299,8 @@ template<typename cpp_owner_t>
 struct array_builder {
     using value_type = cpp_owner_t;
     using size_type = std::size_t;
+    using reference = value_type &;
+    using pointer = value_type *;
 
     explicit array_builder(size_type capacity)
         : m_data(__detail::malloc_raw<cpp_owner_t>(capacity)), m_capacity(capacity), m_size(0)
@@ -329,6 +330,39 @@ struct array_builder {
         }
     }
 
+    pointer data() const
+    {
+        return m_data;
+    }
+
+    reference operator[](size_type index) const
+    {
+        return m_data[index];
+    }
+
+    reference at(size_type index) const
+    {
+        if (index >= m_size) {
+            TH_THROW(std::out_of_range, "array_builder index out of range");
+        }
+        return m_data[index];
+    }
+
+    size_type capacity() const
+    {
+        return m_capacity;
+    }
+
+    size_type size() const
+    {
+        return m_size;
+    }
+
+    bool empty() const
+    {
+        return m_size == 0;
+    }
+
     template<typename... Args>
     void emplace_back(Args &&...args)
     {
@@ -349,13 +383,22 @@ struct array_builder {
         emplace_back(std::move(value));
     }
 
+    void pop_back()
+    {
+        if (m_size == 0) {
+            TH_THROW(std::out_of_range, "array_builder is empty");
+        }
+        --m_size;
+        m_data[m_size].~cpp_owner_t();
+    }
+
     array<cpp_owner_t> finish() &&
     {
         return array<cpp_owner_t>(std::exchange(m_data, nullptr), m_size);
     }
 
 private:
-    cpp_owner_t *m_data;
+    pointer m_data;
     size_type m_capacity;
     size_type m_size;
 };

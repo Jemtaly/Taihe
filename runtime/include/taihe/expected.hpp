@@ -92,7 +92,7 @@ template<typename T, typename E>
 class expected;
 
 template<typename E>
-class expected<void, E> {
+class TH_NODISCARD expected<void, E> {
 public:
     using value_type = void;
     using error_type = E;
@@ -330,7 +330,7 @@ private:
 };
 
 template<typename T, typename E>
-class expected {
+class TH_NODISCARD expected {
 public:
     using value_type = T;
     using error_type = E;
