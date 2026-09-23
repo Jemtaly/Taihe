@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -116,6 +116,19 @@ using CallbackString = ::taihe::callback<::taihe::expected<taihe::string, ::taih
         return "callback result: " + captured;
     });
 }
+
+using CallbackIntStringVoid = ::taihe::callback<::taihe::expected<void, ::taihe::error>(int32_t, taihe::string_view)>;
+
+::taihe::expected<CallbackIntStringVoid, ::taihe::error> GetCallbackIntStringVoid()
+{
+    taihe::string captured = "captured variable";
+    return taihe::into_holder<CallbackIntStringVoid>(
+        [captured](int32_t a, taihe::string_view b) -> ::taihe::expected<void, ::taihe::error> {
+            std::cout << "callback int string void called, captured: " << captured << ", a: " << a << ", b: " << b
+                      << std::endl;
+            return {};
+        });
+}
 }  // namespace
 
 // Since these macros are auto-generate, lint will cause false positive.
@@ -128,4 +141,5 @@ TH_EXPORT_CPP_API_TestCbStruct(TestCbStruct);
 TH_EXPORT_CPP_API_GetInterface(GetInterface);
 TH_EXPORT_CPP_API_GetCallbackVoid(GetCallbackVoid);
 TH_EXPORT_CPP_API_GetCallbackString(GetCallbackString);
+TH_EXPORT_CPP_API_GetCallbackIntStringVoid(GetCallbackIntStringVoid);
 // NOLINTEND

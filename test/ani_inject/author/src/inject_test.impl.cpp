@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,7 +24,6 @@
 using namespace taihe;
 
 namespace {
-
 class Foo {
 public:
     ::taihe::expected<void, ::taihe::error> CallWithThis(uintptr_t thiz)
@@ -39,8 +38,30 @@ public:
     return make_holder<Foo, ::inject_test::Foo>();
 }
 
+class BarImpl {
+public:
+    BarImpl() = default;
+};
+
+::taihe::expected<::inject_test::Bar, ::taihe::error> GetBar()
+{
+    return taihe::make_holder<BarImpl, ::inject_test::Bar>();
+}
+
+class BazImpl {
+public:
+    BazImpl() = default;
+};
+
+::taihe::expected<::inject_test::Baz, ::taihe::error> GetBaz()
+{
+    return taihe::make_holder<BazImpl, ::inject_test::Baz>();
+}
 }  // namespace
 
-// because these macros are auto-generate, lint will cause false positive.
+// Since these macros are auto-generate, lint will cause false positive.
+// NOLINTBEGIN
 TH_EXPORT_CPP_API_MakeFooWithThis(MakeFooWithThis);
+TH_EXPORT_CPP_API_GetBar(GetBar);
+TH_EXPORT_CPP_API_GetBaz(GetBaz);
 // NOLINTEND
