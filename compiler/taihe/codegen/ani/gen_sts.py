@@ -269,33 +269,28 @@ class StsModuleGenerator:
         )
 
         self.target.writelns(
-            f"native function {self.mod.callback_invoke}(",
-            f"    invokePtr: long, vtblPtr: long, dataPtr: long,",
-            f"    arg_0?: Object, arg_1?: Object, arg_2?: Object, arg_3?: Object,",
-            f"    arg_4?: Object, arg_5?: Object, arg_6?: Object, arg_7?: Object,",
-            f"    arg_8?: Object, arg_9?: Object, arg_a?: Object, arg_b?: Object,",
-            f"    arg_c?: Object, arg_d?: Object, arg_e?: Object, arg_f?: Object,",
-            f"): Object | null | undefined;",
+            f"native function {self.mod.callback_invoke}(invokePtr: long, vtblPtr: long, dataPtr: long, ...args: FixedArray<Any>): Any;",
         )
         self.target.writelns(
             f"class {self.mod.callback_inner} {{",
-            f"    invokePtr: long;",
-            f"    vtblPtr: long;",
-            f"    dataPtr: long;",
+            f"    static _taihe_objRegistry: FinalizationRegistry<long> = new FinalizationRegistry<long>({self.mod.obj_drop});",
+            f"    _taihe_invokePtr: long;",
+            f"    _taihe_vtblPtr: long;",
+            f"    _taihe_dataPtr: long;",
             f"    constructor(invokePtr: long, vtblPtr: long, dataPtr: long) {{",
-            f"        this.invokePtr = invokePtr;",
-            f"        this.vtblPtr = vtblPtr;",
-            f"        this.dataPtr = dataPtr;",
-            f"        {self.mod.obj_registry}.register(this, dataPtr);",
+            f"        this._taihe_invokePtr = invokePtr;",
+            f"        this._taihe_vtblPtr = vtblPtr;",
+            f"        this._taihe_dataPtr = dataPtr;",
+            f"        {self.mod.callback_inner}._taihe_objRegistry.register(this, dataPtr);",
             f"    }}",
             f"    invoke(",
-            f"        arg_0?: Object, arg_1?: Object, arg_2?: Object, arg_3?: Object,",
-            f"        arg_4?: Object, arg_5?: Object, arg_6?: Object, arg_7?: Object,",
-            f"        arg_8?: Object, arg_9?: Object, arg_a?: Object, arg_b?: Object,",
-            f"        arg_c?: Object, arg_d?: Object, arg_e?: Object, arg_f?: Object,",
-            f"    ): Object | null | undefined {{",
+            f"        arg_0?: Any, arg_1?: Any, arg_2?: Any, arg_3?: Any,",
+            f"        arg_4?: Any, arg_5?: Any, arg_6?: Any, arg_7?: Any,",
+            f"        arg_8?: Any, arg_9?: Any, arg_a?: Any, arg_b?: Any,",
+            f"        arg_c?: Any, arg_d?: Any, arg_e?: Any, arg_f?: Any,",
+            f"    ): Any {{",
             f"        return {self.mod.callback_invoke}(",
-            f"            this.invokePtr, this.vtblPtr, this.dataPtr,",
+            f"            this._taihe_invokePtr, this._taihe_vtblPtr, this._taihe_dataPtr,",
             f"            arg_0, arg_1, arg_2, arg_3,",
             f"            arg_4, arg_5, arg_6, arg_7,",
             f"            arg_8, arg_9, arg_a, arg_b,",
@@ -306,38 +301,36 @@ class StsModuleGenerator:
         )
         self.target.writelns(
             f"function {self.mod.callback_factory}(invokePtr: long, vtblPtr: long, dataPtr: long) {{",
-            f"    let callback = new {self.mod.callback_inner}(invokePtr, vtblPtr, dataPtr);",
-            f"    return callback.invoke;",
+            f"    return new {self.mod.callback_inner}(invokePtr, vtblPtr, dataPtr).invoke;",
             f"}}",
         )
         self.target.writelns(
             f"native function {self.mod.obj_drop}(dataPtr: long): void;",
             f"native function {self.mod.obj_dup}(dataPtr: long): long;",
-            f"const {self.mod.obj_registry} = new FinalizationRegistry<long>({self.mod.obj_drop});",
         )
 
         self.target.writelns(
             f"native function {self.mod.async_handler_on_fulfilled}(onFulfilledPtr: long, contextPtr: long, data: Any): void;",
             f"native function {self.mod.async_handler_on_rejected}(onRejectedPtr: long, contextPtr: long, error: Any): void;",
             f"native function {self.mod.async_handler_drop}(freePtr: long, contextPtr: long): void;",
-            f"const {self.mod.async_handler_registry} = new FinalizationRegistry<[long, long]>((value: [long, long]) => {self.mod.async_handler_drop}(value[0], value[1]));",
         )
         self.target.writelns(
             f"class {self.mod.async_handler}<T> {{",
-            f"    onFulfilledPtr: long;",
-            f"    onRejectedPtr: long;",
-            f"    contextPtr: long;",
+            f"    static _taihe_objRegistry: FinalizationRegistry<[long, long]> = new FinalizationRegistry<[long, long]>((value: [long, long]) => {self.mod.async_handler_drop}(value[0], value[1]));",
+            f"    _taihe_onFulfilledPtr: long;",
+            f"    _taihe_onRejectedPtr: long;",
+            f"    _taihe_contextPtr: long;",
             f"    constructor(onFulfilledPtr: long, onRejectedPtr: long, freePtr: long, contextPtr: long) {{",
-            f"        this.onFulfilledPtr = onFulfilledPtr;",
-            f"        this.onRejectedPtr = onRejectedPtr;",
-            f"        this.contextPtr = contextPtr;",
-            f"        {self.mod.async_handler_registry}.register(this, [freePtr, contextPtr]);",
+            f"        this._taihe_onFulfilledPtr = onFulfilledPtr;",
+            f"        this._taihe_onRejectedPtr = onRejectedPtr;",
+            f"        this._taihe_contextPtr = contextPtr;",
+            f"        {self.mod.async_handler}._taihe_objRegistry.register(this, [freePtr, contextPtr]);",
             f"    }}",
             f"    onFulfilled(data: T): void {{",
-            f"        {self.mod.async_handler_on_fulfilled}(this.onFulfilledPtr, this.contextPtr, data);",
+            f"        {self.mod.async_handler_on_fulfilled}(this._taihe_onFulfilledPtr, this._taihe_contextPtr, data);",
             f"    }}",
             f"    onRejected(error: Error): void {{",
-            f"        {self.mod.async_handler_on_rejected}(this.onRejectedPtr, this.contextPtr, error);",
+            f"        {self.mod.async_handler_on_rejected}(this._taihe_onRejectedPtr, this._taihe_contextPtr, error);",
             f"    }}",
             f"}}",
         )
@@ -1053,16 +1046,10 @@ class StsIfaceGenerator:
 
         if not iface_ani_info.sts_class_extends:
             self.target.writelns(
+                f"static {iface_ani_info.obj_registry}: FinalizationRegistry<long> = new FinalizationRegistry<long>({package_ani_info.ns.mod.obj_drop});"
                 f"{iface_ani_info.vtbl_ptr}: long;",
                 f"{iface_ani_info.data_ptr}: long;",
             )
-            with self.target.indented(
-                f"{iface_ani_info.register}(): void {{",
-                f"}}",
-            ):
-                self.target.writelns(
-                    f"{package_ani_info.ns.mod.obj_registry}.register(this, this.{iface_ani_info.data_ptr});",
-                )
             with self.target.indented(
                 f"constructor(vtblPtr: long, dataPtr: long) {{",
                 f"}}",
@@ -1070,7 +1057,7 @@ class StsIfaceGenerator:
                 self.target.writelns(
                     f"this.{iface_ani_info.vtbl_ptr} = vtblPtr;",
                     f"this.{iface_ani_info.data_ptr} = dataPtr;",
-                    f"this.{iface_ani_info.register}();",
+                    f"{iface_ani_info.sts_impl}.{iface_ani_info.obj_registry}.register(this, dataPtr);",
                 )
         else:
             with self.target.indented(

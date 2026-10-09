@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -521,22 +521,12 @@ class AniPackageSourceGenerator:
             )
 
     def gen_callback_invoke(self, name: str):
-        params_ani = []
-        args_ani = []
-        for i in range(16):
-            arg_ani = f"arg_{i}"
-            param_ty_ani_name = "ani_ref"
-            params_ani.append(f"{param_ty_ani_name} {arg_ani}")
-            args_ani.append(arg_ani)
-        params_ani_str = ", ".join(params_ani)
-        args_ani_str = ", ".join(args_ani)
-        return_ty_ani_name = "ani_ref"
         with self.target.indented(
-            f"static {return_ty_ani_name} {name}([[maybe_unused]] ani_env *env, ani_long ani_invoke_ptr, ani_long ani_vtbl_ptr, ani_long ani_data_ptr, {params_ani_str}) {{",
+            f"static ani_ref {name}([[maybe_unused]] ani_env *env, ani_long ani_invoke_ptr, ani_long ani_vtbl_ptr, ani_long ani_data_ptr, ani_fixedarray ani_args) {{",
             f"}}",
         ):
             self.target.writelns(
-                f"return reinterpret_cast<{return_ty_ani_name} (*)(ani_env *env, ani_long ani_vtbl_ptr, ani_long ani_data_ptr, {params_ani_str})>(ani_invoke_ptr)(env, ani_vtbl_ptr, ani_data_ptr, {args_ani_str});",
+                f"return reinterpret_cast<ani_ref (*)(ani_env *env, ani_long ani_vtbl_ptr, ani_long ani_data_ptr, ani_fixedarray ani_args)>(ani_invoke_ptr)(env, ani_vtbl_ptr, ani_data_ptr, ani_args);",
             )
 
     def gen_async_handler_on_fulfilled(self, name: str):

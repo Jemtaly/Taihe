@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -93,6 +93,11 @@ function test_get_callback_string() {
     arktest.assertEQ(result, "callback result: captured variable");
 }
 
+function test_get_callback_int_string_void() {
+    let cb = lib.getCallbackIntStringVoid();
+    cb(10, "hello");
+}
+
 function main() {
     console.log("##############start#############");
     const suite = new arktest.ArkTestsuite("Callback Tests");
@@ -109,6 +114,7 @@ function main() {
 
     suite.addTest("test get callback void", test_get_callback_void);
     suite.addTest("test get callback string", test_get_callback_string);
+    suite.addTest("test get callback int string void", test_get_callback_int_string_void);
 
     exit(suite.run());
 }

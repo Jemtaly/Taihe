@@ -411,7 +411,6 @@ class ArkTsModule(ArkTsModuleOrNamespace):
 
     obj_drop = "_taihe_objDrop"
     obj_dup = "_taihe_objDup"
-    obj_registry = "_taihe_objRegistry"
 
     callback_invoke = "_taihe_callbackInvoke"
     callback_inner = "_taihe_CallbackInner"
@@ -426,7 +425,6 @@ class ArkTsModule(ArkTsModuleOrNamespace):
     async_handler_on_fulfilled = "_taihe_asyncHandlerOnFulfilled"
     async_handler_on_rejected = "_taihe_asyncHandlerOnRejected"
     async_handler_drop = "_taihe_asyncHandlerDrop"
-    async_handler_registry = "_taihe_asyncHandlerRegistry"
     async_handler = "_taihe_AsyncHandler"
     completer_factory = "_taihe_completerFactory"
     future_completory = "_taihe_futureCompletory"
@@ -689,13 +687,13 @@ class IfaceThunkAniInfo(AbstractAnalysis[IfaceThunkKey]):
     def __init__(self, am: AnalysisManager, c: IfaceThunkKey) -> None:
         self.sts_native = f"_taihe_{c.iface.name}_{c.method.name}_native"
         iface_ani_info = IfaceAniInfo.get(am, c.iface)
-        self.sts_native_base_params: list[str] = [
-            f"{iface_ani_info.vtbl_ptr}: long",
-            f"{iface_ani_info.data_ptr}: long",
-        ]
         self.sts_native_base_args: list[str] = [
             f"this.{iface_ani_info.vtbl_ptr}",
             f"this.{iface_ani_info.data_ptr}",
+        ]
+        self.sts_native_base_params: list[str] = [
+            f"vtblPtr: long",
+            f"dataPtr: long",
         ]
         self.c_native_base_params: list[str] = [
             f"ani_long ani_vtbl_ptr",
@@ -986,7 +984,7 @@ class IfaceAniInfo(AbstractAnalysis[IfaceDecl]):
 
     data_ptr = "_taihe_dataPtr"
     vtbl_ptr = "_taihe_vtblPtr"
-    register = "_taihe_register"
+    obj_registry = "_taihe_objRegistry"
 
     def __init__(self, am: AnalysisManager, d: IfaceDecl) -> None:
         self.decl_header = f"{d.parent_pkg.name}.{d.name}.ani.0.hpp"
@@ -4333,7 +4331,7 @@ class CallbackTypeAniInfo(TypeAniInfo):
                     f"ani_long ani_vtbl_ptr = reinterpret_cast<ani_long>(cpp_value.m_handle.vtbl_ptr);",
                     f"ani_long ani_data_ptr = reinterpret_cast<ani_long>(cpp_value.m_handle.data_ptr);",
                     f"cpp_value.m_handle.data_ptr = nullptr;",
-                    f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Ref, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.callback_factory}", "lll:C{{std.core.Function0}}"), reinterpret_cast<ani_ref*>(&ani_result), ani_invoke_ptr, ani_vtbl_ptr, ani_data_ptr);',
+                    f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Ref, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.callback_factory}", nullptr), reinterpret_cast<ani_ref*>(&ani_result), ani_invoke_ptr, ani_vtbl_ptr, ani_data_ptr);',
                 )
             target.writelns(
                 f"return ani_result;",
@@ -4347,15 +4345,10 @@ class CallbackTypeAniInfo(TypeAniInfo):
         cb_abi_info = CallbackAbiInfo.get(self.am, self.t)
         cb_ani_info = CallbackAniInfo.get(self.am, self.t)
         params_ani = []
-        args_ani = []
         params_ani.append("[[maybe_unused]] ani_env* env")
         params_ani.append("[[maybe_unused]] ani_long ani_vtbl_ptr")
         params_ani.append("[[maybe_unused]] ani_long ani_data_ptr")
-        for i in range(16):
-            arg_ani = f"ani_arg_{i}"
-            param_ty_ani_name = "ani_ref"
-            params_ani.append(f"[[maybe_unused]] {param_ty_ani_name} {arg_ani}")
-            args_ani.append(arg_ani)
+        params_ani.append("[[maybe_unused]] ani_fixedarray ani_args")
         params_ani_str = ", ".join(params_ani)
         return_ty_ani_name = "ani_ref"
         with target.indented(
@@ -4364,7 +4357,12 @@ class CallbackTypeAniInfo(TypeAniInfo):
         ):
             # parameters from ANI
             args_cpp = []
-            for param, arg_ani in zip(self.t.ref.params, args_ani, strict=False):
+            for i, param in enumerate(self.t.ref.params):
+                arg_ani = f"ani_arg_{param.name}"
+                target.writelns(
+                    f"ani_ref {arg_ani} = {{}};",
+                    f"TH_ANI_ASSUME_INVOKE(env, FixedArray_Get, ani_args, {i}, &{arg_ani});",
+                )
                 param_ty_ani_info = TypeAniInfo.get(self.am, param.ty)
                 param_from_ani = f"param_{param.name}_from_ani"
                 arg_cpp = f"cpp_arg_{param.name}"
@@ -4431,7 +4429,9 @@ class CallbackTypeAniInfo(TypeAniInfo):
                 )
             else:
                 target.writelns(
-                    f"return {{}};",
+                    f"{return_ty_ani_name} ani_result = {{}};",
+                    f"TH_ANI_ASSUME_INVOKE(env, GetUndefined, &ani_result);",
+                    f"return ani_result;",
                 )
 
 
@@ -4548,7 +4548,7 @@ class CompleterTypeAniInfo(TypeAniInfo):
                 f"ani_long ani_context_ptr = reinterpret_cast<ani_long>(cpp_value.m_ctx);",
                 f"cpp_value.m_ctx = nullptr;",
                 f"ani_fn_object ani_result = {{}};",
-                f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Ref, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.completer_factory}", "llll:C{{std.core.Function2}}"), reinterpret_cast<ani_ref*>(&ani_result), ani_on_fulfilled_ptr, ani_on_rejected_ptr, ani_free_ptr, ani_context_ptr);',
+                f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Ref, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.completer_factory}", nullptr), reinterpret_cast<ani_ref*>(&ani_result), ani_on_fulfilled_ptr, ani_on_rejected_ptr, ani_free_ptr, ani_context_ptr);',
                 f"return ani_result;",
             )
 
@@ -4645,7 +4645,7 @@ class FutureTypeAniInfo(TypeAniInfo):
                 f"ani_long ani_free_ptr = reinterpret_cast<ani_long>(&scope_t::free);",
                 f"ani_long ani_context_ptr = reinterpret_cast<ani_long>(cpp_completer.m_ctx);",
                 f"cpp_completer.m_ctx = nullptr;",
-                f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Void, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.future_completory}", "llllC{{std.core.Promise}}:"), ani_on_fulfilled_ptr, ani_on_rejected_ptr, ani_free_ptr, ani_context_ptr, ani_value);',
+                f'TH_ANI_ASSUME_INVOKE(env, Function_Call_Void, TH_ANI_FIND_MODULE_FUNCTION(env, "{pkg_ani_info.ns.mod.impl_desc}", "{pkg_ani_info.ns.mod.future_completory}", nullptr), ani_on_fulfilled_ptr, ani_on_rejected_ptr, ani_free_ptr, ani_context_ptr, ani_value);',
                 f"return cpp_result;",
             )
 
