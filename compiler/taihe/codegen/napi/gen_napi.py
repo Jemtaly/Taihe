@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Sequence
+
 from taihe.codegen.abi.analyses import (
     GlobFuncAbiInfo,
     IfaceAbiInfo,
@@ -51,11 +53,13 @@ from taihe.semantics.declarations import (
     IfaceMethodDecl,
     PackageDecl,
     PackageGroup,
+    ParamDecl,
     StructDecl,
     UnionDecl,
 )
 from taihe.semantics.types import (
     NonVoidType,
+    Type,
 )
 from taihe.utils.analyses import AnalysisManager
 from taihe.utils.outputs import GEN_CXX_SRC_GROUP, OutputManager
@@ -282,14 +286,12 @@ class NapiPackageSourceGenerator:
                     f"static napi_value {func.name}(napi_env env, [[maybe_unused]] napi_callback_info info) {{",
                     f"}}",
                 ):
-                    self.gen_func_content(
-                        func,
-                    )
+                    self.gen_func_content(func)
 
     def gen_func_content(
         self,
         func: GlobFuncDecl | IfaceMethodDecl,
-        obj_ptr: str | None = None,
+        obj_info: tuple[IfaceDecl, str] | None = None,
     ):
         if isinstance(func, IfaceMethodDecl):
             func_napi_info = IfaceMethodNapiInfo.get(self.am, func)
@@ -297,38 +299,47 @@ class NapiPackageSourceGenerator:
         else:
             func_napi_info = GlobFuncNapiInfo.get(self.am, func)
             func_abi_info = GlobFuncAbiInfo.get(self.am, func)
+        if func_napi_info.future_ty:
+            self.target.writelns(
+                f'TH_THROW(std::runtime_error, "Future return types are not supported");',
+            )
+            return
         if func_napi_info.async_name is not None:
             self.gen_async_func_content(
                 func,
-                obj_ptr,
+                obj_info,
                 is_noexcept=func_abi_info.is_noexcept,
                 is_promise=False,
             )
         elif func_napi_info.promise_name is not None:
             self.gen_async_func_content(
                 func,
-                obj_ptr,
+                obj_info,
                 is_noexcept=func_abi_info.is_noexcept,
                 is_promise=True,
             )
         else:
             self.gen_sync_func_content(
                 func,
-                obj_ptr,
+                obj_info,
                 is_noexcept=func_abi_info.is_noexcept,
             )
 
     def get_cpp_func_invoke(
         self,
         func: GlobFuncDecl | IfaceMethodDecl,
-        obj_ptr: str | None,
+        obj_info: tuple[IfaceDecl, str] | None,
         cpp_exprs: list[str],
     ) -> str:
-        if obj_ptr:
-            name = f"({obj_ptr})->{func.name}"
+        if obj_info:
+            _, obj = obj_info
+            assert isinstance(func, IfaceMethodDecl)
+            cpp_info = IfaceMethodCppInfo.get(self.am, func)
+            name = f"{obj}->{cpp_info.call_name}"
         else:
             assert isinstance(func, GlobFuncDecl)
-            name = GlobFuncCppUserInfo.get(self.am, func).full_name
+            cpp_info = GlobFuncCppUserInfo.get(self.am, func)
+            name = cpp_info.full_name
         cpp_exprs_str = ", ".join(cpp_exprs)
         return f"{name}({cpp_exprs_str})"
 
@@ -338,7 +349,8 @@ class NapiPackageSourceGenerator:
         is_noexcept: bool,
     ) -> str:
         if isinstance(return_ty := func.return_ty, NonVoidType):
-            cpp_ty = TypeCppInfo.get(self.am, return_ty).as_owner
+            return_ty_cpp_info = TypeCppInfo.get(self.am, return_ty)
+            cpp_ty = return_ty_cpp_info.as_owner
         else:
             cpp_ty = "void"
         if not is_noexcept:
@@ -361,7 +373,7 @@ class NapiPackageSourceGenerator:
     def gen_sync_func_content(
         self,
         func: GlobFuncDecl | IfaceMethodDecl,
-        obj_ptr: str | None,
+        obj_info: tuple[IfaceDecl, str] | None,
         *,
         is_noexcept: bool,
     ):
@@ -373,7 +385,7 @@ class NapiPackageSourceGenerator:
         )
         cpp_exprs = self.gen_read_func_params(func, "args")
         cpp_result_type = self.get_cpp_result_type(func, is_noexcept)
-        func_invoke = self.get_cpp_func_invoke(func, obj_ptr, cpp_exprs)
+        func_invoke = self.get_cpp_func_invoke(func, obj_info, cpp_exprs)
         result = "cpp_result"
         if cpp_result_type == "void":
             self.target.writelns(
@@ -407,7 +419,7 @@ class NapiPackageSourceGenerator:
     def gen_async_func_content(
         self,
         func: GlobFuncDecl | IfaceMethodDecl,
-        obj_ptr: str | None,
+        obj_info: tuple[IfaceDecl, str] | None,
         *,
         is_noexcept: bool,
         is_promise: bool,
@@ -422,7 +434,7 @@ class NapiPackageSourceGenerator:
         )
         cpp_exprs = self.gen_read_func_params(func, "args")
         cpp_result_type = self.get_cpp_result_type(func, is_noexcept)
-        obj_field = None
+        obj_field_info = None
         cpp_inputs = []
         result_storage = None
         self.target.add_include("optional")
@@ -441,16 +453,20 @@ class NapiPackageSourceGenerator:
                 self.target.writelns(
                     f"napi_ref cb_ref = nullptr;",
                 )
-            if obj_ptr:
-                obj_field = "obj_ptr"
+            if obj_info:
+                iface, obj = obj_info
+                iface_cpp_info = IfaceCppInfo.get(self.am, iface)
+                obj_field = "cpp_obj"
+                obj_field_info = iface, obj_field
                 self.target.writelns(
-                    f"decltype({obj_ptr}) {obj_field};",
+                    f"{iface_cpp_info.as_owner} {obj_field};",
                 )
             for param, cpp_expr in zip(func.params, cpp_exprs, strict=True):
+                param_ty_cpp_info = TypeCppInfo.get(self.am, param.ty)
                 cpp_input = f"cpp_input_{param.name}"
                 cpp_inputs.append(cpp_input)
                 self.target.writelns(
-                    f"decltype({cpp_expr}) {cpp_input};",
+                    f"{param_ty_cpp_info.as_owner} {cpp_input};",
                 )
             if cpp_result_type != "void":
                 result_storage = "cpp_result"
@@ -458,12 +474,14 @@ class NapiPackageSourceGenerator:
                     f"std::optional<{cpp_result_type}> {result_storage};",
                 )
         with self.target.indented(
-            f"async_data_ctx *cb_data = new async_data_ctx{{",
+            f"async_data_ctx *cb_data = new async_data_ctx {{",
             f"}};",
         ):
-            if obj_field:
+            if obj_field_info and obj_info:
+                _, obj_field = obj_field_info
+                _, obj = obj_info
                 self.target.writelns(
-                    f".{obj_field} = {obj_ptr},",
+                    f".{obj_field} = {obj},",
                 )
             for cpp_input, cpp_expr in zip(cpp_inputs, cpp_exprs, strict=True):
                 self.target.writelns(
@@ -493,7 +511,7 @@ class NapiPackageSourceGenerator:
             )
             self.gen_async_func_execute(
                 func,
-                obj_field,
+                obj_field_info,
                 cpp_inputs,
                 result_storage,
             )
@@ -522,7 +540,7 @@ class NapiPackageSourceGenerator:
     def gen_async_func_execute(
         self,
         func: GlobFuncDecl | IfaceMethodDecl,
-        obj_field: str | None,
+        obj_field_info: tuple[IfaceDecl, str] | None,
         cpp_inputs: list[str],
         result_storage: str | None,
     ):
@@ -533,12 +551,19 @@ class NapiPackageSourceGenerator:
             self.target.writelns(
                 f"async_data_ctx *cb_data = reinterpret_cast<async_data_ctx *>(data);",
             )
-            obj_ptr = f"cb_data->{obj_field}" if obj_field else None
-            cpp_exprs = [
-                f"std::forward<decltype(cb_data->{cpp_input})>(cb_data->{cpp_input})"
-                for cpp_input in cpp_inputs
-            ]
-            func_invoke = self.get_cpp_func_invoke(func, obj_ptr, cpp_exprs)
+            if obj_field_info:
+                iface, obj_field = obj_field_info
+                obj = f"cb_data->{obj_field}"
+                obj_info = iface, obj
+            else:
+                obj_info = None
+            cpp_exprs = []
+            for param, cpp_input in zip(func.params, cpp_inputs, strict=True):
+                param_ty_cpp_info = TypeCppInfo.get(self.am, param.ty)
+                cpp_exprs.append(
+                    f"std::forward<{param_ty_cpp_info.as_param}>(cb_data->{cpp_input})"
+                )
+            func_invoke = self.get_cpp_func_invoke(func, obj_info, cpp_exprs)
             if result_storage is None:
                 self.target.writelns(
                     f"{func_invoke};",
@@ -623,7 +648,7 @@ class NapiPackageSourceGenerator:
                     self.target.writelns(
                         f"break;",
                     )
-                result = f"cb_data->{result_storage}.value()"
+                result = f"(*cb_data->{result_storage})"
                 if not is_noexcept:
                     with self.target.indented(
                         f"if (not {result}.has_value()) {{",
@@ -1120,7 +1145,10 @@ class NapiPackageSourceGenerator:
                     )
                     self.gen_func_content(
                         method,
-                        f"({ancestor_cpp_info.as_param})*obj_ptr",
+                        (
+                            method.parent_iface,
+                            f"{ancestor_cpp_info.as_param}(*obj_ptr)",
+                        ),
                     )
 
     def gen_enum(self, enum: EnumDecl):
@@ -1467,10 +1495,13 @@ class NapiIfaceImplGenerator:
             param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
             method_arg = f"arg_{param.name}"
             method_params.append(f"{param_cpp_type_info.as_param} {method_arg}")
-            method_args.append(method_arg)
+            method_args.append(
+                f"std::forward<{param_cpp_type_info.as_param}>({method_arg})"
+            )
         method_params_str = ", ".join(method_params)
-        if isinstance(method.return_ty, NonVoidType):
-            return_ty_info = TypeCppInfo.get(self.am, method.return_ty)
+        method_args_str = ", ".join(method_args)
+        if isinstance(return_ty := method.return_ty, NonVoidType):
+            return_ty_info = TypeCppInfo.get(self.am, return_ty)
             return_ty_cpp_name = return_ty_info.as_owner
         else:
             return_ty_cpp_name = "void"
@@ -1489,52 +1520,86 @@ class NapiIfaceImplGenerator:
                     f'TH_THROW(std::runtime_error, "not supported");',
                 )
                 return
-            with self.target.indented(
-                f"return this->sync_call(",
-                f");",
-            ):
-                self.write_sync_call_lambda(method, napi_name)
-                for method_arg in method_args:
-                    self.target.writelns(
-                        f", std::forward<decltype({method_arg})>({method_arg})",
+            if future_ty := method_napi_info.future_ty:
+                with self.target.indented(
+                    f"struct async_call_lambda {{",
+                    f"}};",
+                ):
+                    method_fields = []
+                    for param in method.params:
+                        param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
+                        method_field = f"field_{param.name}"
+                        self.target.writelns(
+                            f"{param_cpp_type_info.as_owner} {method_field};",
+                        )
+                        method_fields.append(method_field)
+                    self.write_invoke_lambda(
+                        method.params,
+                        method_fields,
+                        future_ty.item_ty,
+                        False,
+                        napi_name,
                     )
+                self.target.writelns(
+                    f"return this->async_call<async_call_lambda>({method_args_str});",
+                )
+            else:
+                with self.target.indented(
+                    f"struct sync_call_lambda {{",
+                    f"}};",
+                ):
+                    method_fields = []
+                    for param in method.params:
+                        param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
+                        method_field = f"field_{param.name}"
+                        self.target.writelns(
+                            f"{param_cpp_type_info.as_param} {method_field};",
+                        )
+                        method_fields.append(method_field)
+                    self.write_invoke_lambda(
+                        method.params,
+                        method_fields,
+                        method.return_ty,
+                        method_abi_info.is_noexcept,
+                        napi_name,
+                    )
+                self.target.writelns(
+                    f"return this->sync_call<sync_call_lambda>({method_args_str});",
+                )
 
-    def write_sync_call_lambda(self, method: IfaceMethodDecl, napi_name: str):
-        method_abi_info = IfaceMethodAbiInfo.get(self.am, method)
-        method_params = ["napi_env env", "napi_ref ref"]
-        method_args = []
-        for param in method.params:
-            param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
-            method_arg = f"arg_{param.name}"
-            method_params.append(f"{param_cpp_type_info.as_param} {method_arg}")
-            method_args.append(method_arg)
-        method_params_str = ", ".join(method_params)
-        if isinstance(method.return_ty, NonVoidType):
-            return_ty_info = TypeCppInfo.get(self.am, method.return_ty)
+    def write_invoke_lambda(
+        self,
+        params: Sequence[ParamDecl],
+        fields: Sequence[str],
+        return_ty: Type,
+        is_noexcept: bool,
+        napi_name: str,
+    ):
+        if isinstance(return_ty, NonVoidType):
+            return_ty_info = TypeCppInfo.get(self.am, return_ty)
             return_ty_cpp_name = return_ty_info.as_owner
         else:
             return_ty_cpp_name = "void"
-        if not method_abi_info.is_noexcept:
+        if not is_noexcept:
             return_ty_cpp_name = (
                 f"::taihe::expected<{return_ty_cpp_name}, ::taihe::error>"
             )
         with self.target.indented(
-            f"[]({method_params_str}) -> {return_ty_cpp_name} {{",
+            f"{return_ty_cpp_name} operator()(napi_env env, napi_ref ref) {{",
             f"}}",
         ):
             self.target.writelns(
-                f"napi_value args[{len(method.params)}];",
+                f"napi_value args[{len(params)}];",
             )
-            for index, (param, method_arg) in enumerate(
-                zip(method.params, method_args, strict=True)
-            ):
+            for index, (param, field) in enumerate(zip(params, fields, strict=True)):
+                param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
                 param_napi_type_info = TypeNapiInfo.get(self.am, param.ty)
                 into_napi = f"into_napi_arg_{param.name}"
                 param_napi_type_info.gen_into_napi(self.target, into_napi)
                 self.target.writelns(
-                    f"args[{index}] = {into_napi}(env, std::forward<decltype({method_arg})>({method_arg}));",
+                    f"args[{index}] = {into_napi}(env, std::forward<{param_cpp_type_info.as_param}>({field}));",
                 )
-            if method_abi_info.is_noexcept:
+            if is_noexcept:
                 napi_call_macro = "TH_NAPI_ASSUME_CALL"
                 return_macro = "TH_NAPI_ASSUME"
             else:
@@ -1546,15 +1611,15 @@ class NapiIfaceImplGenerator:
                 f"napi_value ts_method;",
                 f'{napi_call_macro}(env, napi_get_named_property(env, org_napi_obj, "{napi_name}", &ts_method));',
                 f"napi_value method_result_napi;",
-                f"{napi_call_macro}(env, napi_call_function(env, org_napi_obj, ts_method, {len(method.params)}, args, &method_result_napi));",
+                f"{napi_call_macro}(env, napi_call_function(env, org_napi_obj, ts_method, {len(params)}, args, &method_result_napi));",
             )
-            if isinstance(return_ty := method.return_ty, NonVoidType):
+            if isinstance(return_ty, NonVoidType):
                 return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
                 return_ty_napi_info.gen_from_napi(self.target, "from_napi_result")
                 self.target.writelns(
                     f"return {return_macro}(from_napi_result(env, method_result_napi));",
                 )
-            elif not method_abi_info.is_noexcept:
+            elif not is_noexcept:
                 self.target.writelns(
                     f"return {{}};",
                 )

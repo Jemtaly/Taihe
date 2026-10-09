@@ -13,19 +13,42 @@
  * limitations under the License.
  */
 
-struct A {
-    param1: i32;
+function InvokeBlockingFunctionFromCurrentThread(
+    func: () => String,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+function InvokeNonBlockingFunctionFromCurrentThread(
+    func: @non_blocking () => Future<String>,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+function InvokeBlockingFunctionFromAnotherThread(
+    func: () => String,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+function InvokeNonBlockingFunctionFromAnotherThread(
+    func: @non_blocking () => Future<String>,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+interface BlockingInvokable {
+    invoke(): String;
 }
 
-struct B {
-    @extends a: A;
-    @readonly param2: i32;
+interface NonBlockingInvokable {
+    @non_blocking invoke(): Future<String>;
 }
 
-@class
-struct C {
-    @extends b: B;
-    @readonly param3: i32;
-}
+function InvokeBlockingMethodFromCurrentThread(
+    obj: BlockingInvokable,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
 
-function invokeFromOtherThreadAfter(sec: f64, callback: (a: i32) => i32);
+function InvokeNonBlockingMethodFromCurrentThread(
+    obj: NonBlockingInvokable,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+function InvokeBlockingMethodFromAnotherThread(
+    obj: BlockingInvokable,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);
+
+function InvokeNonBlockingMethodFromAnotherThread(
+    obj: NonBlockingInvokable,
+    cb: @non_blocking @noexcept (a: String) => Future<void>);

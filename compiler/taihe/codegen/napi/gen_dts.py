@@ -131,8 +131,12 @@ class DtsNamespaceGenerator:
                 f"{param.name}{'?' if param_ty_napi_info.is_optional else ''}: {param_ty_napi_info.dts_type_in(self.target)}"
             )
         params_str = ", ".join(params)
-        if isinstance(func.return_ty, NonVoidType):
-            return_ty_napi_info = TypeNapiInfo.get(self.am, func.return_ty)
+        if future_ty := func_napi_info.future_ty:
+            return_ty = future_ty.item_ty
+        else:
+            return_ty = func.return_ty
+        if isinstance(return_ty, NonVoidType):
+            return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
             return_ty = return_ty_napi_info.dts_return_type_in(self.target)
         else:
             return_ty = "void"
@@ -310,8 +314,12 @@ class DtsNamespaceGenerator:
                 f"{param.name}{'?' if param_ty_napi_info.is_optional else ''}: {param_ty_napi_info.dts_type_in(self.target)}"
             )
         params_str = ", ".join(params)
-        if isinstance(static_func.return_ty, NonVoidType):
-            return_ty_napi_info = TypeNapiInfo.get(self.am, static_func.return_ty)
+        if future_ty := static_func_napi_info.future_ty:
+            return_ty = future_ty.item_ty
+        else:
+            return_ty = static_func.return_ty
+        if isinstance(return_ty, NonVoidType):
+            return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
             return_ty = return_ty_napi_info.dts_return_type_in(self.target)
         else:
             return_ty = "void"
@@ -334,7 +342,7 @@ class DtsNamespaceGenerator:
             )
 
     def gen_iface_method_decl(self, method: IfaceMethodDecl):
-        iface_method_napi_info = IfaceMethodNapiInfo.get(self.am, method)
+        method_napi_info = IfaceMethodNapiInfo.get(self.am, method)
         params = []
         for param in method.params:
             param_ty_napi_info = TypeNapiInfo.get(self.am, param.ty)
@@ -342,35 +350,39 @@ class DtsNamespaceGenerator:
                 f"{param.name}{'?' if param_ty_napi_info.is_optional else ''}: {param_ty_napi_info.dts_type_in(self.target)}"
             )
         params_str = ", ".join(params)
-        if isinstance(method.return_ty, NonVoidType):
-            return_ty_napi_info = TypeNapiInfo.get(self.am, method.return_ty)
+        if future_ty := method_napi_info.future_ty:
+            return_ty = future_ty.item_ty
+        else:
+            return_ty = method.return_ty
+        if isinstance(return_ty, NonVoidType):
+            return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
             return_ty = return_ty_napi_info.dts_return_type_in(self.target)
         else:
             return_ty = "void"
-        if iface_method_napi_info.get_name is not None:
+        if method_napi_info.get_name is not None:
             self.target.writelns(
-                f"get {iface_method_napi_info.get_name}(): {return_ty};",
+                f"get {method_napi_info.get_name}(): {return_ty};",
             )
-        elif iface_method_napi_info.set_name is not None:
+        elif method_napi_info.set_name is not None:
             self.target.writelns(
-                f"set {iface_method_napi_info.set_name}({params_str});",
+                f"set {method_napi_info.set_name}({params_str});",
             )
-        elif iface_method_napi_info.async_name is not None:
+        elif method_napi_info.async_name is not None:
             cbname = "callback"
             callback_ty_ts_name = f"AsyncCallback<{return_ty}>"
             callback_ts = f"{cbname}: {callback_ty_ts_name}"
             params_with_callback_ts_str = ", ".join([*params, callback_ts])
             self.target.writelns(
-                f"{iface_method_napi_info.async_name}({params_with_callback_ts_str}): void;",
+                f"{method_napi_info.async_name}({params_with_callback_ts_str}): void;",
             )
-        elif iface_method_napi_info.promise_name is not None:
+        elif method_napi_info.promise_name is not None:
             promise_ty = f"Promise<{return_ty}>"
             self.target.writelns(
-                f"{iface_method_napi_info.promise_name}({params_str}): {promise_ty};",
+                f"{method_napi_info.promise_name}({params_str}): {promise_ty};",
             )
         else:
             self.target.writelns(
-                f"{iface_method_napi_info.norm_name}({params_str}): {return_ty};",
+                f"{method_napi_info.norm_name}({params_str}): {return_ty};",
             )
 
     def gen_enum(self, enum: EnumDecl):

@@ -13,28 +13,101 @@
  * limitations under the License.
  */
 
-const lib = requireNapi('./thread_test.so', RequireBaseDir.SCRIPT_DIR);
+const lib = requireNapi("./thread_test.so", RequireBaseDir.SCRIPT_DIR);
 
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function main() {
-    console.log("start");
-    try {
-        lib.invokeFromOtherThreadAfter(1.0, (a: number): number => {
-        console.log("hello world", a);
-        return (a + 10);
-    })
-    } catch(e) {
-        console.log(e)
-    }
-    // sleep 2 seconds to wait for the callback
-    let start = Date.now();
+    const results: Set<string> = new Set();
+    const expectedResults = new Array<string>();
+    const runTest = (
+        name: string,
+        expectedResult: string,
+        invoke: (callback: (result: string) => void) => void,
+        ) => {
+        expectedResults.push(expectedResult);
+        console.log(`--- before ${name} ---`);
+        invoke(result => results.add(result));
+        console.log(`--- after ${name} ---`);
+    };
+
+    runTest(
+        "blocking function from current thread",
+        "BlockingFunctionResult-ProcessedInCurrentThread",
+        callback => lib.InvokeBlockingFunctionFromCurrentThread(
+            () => "BlockingFunctionResult", callback),
+    );
+    runTest(
+        "non-blocking function from current thread",
+        "NonBlockingFunctionResult-ProcessedInCurrentThread",
+        callback => lib.InvokeNonBlockingFunctionFromCurrentThread(
+            () => "NonBlockingFunctionResult", callback),
+    );
+    runTest(
+        "blocking function from another thread",
+        "BlockingFunctionResult-ProcessedInAnotherThread",
+        callback => lib.InvokeBlockingFunctionFromAnotherThread(
+            () => "BlockingFunctionResult", callback),
+    );
+    runTest(
+        "non-blocking function from another thread",
+        "NonBlockingFunctionResult-ProcessedInAnotherThread",
+        callback => lib.InvokeNonBlockingFunctionFromAnotherThread(
+            () => "NonBlockingFunctionResult", callback),
+    );
+    runTest(
+        "blocking method from current thread",
+        "BlockingMethodResult-ProcessedMethodInCurrentThread",
+        callback => lib.InvokeBlockingMethodFromCurrentThread(
+            {
+                invoke: (): string => "BlockingMethodResult",
+            },
+            callback),
+    );
+    runTest(
+        "non-blocking method from current thread",
+        "NonBlockingMethodResult-ProcessedMethodInCurrentThread",
+        callback => lib.InvokeNonBlockingMethodFromCurrentThread(
+            {
+                invoke: (): string => "NonBlockingMethodResult",
+            },
+            callback),
+    );
+    runTest(
+        "blocking method from another thread",
+        "BlockingMethodResult-ProcessedMethodInAnotherThread",
+        callback => lib.InvokeBlockingMethodFromAnotherThread(
+            {
+                invoke: (): string => "BlockingMethodResult",
+            },
+            callback),
+    );
+    runTest(
+        "non-blocking method from another thread",
+        "NonBlockingMethodResult-ProcessedMethodInAnotherThread",
+        callback => lib.InvokeNonBlockingMethodFromAnotherThread(
+            {
+                invoke: (): string => "NonBlockingMethodResult",
+            },
+            callback),
+    );
+
+    const start = Date.now();
     while (Date.now() - start < 2000) {
-        // do nothing
         await sleep(20);
+    }
+
+    const missingResults =
+        expectedResults.filter(expectedResult => !results.has(expectedResult));
+    if (missingResults.length > 0) {
+        throw new Error(
+            `Missing expected results: ${missingResults.join(", ")}`);
     }
 }
 
-main();
+main().catch(error => {
+    console.error("napi_thread test failed:", error);
+    process.exitCode = 1;
+});

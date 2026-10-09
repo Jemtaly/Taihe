@@ -28,6 +28,7 @@
 #include <variant>
 
 #include <taihe/array.hpp>
+#include <taihe/async.hpp>
 #include <taihe/object.hpp>
 #include <taihe/runtime_napi.hpp>
 
@@ -112,28 +113,31 @@ private:
         call->invoke(env);
     }
 
+    void call_threadsafe_function(threadsafe_call *call)
+    {
+        TH_NAPI_ASSUME_CALL(env_, napi_call_threadsafe_function(tsfn_, call, napi_tsfn_blocking));
+    }
+
 protected:
     template<typename Callable, typename... Args>
-    auto sync_call(Callable &&callable, Args &&...args)
-        -> std::invoke_result_t<Callable &&, napi_env, napi_ref, Args &&...>
+    auto sync_call(Args &&...args) -> std::invoke_result_t<Callable &&, napi_env, napi_ref>
     {
-        using result_t = std::invoke_result_t<Callable &&, napi_env, napi_ref, Args &&...>;
+        using result_t = std::invoke_result_t<Callable &&, napi_env, napi_ref>;
         using stored_result_t = std::conditional_t<std::is_void_v<result_t>, std::monostate, result_t>;
 
         if (::taihe::_is_main_thread()) {
-            return std::invoke(std::forward<Callable>(callable), env_, ref_, std::forward<Args>(args)...);
+            Callable callable {std::forward<Args>(args)...};
+            return callable(env_, ref_);
         }
 
         struct sync_call_data final : threadsafe_call {
             std::mutex mutex;
             std::condition_variable cv;
             napi_ref ref;
-            Callable &&callable;
-            std::tuple<Args &&...> args;
+            Callable callable;
             std::optional<stored_result_t> result;
 
-            sync_call_data(napi_ref ref, Callable &&callable, Args &&...args)
-                : ref(ref), callable(std::forward<Callable>(callable)), args(std::forward<Args>(args)...)
+            explicit sync_call_data(napi_ref ref, Args &&...args) : ref(ref), callable {std::forward<Args>(args)...}
             {
             }
 
@@ -141,28 +145,17 @@ protected:
             {
                 std::lock_guard<std::mutex> lock(this->mutex);
                 if constexpr (std::is_void_v<result_t>) {
-                    std::apply(
-                        [this, env](auto &&...args) {
-                            return std::invoke(std::forward<Callable>(this->callable), env, this->ref,
-                                               std::forward<Args>(args)...);
-                        },
-                        this->args);
+                    this->callable(env, this->ref);
                     this->result.emplace();
                 } else {
-                    this->result = std::apply(
-                        [this, env](auto &&...args) {
-                            return std::invoke(std::forward<Callable>(this->callable), env, this->ref,
-                                               std::forward<Args>(args)...);
-                        },
-                        this->args);
+                    this->result = this->callable(env, this->ref);
                 }
                 this->cv.notify_one();
             }
         };
 
-        sync_call_data data(ref_, std::forward<Callable>(callable), std::forward<Args>(args)...);
-        TH_NAPI_ASSUME_CALL(
-            env_, napi_call_threadsafe_function(tsfn_, static_cast<threadsafe_call *>(&data), napi_tsfn_blocking));
+        sync_call_data data(ref_, std::forward<Args>(args)...);
+        call_threadsafe_function(&data);
         std::unique_lock<std::mutex> lock(data.mutex);
         data.cv.wait(lock, [&data] {
             return data.result.has_value();
@@ -175,24 +168,58 @@ protected:
         }
     }
 
+    template<typename Callable, typename... Args>
+    auto async_call(Args &&...args) -> taihe::future<std::invoke_result_t<Callable &&, napi_env, napi_ref>>
+    {
+        using result_t = std::invoke_result_t<Callable &&, napi_env, napi_ref>;
+
+        struct async_call_data final : threadsafe_call {
+            napi_ref ref;
+            Callable callable;
+            taihe::completer<result_t> completer;
+
+            explicit async_call_data(napi_ref ref, Args &&...args, taihe::completer<result_t> completer)
+                : ref(ref), callable {std::forward<Args>(args)...}, completer(std::move(completer))
+            {
+            }
+
+            void invoke(napi_env env) override
+            {
+                this->completer.complete(this->callable(env, this->ref));
+                delete this;
+            }
+        };
+
+        auto [completer, future] = taihe::make_async_pair<result_t>();
+        auto *dptr = new async_call_data(ref_, std::forward<Args>(args)..., std::move(completer));
+        call_threadsafe_function(dptr);
+
+        return future;
+    }
+
 public:
     napi_ref_guard(napi_env env, napi_value callback) : env_(env)
     {
         TH_NAPI_ASSUME_CALL(env, napi_create_reference(env, callback, 1, &ref_));
         napi_value name;
         TH_NAPI_ASSUME_CALL(env, napi_create_string_utf8(env, "MyWorkResource", NAPI_AUTO_LENGTH, &name));
-        TH_NAPI_ASSUME_CALL(
-            env, napi_create_threadsafe_function(env, nullptr, nullptr, name, 0, 1, nullptr, nullptr, nullptr,
-                                                 napi_ref_guard::dispatch_threadsafe_call, &tsfn_));
+        TH_NAPI_ASSUME_CALL(env, napi_create_threadsafe_function(env, nullptr, nullptr, name, 0, 1, nullptr, nullptr,
+                                                                 nullptr, dispatch_threadsafe_call, &tsfn_));
         TH_NAPI_ASSUME_CALL(env, napi_unref_threadsafe_function(env, tsfn_));
     }
 
     ~napi_ref_guard()
     {
         if (ref_) {
-            this->sync_call([](napi_env env, napi_ref ref) {
-                TH_NAPI_ASSUME_CALL(env, napi_delete_reference(env, ref));
-            });
+            struct async_call_lambda {
+                taihe::expected<void, taihe::error> operator()(napi_env env, napi_ref ref)
+                {
+                    TH_NAPI_TRY_CALL(env, napi_delete_reference(env, ref));
+                    return {};
+                }
+            };
+
+            this->async_call<async_call_lambda>();
         }
         if (tsfn_) {
             TH_NAPI_ASSUME_CALL(env_, napi_release_threadsafe_function(tsfn_, napi_tsfn_release));

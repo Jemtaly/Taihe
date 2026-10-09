@@ -15,6 +15,7 @@
 
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
+from collections.abc import Sequence
 
 from typing_extensions import override
 
@@ -49,6 +50,7 @@ from taihe.codegen.napi.attributes import (
     GetAttr,
     LibAttr,
     NamespaceAttr,
+    NonBlockingAttr,
     NullAttr,
     PromiseAttribute,
     ReadOnlyAttr,
@@ -70,6 +72,7 @@ from taihe.semantics.declarations import (
     IfaceMethodDecl,
     PackageDecl,
     PackageGroup,
+    ParamDecl,
     StructDecl,
     StructFieldDecl,
     UnionDecl,
@@ -89,6 +92,7 @@ from taihe.semantics.types import (
     SetType,
     StringType,
     StructType,
+    Type,
     UnionType,
     UnitType,
 )
@@ -407,10 +411,28 @@ class IfaceMethodNapiInfo(AbstractAnalysis[IfaceMethodDecl]):
         else:
             self.norm_name = f.name
 
+        if non_blocking_attr := NonBlockingAttr.get(f):
+            self.future_ty = non_blocking_attr.future_ty
+        else:
+            self.future_ty = None
+
     @classmethod
     @override
     def _create(cls, am: AnalysisManager, f: IfaceMethodDecl) -> "IfaceMethodNapiInfo":
         return IfaceMethodNapiInfo(am, f)
+
+
+class CallbackNapiInfo(AbstractAnalysis[CallbackType]):
+    def __init__(self, am: AnalysisManager, t: CallbackType) -> None:
+        if non_blocking_attr := NonBlockingAttr.get(t.ref):
+            self.future_ty = non_blocking_attr.future_ty
+        else:
+            self.future_ty = None
+
+    @classmethod
+    @override
+    def _create(cls, am: AnalysisManager, t: CallbackType) -> "CallbackNapiInfo":
+        return CallbackNapiInfo(am, t)
 
 
 class EnumNapiInfo(AbstractAnalysis[EnumDecl]):
@@ -449,6 +471,11 @@ class GlobFuncNapiInfo(AbstractAnalysis[GlobFuncDecl]):
             self.async_name = f.name
         else:
             self.norm_name = f.name
+
+        if non_blocking_attr := NonBlockingAttr.get(f):
+            self.future_ty = non_blocking_attr.future_ty
+        else:
+            self.future_ty = None
 
     @classmethod
     @override
@@ -929,7 +956,12 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
                 f"{param.name}{'?' if param_ty_napi_info.is_optional else ''}: {param_ty_napi_info.dts_type_in(target)}"
             )
         params_str = ", ".join(params)
-        if isinstance(return_ty := self.type.ref.return_ty, NonVoidType):
+        cb_napi_info = CallbackNapiInfo.get(self.am, self.type)
+        if future_ty := cb_napi_info.future_ty:
+            return_ty = future_ty.item_ty
+        else:
+            return_ty = self.type.ref.return_ty
+        if isinstance(return_ty, NonVoidType):
             return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
             return_ty = return_ty_napi_info.dts_type_in(target)
         else:
@@ -957,14 +989,15 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
 
     def gen_invoke_operator(self, target: CSourceWriter):
         cb_abi_info = CallbackAbiInfo.get(self.am, self.type)
-        method_params = []
-        method_args = []
+        cb_params = []
+        cb_args = []
         for param in self.type.ref.params:
             param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
-            method_arg = f"arg_{param.name}"
-            method_args.append(method_arg)
-            method_params.append(f"{param_cpp_type_info.as_param} {method_arg}")
-        method_params_str = ", ".join(method_params)
+            cb_arg = f"arg_{param.name}"
+            cb_params.append(f"{param_cpp_type_info.as_param} {cb_arg}")
+            cb_args.append(f"std::forward<{param_cpp_type_info.as_param}>({cb_arg})")
+        cb_params_str = ", ".join(cb_params)
+        cb_args_str = ", ".join(cb_args)
         if isinstance(return_ty := self.type.ref.return_ty, NonVoidType):
             return_ty_info = TypeCppInfo.get(self.am, return_ty)
             return_ty_cpp_name = return_ty_info.as_owner
@@ -975,55 +1008,90 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
                 f"::taihe::expected<{return_ty_cpp_name}, ::taihe::error>"
             )
         with target.indented(
-            f"{return_ty_cpp_name} operator()({method_params_str}) {{",
+            f"{return_ty_cpp_name} operator()({cb_params_str}) {{",
             f"}}",
         ):
-            with target.indented(
-                f"return this->sync_call(",
-                f");",
-            ):
-                self.write_sync_call_lambda(target)
-                for method_arg in method_args:
-                    target.writelns(
-                        f", std::forward<decltype({method_arg})>({method_arg})",
+            cb_napi_info = CallbackNapiInfo.get(self.am, self.type)
+            if future_ty := cb_napi_info.future_ty:
+                with target.indented(
+                    f"struct async_call_lambda {{",
+                    f"}};",
+                ):
+                    cb_fields = []
+                    for param in self.type.ref.params:
+                        param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
+                        cb_field = f"field_{param.name}"
+                        target.writelns(
+                            f"{param_cpp_type_info.as_owner} {cb_field};",
+                        )
+                        cb_fields.append(cb_field)
+                    self.write_invoke_lambda(
+                        target,
+                        self.type.ref.params,
+                        cb_fields,
+                        future_ty.item_ty,
+                        False,
                     )
+                target.writelns(
+                    f"return this->async_call<async_call_lambda>({cb_args_str});",
+                )
+            else:
+                with target.indented(
+                    f"struct sync_call_lambda {{",
+                    f"}};",
+                ):
+                    cb_fields = []
+                    for param in self.type.ref.params:
+                        param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
+                        cb_field = f"field_{param.name}"
+                        target.writelns(
+                            f"{param_cpp_type_info.as_param} {cb_field};",
+                        )
+                        cb_fields.append(cb_field)
+                    self.write_invoke_lambda(
+                        target,
+                        self.type.ref.params,
+                        cb_fields,
+                        self.type.ref.return_ty,
+                        cb_abi_info.is_noexcept,
+                    )
+                target.writelns(
+                    f"return this->sync_call<sync_call_lambda>({cb_args_str});",
+                )
 
-    def write_sync_call_lambda(self, target: CSourceWriter):
-        cb_abi_info = CallbackAbiInfo.get(self.am, self.type)
-        method_params = ["napi_env env", "napi_ref ref"]
-        method_args = []
-        for param in self.type.ref.params:
-            param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
-            method_arg = f"arg_{param.name}"
-            method_params.append(f"{param_cpp_type_info.as_param} {method_arg}")
-            method_args.append(method_arg)
-        method_params_str = ", ".join(method_params)
-        if isinstance(return_ty := self.type.ref.return_ty, NonVoidType):
+    def write_invoke_lambda(
+        self,
+        target: CSourceWriter,
+        params: Sequence[ParamDecl],
+        fields: Sequence[str],
+        return_ty: Type,
+        is_noexcept: bool,
+    ):
+        if isinstance(return_ty, NonVoidType):
             return_ty_info = TypeCppInfo.get(self.am, return_ty)
             return_ty_cpp_name = return_ty_info.as_owner
         else:
             return_ty_cpp_name = "void"
-        if not cb_abi_info.is_noexcept:
+        if not is_noexcept:
             return_ty_cpp_name = (
                 f"::taihe::expected<{return_ty_cpp_name}, ::taihe::error>"
             )
         with target.indented(
-            f"[]({method_params_str}) -> {return_ty_cpp_name} {{",
+            f"{return_ty_cpp_name} operator()(napi_env env, napi_ref ref) {{",
             f"}}",
         ):
             target.writelns(
-                f"napi_value args[{len(self.type.ref.params)}];",
+                f"napi_value args[{len(params)}];",
             )
-            for index, (param, method_arg) in enumerate(
-                zip(self.type.ref.params, method_args, strict=True)
-            ):
+            for index, (param, field) in enumerate(zip(params, fields, strict=True)):
+                param_cpp_type_info = TypeCppInfo.get(self.am, param.ty)
                 param_napi_type_info = TypeNapiInfo.get(self.am, param.ty)
                 into_napi = f"into_napi_arg_{param.name}"
                 param_napi_type_info.gen_into_napi(target, into_napi)
                 target.writelns(
-                    f"args[{index}] = {into_napi}(env, std::forward<decltype({method_arg})>({method_arg}));",
+                    f"args[{index}] = {into_napi}(env, std::forward<{param_cpp_type_info.as_param}>(this->{field}));",
                 )
-            if cb_abi_info.is_noexcept:
+            if is_noexcept:
                 napi_call_macro = "TH_NAPI_ASSUME_CALL"
                 return_macro = "TH_NAPI_ASSUME"
             else:
@@ -1035,15 +1103,15 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
                 f"napi_value global = nullptr;",
                 f"{napi_call_macro}(env, napi_get_global(env, &global));",
                 f"napi_value callback_result_napi = nullptr;",
-                f"{napi_call_macro}(env, napi_call_function(env, global, cb_ref, {len(self.type.ref.params)}, args, &callback_result_napi));",
+                f"{napi_call_macro}(env, napi_call_function(env, global, cb_ref, {len(params)}, args, &callback_result_napi));",
             )
-            if isinstance(return_ty := self.type.ref.return_ty, NonVoidType):
+            if isinstance(return_ty, NonVoidType):
                 return_ty_napi_info = TypeNapiInfo.get(self.am, return_ty)
                 return_ty_napi_info.gen_from_napi(target, "from_napi_result")
                 target.writelns(
                     f"return {return_macro}(from_napi_result(env, callback_result_napi));",
                 )
-            elif not cb_abi_info.is_noexcept:
+            elif not is_noexcept:
                 target.writelns(
                     f"return {{}};",
                 )
@@ -1067,13 +1135,10 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
                 f"}}, cpp_ptr, &napi_result));",
             ):
                 target.writelns(
-                    f"{self.cpp_info.as_owner}* cpp_cb;",
-                    f"TH_NAPI_ASSUME_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, nullptr, reinterpret_cast<void**>(&cpp_cb)));",
+                    f"{self.cpp_info.as_owner}* obj_ptr;",
+                    f"TH_NAPI_ASSUME_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, nullptr, reinterpret_cast<void**>(&obj_ptr)));",
                 )
-                self.gen_func_content(
-                    target,
-                    "cpp_cb",
-                )
+                self.gen_func_content(target, "(*obj_ptr)")
             with target.indented(
                 f"TH_NAPI_ASSUME_CALL(env, napi_add_finalizer(env, napi_result, cpp_ptr, []([[maybe_unused]] napi_env env, void* finalize_data, [[maybe_unused]] void* finalize_hint) {{",
                 f"}}, nullptr, nullptr));",
@@ -1088,22 +1153,29 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
     def gen_func_content(
         self,
         target: CSourceWriter,
-        obj_ptr: str,
+        obj: str,
     ):
         cb_abi_info = CallbackAbiInfo.get(self.am, self.type)
+        cb_napi_info = CallbackNapiInfo.get(self.am, self.type)
+        if cb_napi_info.future_ty:
+            target.writelns(
+                f'TH_THROW(std::runtime_error, "Future return types are not supported");',
+            )
+            return
         self.gen_sync_func_content(
             target,
-            obj_ptr,
+            obj,
             is_noexcept=cb_abi_info.is_noexcept,
         )
 
-    def get_cpp_func_invoke(self, obj_ptr: str, cpp_exprs: list[str]):
+    def get_cpp_func_invoke(self, obj: str, cpp_exprs: list[str]):
         cpp_exprs_str = ", ".join(cpp_exprs)
-        return f"(*{obj_ptr})({cpp_exprs_str})"
+        return f"{obj}({cpp_exprs_str})"
 
     def get_cpp_result_type(self, is_noexcept: bool) -> str:
         if isinstance(return_ty := self.type.ref.return_ty, NonVoidType):
-            cpp_ty = TypeCppInfo.get(self.am, return_ty).as_owner
+            return_ty_cpp_info = TypeCppInfo.get(self.am, return_ty)
+            cpp_ty = return_ty_cpp_info.as_owner
         else:
             cpp_ty = "void"
         if not is_noexcept:
@@ -1122,7 +1194,7 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
     def gen_sync_func_content(
         self,
         target: CSourceWriter,
-        obj_ptr: str,
+        obj: str,
         *,
         is_noexcept: bool,
     ):
@@ -1134,7 +1206,7 @@ class CallbackTypeNapiInfo(TypeNapiInfo):
         )
         cpp_exprs = self.gen_read_func_params(target, "args")
         result_storage_type = self.get_cpp_result_type(is_noexcept)
-        func_call = self.get_cpp_func_invoke(obj_ptr, cpp_exprs)
+        func_call = self.get_cpp_func_invoke(obj, cpp_exprs)
         result = "cpp_result"
         if result_storage_type == "void":
             target.writelns(

@@ -13,7 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from typing_extensions import override
 
 from taihe.codegen.ani.attributes import (
     ArrayBufferAttr,
@@ -39,11 +41,16 @@ from taihe.semantics.attributes import (
     TypedAttribute,
 )
 from taihe.semantics.declarations import (
+    GlobFuncDecl,
     IfaceDecl,
+    IfaceMethodDecl,
     PackageDecl,
     StructDecl,
     TypeRefDecl,
 )
+from taihe.semantics.types import CallbackType, FutureType, Type
+from taihe.utils.diagnostics import DiagnosticsManager
+from taihe.utils.exceptions import AdhocError
 
 
 @dataclass
@@ -136,6 +143,45 @@ class TsInjectIntoClazzAttr(RepeatableAttribute[IfaceDecl | StructDecl]):
     ts_code: str
 
 
+@dataclass
+class NonBlockingAttr(TypedAttribute[GlobFuncDecl | IfaceMethodDecl | TypeRefDecl]):
+    NAME = "non_blocking"
+    TARGETS = (GlobFuncDecl, IfaceMethodDecl, TypeRefDecl)
+
+    future_ty: FutureType | None = field(init=False, default=None)
+
+    @override
+    def check_typed_context(
+        self,
+        parent: GlobFuncDecl | IfaceMethodDecl | TypeRefDecl,
+        dm: DiagnosticsManager,
+    ) -> None:
+        if isinstance(parent, GlobFuncDecl | IfaceMethodDecl):
+            self.check_return_type(parent.return_ty, dm)
+        elif isinstance(parent.resolved_ty, CallbackType):
+            self.check_return_type(parent.resolved_ty.ref.return_ty, dm)
+        else:
+            dm.emit(
+                AdhocError(
+                    f"Attribute '{self.NAME}' can only be attached to callback type.",
+                    loc=self.loc,
+                )
+            )
+
+        super().check_typed_context(parent, dm)
+
+    def check_return_type(self, return_ty: Type, dm: DiagnosticsManager) -> None:
+        if not isinstance(return_ty, FutureType):
+            dm.emit(
+                AdhocError(
+                    f"Attribute '{self.NAME}' requires the return type to be a Future.",
+                    loc=self.loc,
+                )
+            )
+            return
+        self.future_ty = return_ty
+
+
 all_napi_attr_types = [
     DtsTypeAttr,
     LibAttr,
@@ -146,6 +192,7 @@ all_napi_attr_types = [
     TsInjectAttr,
     TsInjectIntoModuleAttr,
     TsInjectIntoClazzAttr,
+    NonBlockingAttr,
     # TODO: hack from ani
     ArrayBufferAttr,
     AsyncAttribute,
