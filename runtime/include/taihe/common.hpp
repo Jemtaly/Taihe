@@ -32,6 +32,14 @@
     } while (0)
 #endif
 
+#if __has_cpp_attribute(nodiscard)
+#define TH_NODISCARD [[nodiscard]]
+#elif __has_attribute(warn_unused_result)
+#define TH_NODISCARD __attribute__((warn_unused_result))
+#else
+#define TH_NODISCARD
+#endif
+
 namespace taihe {
 template<typename cpp_t, typename = void>
 struct as_abi;

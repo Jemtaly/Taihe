@@ -135,7 +135,6 @@ struct common_string_view {
         return tstr_encoding(m_handle) == TSTRING_ENCODING_UTF16;
     }
 
-    [[nodiscard]]
     string_encoding encoding() const noexcept
     {
         switch (tstr_encoding(m_handle)) {

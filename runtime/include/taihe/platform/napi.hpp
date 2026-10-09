@@ -222,48 +222,54 @@ inline bool _get_bigint_sign(taihe::array_view<uint64_t> num)
 
 inline std::pair<bool, taihe::array<uint64_t>> _get_bigint_sign_and_abs(taihe::array_view<uint64_t> num)
 {
-    uint64_t *buf = reinterpret_cast<uint64_t *>(malloc(num.size() * sizeof(uint64_t)));
-    bool sign = _get_bigint_msb(num[num.size() - 1]);
+    bool sign = _get_bigint_sign(num);
+    taihe::array_builder<uint64_t> abs(num.size());
     if (sign) {
-        bool carry = true;
-        for (std::size_t i = 0; i < num.size(); i++) {
-            buf[i] = ~num[i] + carry;
-            carry = carry && (buf[i] == 0);
+        bool borrow = false;
+        for (uint64_t numv : num) {
+            uint64_t absv = 0 - numv - borrow;
+            abs.push_back(absv);
+            borrow = borrow || (absv != 0);
         }
     } else {
-        for (std::size_t i = 0; i < num.size(); i++) {
-            buf[i] = num[i];
+        bool carry = false;
+        for (uint64_t numv : num) {
+            uint64_t absv = 0 + numv + carry;
+            abs.push_back(absv);
+            carry = carry && (absv == 0);
         }
     }
-    std::size_t size = num.size();
-    while (size > 0 && buf[size - 1] == 0) {
-        size--;
+    while (abs.size() > 0 && abs[abs.size() - 1] == 0) {
+        abs.pop_back();
     }
-    return {sign, taihe::array<uint64_t>(buf, size)};
+    return {sign, std::move(abs).finish()};
 }
 
 inline taihe::array<uint64_t> _build_num(bool sign, taihe::array_view<uint64_t> abs)
 {
-    uint64_t *buf = reinterpret_cast<uint64_t *>(malloc((abs.size() + 1) * sizeof(uint64_t)));
+    taihe::array_builder<uint64_t> num(abs.size() + 1);
     if (sign) {
-        bool carry = true;
-        for (std::size_t i = 0; i < abs.size(); i++) {
-            buf[i] = ~abs[i] + carry;
-            carry = carry && (buf[i] == 0);
+        bool borrow = false;
+        for (uint64_t absv : abs) {
+            uint64_t numv = 0 - absv - borrow;
+            num.push_back(numv);
+            borrow = borrow || (numv != 0);
         }
-        buf[abs.size()] = carry - 1;
+        num.push_back(0 - borrow);
     } else {
-        for (std::size_t i = 0; i < abs.size(); i++) {
-            buf[i] = abs[i];
+        bool carry = false;
+        for (uint64_t absv : abs) {
+            uint64_t numv = 0 + absv + carry;
+            num.push_back(numv);
+            carry = carry && (numv == 0);
         }
-        buf[abs.size()] = 0;
+        num.push_back(0 + carry);
     }
-    std::size_t size = abs.size() + 1;
-    while (size >= 2 && ((buf[size - 1] == 0 && _get_bigint_msb(buf[size - 2]) == 0) ||
-                         (buf[size - 1] == static_cast<uint64_t>(-1) && _get_bigint_msb(buf[size - 2]) == 1))) {
-        size--;
+    while (num.size() - 1 > 0 && ((num[num.size() - 1] + 0 == 0 && _get_bigint_msb(num[num.size() - 1 - 1]) == 0) ||
+                                  (num[num.size() - 1] + 1 == 0 && _get_bigint_msb(num[num.size() - 1 - 1]) == 1))) {
+        num.pop_back();
     }
-    return taihe::array<uint64_t>(buf, size);
+    return std::move(num).finish();
 }
 }  // namespace taihe
 
